@@ -1,0 +1,50 @@
+{
+    "name": "evidence-seeker-platform",
+    "version": "1.0.0",
+    "description": "Evidence Seeker Platform - A modern full-stack application for AI fact-checking",
+    "private": true,
+    "workspaces": [
+        "frontend"
+    ],
+    "scripts": {
+        "dev": "npm-run-all --parallel dev:db dev:backend dev:frontend",
+        "dev:db": "docker-compose -f docker-compose.dev.yml up db",
+        "dev:backend": "cd backend && source .venv/bin/activate && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000",
+        "dev:frontend": "cd frontend && npm run dev",
+        "setup": "npm-run-all setup:db setup:backend setup:frontend",
+        "setup:db": "docker-compose -f docker-compose.dev.yml up -d db",
+        "setup:backend": "npm run db:reset && cd backend && uv venv && source .venv/bin/activate && uv pip install -r requirements.txt && cp .env.dev .env && alembic upgrade head && python init_db.py",
+        "setup:frontend": "cd frontend && npm install",
+        "install:all": "npm-run-all setup:backend setup:frontend",
+        "db:up": "docker-compose -f docker-compose.dev.yml up -d db",
+        "db:down": "docker-compose -f docker-compose.dev.yml down",
+        "db:reset": "docker-compose -f docker-compose.dev.yml down -v && docker-compose -f docker-compose.dev.yml up -d db",
+        "db:migrate": "cd backend && source .venv/bin/activate && alembic upgrade head",
+        "db:init": "cd backend && source .venv/bin/activate && python init_db.py",
+        "backend:install": "cd backend && source .venv/bin/activate && uv pip install -r requirements.txt",
+        "backend:test": "cd backend && source .venv/bin/activate && pytest -v",
+        "frontend:install": "cd frontend && npm install",
+        "frontend:test": "cd frontend && npm run test",
+        "test": "npm-run-all --parallel backend:test frontend:test",
+        "lint": "cd backend && source .venv/bin/activate && black --check . && ruff check . && mypy .",
+        "format": "cd backend && source .venv/bin/activate && black .",
+        "clean": "docker-compose down -v && rm -rf backend/.venv frontend/node_modules frontend/dist",
+        "prod:build": "docker-compose build",
+        "prod:up": "docker-compose up -d",
+        "prod:down": "docker-compose down"
+    },
+    "devDependencies": {
+        "npm-run-all": "^4.1.5"
+    },
+    "keywords": [
+        "ai",
+        "fact-checking",
+        "evidence",
+        "fastapi",
+        "react",
+        "typescript",
+        "postgresql"
+    ],
+    "author": "Evidence Seeker Team",
+    "license": "MIT"
+}

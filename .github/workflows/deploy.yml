@@ -1,0 +1,169 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ secrets.REGISTRY_URL }}
+        username: ${{ secrets.REGISTRY_USERNAME }}
+        password: ${{ secrets.REGISTRY_PASSWORD }}
+
+    - name: Extract metadata for backend
+      id: meta-backend
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ secrets.REGISTRY_URL }}/evidence-seeker-backend
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha
+          type=raw,value=latest,enable={{is_default_branch}}
+
+    - name: Build and push backend Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./backend
+        file: ./backend/Dockerfile
+        push: true
+        tags: ${{ steps.meta-backend.outputs.tags }}
+        labels: ${{ steps.meta-backend.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Extract metadata for frontend
+      id: meta-frontend
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ secrets.REGISTRY_URL }}/evidence-seeker-frontend
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha
+          type=raw,value=latest,enable={{is_default_branch}}
+
+    - name: Build and push frontend Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./frontend
+        file: ./frontend/Dockerfile
+        push: true
+        tags: ${{ steps.meta-frontend.outputs.tags }}
+        labels: ${{ steps.meta-frontend.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Deploy to production
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.PRODUCTION_HOST }}
+        username: ${{ secrets.PRODUCTION_USER }}
+        key: ${{ secrets.PRODUCTION_SSH_KEY }}
+        script: |
+          cd /opt/evidence-seeker-platform
+
+          # Pull latest images
+          docker pull ${{ secrets.REGISTRY_URL }}/evidence-seeker-backend:latest
+          docker pull ${{ secrets.REGISTRY_URL }}/evidence-seeker-frontend:latest
+
+          # Stop existing containers
+          docker-compose down
+
+          # Start updated containers
+          docker-compose up -d
+
+          # Wait for services to be healthy
+          sleep 30
+
+          # Run database migrations
+          docker-compose exec -T backend alembic upgrade head
+
+          # Run health checks
+          curl -f http://localhost:8000/health || exit 1
+          curl -f http://localhost:3000 || exit 1
+
+          # Clean up old images
+          docker image prune -f
+
+    - name: Run post-deployment tests
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.PRODUCTION_HOST }}
+        username: ${{ secrets.PRODUCTION_USER }}
+        key: ${{ secrets.PRODUCTION_SSH_KEY }}
+        script: |
+          # Test authentication endpoints
+          curl -f -X POST http://localhost:8000/api/v1/auth/test || exit 1
+          curl -f -X POST http://localhost:8000/api/v1/users/test || exit 1
+
+          # Test frontend is serving
+          curl -f http://localhost:3000 | grep -q "Evidence Seeker Platform" || exit 1
+
+          echo "Deployment successful!"
+
+  # Database backup before deployment
+  backup:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+    - name: Create database backup
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.PRODUCTION_HOST }}
+        username: ${{ secrets.PRODUCTION_USER }}
+        key: ${{ secrets.PRODUCTION_SSH_KEY }}
+        script: |
+          cd /opt/evidence-seeker-platform
+
+          # Create database backup
+          BACKUP_FILE="backup_$(date +%Y%m%d_%H%M%S).sql"
+          docker-compose exec -T db pg_dump -U evidence_user evidence_seeker > $BACKUP_FILE
+
+          # Compress backup
+          gzip $BACKUP_FILE
+
+          # Keep only last 7 backups
+          ls -t backup_*.sql.gz | tail -n +8 | xargs -r rm
+
+          echo "Database backup created: $BACKUP_FILE.gz"
+
+  # Rollback on failure
+  rollback:
+    runs-on: ubuntu-latest
+    environment: production
+    needs: [deploy]
+    if: failure()
+
+    steps:
+    - name: Rollback to previous version
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.PRODUCTION_HOST }}
+        username: ${{ secrets.PRODUCTION_USER }}
+        key: ${{ secrets.PRODUCTION_SSH_KEY }}
+        script: |
+          cd /opt/evidence-seeker-platform
+
+          # Stop current containers
+          docker-compose down
+
+          # Start with previous images
+          docker-compose pull
+          docker-compose up -d --no-build
+
+          echo "Rollback completed successfully"
