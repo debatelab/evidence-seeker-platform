@@ -9,6 +9,7 @@ import {
   useEvidenceSeeker,
   useEvidenceSeekers,
 } from "../../hooks/useEvidenceSeeker";
+import PageLayout from "../PageLayout";
 
 interface EvidenceSeekerFormProps {
   evidenceSeeker?: EvidenceSeeker;
@@ -135,7 +136,7 @@ const EvidenceSeekerForm: React.FC<EvidenceSeekerFormProps> = ({
   };
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <PageLayout variant="narrow">
       <div className="bg-white shadow-sm rounded-lg border border-gray-200">
         <div className="px-6 py-4 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-gray-900">
@@ -243,7 +244,7 @@ const EvidenceSeekerForm: React.FC<EvidenceSeekerFormProps> = ({
           </div>
         </form>
       </div>
-    </div>
+    </PageLayout>
   );
 };
 

@@ -50,12 +50,12 @@ export const useDocuments = (evidenceSeekerUuid: string) => {
     }
   };
 
-  const deleteDocument = async (id: number): Promise<boolean> => {
+  const deleteDocument = async (uuid: string): Promise<boolean> => {
     setLoading(true);
     setError(null);
     try {
-      await api.delete(`/documents/${id}`);
-      setDocuments((prev) => prev.filter((doc) => doc.id !== id));
+      await api.delete(`/documents/${uuid}`);
+      setDocuments((prev) => prev.filter((doc) => doc.uuid !== uuid));
       return true;
     } catch (err) {
       setError("Failed to delete document");

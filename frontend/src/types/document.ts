@@ -4,6 +4,7 @@ export interface Document {
   title: string;
   description: string;
   filePath: string;
+  originalFilename: string; // Original filename with extension
   fileSize: number;
   mimeType: string;
   evidenceSeekerUuid: string; // External API uses UUID

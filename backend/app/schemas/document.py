@@ -32,6 +32,7 @@ class DocumentRead(DocumentBase):
     id: int
     uuid: UUID  # External API identifier
     file_path: str
+    original_filename: str = Field(alias="originalFilename")
     file_size: int = Field(alias="fileSize")
     mime_type: str = Field(alias="mimeType")
     created_at: datetime = Field(alias="createdAt")

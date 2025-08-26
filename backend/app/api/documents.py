@@ -1,4 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
+from fastapi.responses import FileResponse
+import os
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from ..core.database import get_db
@@ -69,11 +71,15 @@ def upload_document(
         else:
             mime_type = "application/octet-stream"
 
+    # Get original filename from upload
+    original_filename = file.filename or "unnamed_file"
+
     # Create document with all required fields
     db_document = Document(
         title=title,
         description=description,
         file_path=file_path,
+        original_filename=original_filename,
         file_size=max(file_size, 0),  # Ensure non-negative
         mime_type=mime_type,
         evidence_seeker_id=seeker.id,  # Use internal integer ID
@@ -112,14 +118,63 @@ def get_documents(
     return documents
 
 
-@router.delete("/{document_id}")
-def delete_document(
-    document_id: int,
+@router.get("/{document_uuid}/download")
+def download_document(
+    document_uuid: str,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    """Delete a document"""
-    document = db.query(Document).filter(Document.id == document_id).first()
+    """Download a document by UUID"""
+    from uuid import UUID
+
+    try:
+        uuid_obj = UUID(document_uuid)
+        document = db.query(Document).filter(Document.uuid == uuid_obj).first()
+    except (ValueError, TypeError):
+        document = None
+
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    # Check if user has access to the evidence_seeker
+    from .evidence_seekers import get_evidence_seeker_by_identifier
+
+    try:
+        seeker = get_evidence_seeker_by_identifier(
+            document.evidence_seeker_uuid, db, current_user.id
+        )
+    except HTTPException:
+        raise HTTPException(
+            status_code=403, detail="Not authorized to download this document"
+        )
+
+    # Check if file exists
+    if not os.path.exists(document.file_path):
+        raise HTTPException(status_code=404, detail="File not found on disk")
+
+    # Return file with original filename
+    return FileResponse(
+        path=document.file_path,
+        media_type=document.mime_type,
+        filename=document.original_filename,
+    )
+
+
+@router.delete("/{document_uuid}")
+def delete_document(
+    document_uuid: str,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Delete a document by UUID"""
+    from uuid import UUID
+
+    try:
+        uuid_obj = UUID(document_uuid)
+        document = db.query(Document).filter(Document.uuid == uuid_obj).first()
+    except (ValueError, TypeError):
+        document = None
+
     if document is None:
         raise HTTPException(status_code=404, detail="Document not found")
 

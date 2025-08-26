@@ -131,22 +131,21 @@ Based on current codebase analysis:
 - [x] Create TypeScript interfaces and API hooks - frontend/src/types/evidenceSeeker.ts and document.ts implemented, hooks implemented
 - [x] Build Evidence Seeker list and form components - EvidenceSeekerForm.tsx and EvidenceSeekerList.tsx fully implemented
 - [x] Build Document upload and management components - DocumentUpload.tsx and DocumentList.tsx fully implemented with advanced features
+- [x] Update main App component with routing and navigation - Evidence Seeker routes and navigation fully integrated in frontend/src/App.tsx
+- [x] Update frontend/src/utils/api.ts - Base API client configured, Evidence Seeker APIs handled via custom hooks
 
 ### Partially Completed:
-- [ ] Update main App component with routing and navigation - Evidence Seeker components exist but need routing integration in frontend/src/App.tsx
 - [ ] Test complete user workflows end-to-end - Backend APIs tested, frontend integration needs verification
-- [ ] Update frontend/src/utils/api.ts - May need additional API functions for Evidence Seeker integration
 
 ### Not Yet Implemented:
 - [ ] Add comprehensive tests for all components - All new tests missing
-- [ ] Update frontend/src/utils/api.ts - May need additional API functions for Evidence Seeker integration
 
 ### Modified Files Status:
 - [x] backend/app/core/database.py - Exists, new models included via __init__.py imports
 - [x] backend/app/main.py - Exists, new API routers added and configured
 - [x] backend/app/core/config.py - Exists, file upload settings verified
-- [ ] frontend/src/App.tsx - Exists, needs Evidence Seeker routes added
-- [ ] frontend/src/utils/api.ts - Exists, may need new API functions added
+- [x] frontend/src/App.tsx - Exists, Evidence Seeker routes added and fully configured
+- [x] frontend/src/utils/api.ts - Exists, API functions configured and working
 - [x] backend/alembic/env.py - Exists, configured for new models
 
 ## [Implementation Order]

@@ -2,6 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List, Union
 from uuid import UUID
+import shutil
+import os
+from pathlib import Path
 from ..core.database import get_db
 from ..schemas.evidence_seeker import (
     EvidenceSeekerCreate,
@@ -10,6 +13,8 @@ from ..schemas.evidence_seeker import (
 )
 from ..models.evidence_seeker import EvidenceSeeker
 from ..core.auth import get_current_user
+from ..core.file_utils import delete_file
+from ..core.config import settings
 
 
 router = APIRouter()
@@ -125,6 +130,29 @@ def delete_evidence_seeker(
             status_code=403, detail="Not authorized to delete this Evidence Seeker"
         )
 
+    # Delete all associated documents and their files
+    from ..models.document import Document
+
+    documents = (
+        db.query(Document).filter(Document.evidence_seeker_id == seeker.id).all()
+    )
+
+    for document in documents:
+        # Delete the actual file from disk
+        delete_file(document.file_path)
+        # Delete document from database
+        db.delete(document)
+
+    # Delete the upload directory for this Evidence Seeker
+    upload_dir = Path(settings.upload_dir) / str(seeker.id)
+    if upload_dir.exists():
+        try:
+            shutil.rmtree(upload_dir)
+        except Exception as e:
+            # Log error but don't prevent deletion
+            print(f"Warning: Could not delete upload directory {upload_dir}: {e}")
+
+    # Delete the Evidence Seeker
     db.delete(seeker)
     db.commit()
-    return {"detail": "Evidence Seeker deleted"}
+    return {"detail": "Evidence Seeker and all associated documents deleted"}
