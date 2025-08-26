@@ -617,4 +617,5 @@ tramp
 *.sublime-workspace
 *.sublime-project
 
-#
+# Uploads folder
+uploads/
