@@ -29,6 +29,11 @@ class Settings(BaseSettings):
     # Logging
     log_level: str = "INFO"
 
+    # File Upload Settings
+    upload_dir: str = "uploads"
+    max_file_size: int = 10 * 1024 * 1024  # 10MB in bytes
+    allowed_extensions: list = [".pdf", ".txt"]
+
     class Config:
         env_file = ".env"
         case_sensitive = False

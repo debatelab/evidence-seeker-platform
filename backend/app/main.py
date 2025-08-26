@@ -1,4 +1,5 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request, status
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
@@ -14,6 +15,8 @@ from app.core.config import settings
 from app.core.database import create_tables
 from app.api.auth import router as auth_router
 from app.api.users import router as users_router
+from app.api.evidence_seekers import router as evidence_seekers_router
+from app.api.documents import router as documents_router
 
 
 def create_application() -> FastAPI:
@@ -52,6 +55,17 @@ def create_application() -> FastAPI:
             TrustedHostMiddleware, allowed_hosts=["localhost", "127.0.0.1"]
         )
 
+    @app.exception_handler(RequestValidationError)
+    async def validation_exception_handler(
+        request: Request, exc: RequestValidationError
+    ):
+        exc_str = f"{exc}".replace("\n", " ").replace("   ", " ")
+        logging.error(f"{request}: {exc_str}")
+        content = {"status_code": 10422, "message": exc_str, "data": None}
+        return JSONResponse(
+            content=content, status_code=status.HTTP_422_UNPROCESSABLE_ENTITY
+        )
+
     # Global exception handler
     @app.exception_handler(HTTPException)
     async def http_exception_handler(request, exc):
@@ -62,6 +76,16 @@ def create_application() -> FastAPI:
         auth_router, prefix=settings.api_v1_prefix, tags=["Authentication"]
     )
     app.include_router(users_router, prefix=settings.api_v1_prefix, tags=["Users"])
+    app.include_router(
+        evidence_seekers_router,
+        prefix=settings.api_v1_prefix + "/evidence-seekers",
+        tags=["Evidence Seekers"],
+    )
+    app.include_router(
+        documents_router,
+        prefix=settings.api_v1_prefix + "/documents",
+        tags=["Documents"],
+    )
 
     # Health check endpoint
     @app.get("/health")

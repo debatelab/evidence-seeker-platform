@@ -16,11 +16,8 @@ from app.models.user import User
 from app.core.config import settings
 
 
-async def create_tables():
-    """Create all database tables"""
-    async with async_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    print("✅ Database tables created")
+# Tables are now created by Alembic migrations
+# This function is no longer needed
 
 
 async def create_test_user():
@@ -63,7 +60,6 @@ async def create_test_user():
 async def main():
     """Main initialization function"""
     print("🚀 Initializing database...")
-    await create_tables()
     await create_test_user()
     print("🎉 Database initialization complete!")
     print("\n📝 Test user credentials:")

@@ -1,5 +1,5 @@
 from fastapi_users import schemas
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
 from datetime import datetime
 
@@ -9,11 +9,16 @@ class UserRead(schemas.BaseUser[int]):
 
     id: int
     email: EmailStr
-    is_active: bool = True
-    is_superuser: bool = False
-    is_verified: bool = False
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    is_active: bool = Field(alias="isActive", default=True)
+    is_superuser: bool = Field(alias="isSuperuser", default=False)
+    is_verified: bool = Field(alias="isVerified", default=False)
+    created_at: Optional[datetime] = Field(alias="createdAt", default=None)
+    updated_at: Optional[datetime] = Field(alias="updatedAt", default=None)
+
+    class Config:
+        populate_by_name = True
+        from_attributes = True
+        by_alias = True
 
 
 class UserCreate(schemas.BaseUserCreate):

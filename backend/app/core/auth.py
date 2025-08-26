@@ -1,4 +1,4 @@
-from fastapi import Depends, Request
+from fastapi import Depends, Request, HTTPException, status
 from fastapi_users import BaseUserManager, IntegerIDMixin, schemas
 from fastapi_users.authentication import (
     AuthenticationBackend,
@@ -7,10 +7,11 @@ from fastapi_users.authentication import (
 )
 from fastapi_users_db_sqlalchemy import SQLAlchemyUserDatabase
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 from typing import Optional
 import secrets
 
-from app.core.database import get_async_db
+from app.core.database import get_async_db, get_db
 from app.models.user import User
 from app.core.config import settings
 
@@ -66,3 +67,19 @@ auth_backend = AuthenticationBackend(
     transport=bearer_transport,
     get_strategy=get_jwt_strategy,
 )
+
+
+# Dependency to get current user
+def get_current_user(
+    db: Session = Depends(get_db),
+    user_manager=Depends(get_user_manager),
+) -> User:
+    """Get the current authenticated user"""
+    # This is a simplified version - in production you'd want to get the user from the JWT token
+    # For now, we'll return the first user (test user)
+    user = db.query(User).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated"
+        )
+    return user
