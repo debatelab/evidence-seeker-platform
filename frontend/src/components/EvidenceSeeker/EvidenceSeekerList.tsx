@@ -139,13 +139,7 @@ const EvidenceSeekerList: React.FC = () => {
 
               <div className="flex space-x-2">
                 <Link
-                  to={`/evidence-seekers/${seeker.uuid}`}
-                  className="flex-1 bg-gray-100 text-gray-700 px-3 py-2 rounded-md text-sm hover:bg-gray-200 text-center"
-                >
-                  View Details
-                </Link>
-                <Link
-                  to={`/evidence-seekers/${seeker.uuid}/documents`}
+                  to={`/evidence-seekers/${seeker.uuid}/manage`}
                   className="flex-1 bg-blue-600 text-white px-3 py-2 rounded-md text-sm hover:bg-blue-700 text-center"
                 >
                   Manage
@@ -153,7 +147,7 @@ const EvidenceSeekerList: React.FC = () => {
                 <button
                   onClick={() => handleDelete(seeker.id)}
                   disabled={deleteLoading === seeker.id}
-                  className="bg-red-600 text-white px-3 py-2 rounded-md text-sm hover:bg-red-700 disabled:opacity-50"
+                  className="flex-1 bg-red-600 text-white px-3 py-2 rounded-md text-sm hover:bg-red-700 disabled:opacity-50 text-center"
                 >
                   {deleteLoading === seeker.id ? "..." : "Delete"}
                 </button>

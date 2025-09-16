@@ -1,0 +1,310 @@
+"""
+API endpoints for configuration management and API key operations.
+"""
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.orm import Session
+from typing import List, Optional, Dict, Any
+
+from ..core.database import get_db
+from ..core.config_service import config_service
+from ..core.auth import get_current_user
+from ..schemas.api_key import (
+    APIKeyCreate,
+    APIKeyUpdate,
+    APIKeyRead,
+    APIKeyValidation,
+    APIKeyValidationResponse,
+)
+from ..schemas.search import SearchStatistics
+
+
+router = APIRouter()
+
+
+@router.post("/{evidence_seeker_uuid}/api-keys", response_model=APIKeyRead)
+def create_api_key(
+    evidence_seeker_uuid: str,
+    api_key_data: APIKeyCreate,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Create and store an encrypted API key for an evidence seeker."""
+    try:
+        # Check if user has access to the evidence seeker
+        from .evidence_seekers import get_evidence_seeker_by_identifier
+
+        evidence_seeker = get_evidence_seeker_by_identifier(
+            evidence_seeker_uuid, db, current_user.id
+        )
+
+        # Validate API key format
+        if not config_service.validate_api_key_format(
+            api_key_data.provider, api_key_data.api_key
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid API key format for provider {api_key_data.provider}",
+            )
+
+        # Create the API key
+        api_key = config_service.create_api_key(
+            evidence_seeker_id=evidence_seeker.id,
+            provider=api_key_data.provider,
+            name=api_key_data.name,
+            api_key=api_key_data.api_key,
+            description=api_key_data.description,
+            expires_in_days=api_key_data.expires_in_days,
+            db=db,
+        )
+
+        return APIKeyRead.from_orm(api_key)
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to create API key: {str(e)}"
+        )
+
+
+@router.get("/{evidence_seeker_uuid}/api-keys", response_model=List[APIKeyRead])
+def get_api_keys(
+    evidence_seeker_uuid: str,
+    provider: Optional[str] = Query(None, description="Filter by provider"),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Get all API keys for an evidence seeker."""
+    try:
+        # Check if user has access to the evidence seeker
+        from .evidence_seekers import get_evidence_seeker_by_identifier
+
+        evidence_seeker = get_evidence_seeker_by_identifier(
+            evidence_seeker_uuid, db, current_user.id
+        )
+
+        api_keys = config_service.get_api_keys_for_evidence_seeker(
+            evidence_seeker_id=evidence_seeker.id, provider=provider, db=db
+        )
+
+        return [APIKeyRead.from_orm(key) for key in api_keys]
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get API keys: {str(e)}")
+
+
+@router.get("/{evidence_seeker_uuid}/api-keys/{api_key_id}", response_model=APIKeyRead)
+def get_api_key(
+    evidence_seeker_uuid: str,
+    api_key_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Get a specific API key for an evidence seeker."""
+    try:
+        # Check if user has access to the evidence seeker
+        from .evidence_seekers import get_evidence_seeker_by_identifier
+
+        evidence_seeker = get_evidence_seeker_by_identifier(
+            evidence_seeker_uuid, db, current_user.id
+        )
+
+        api_key = config_service.get_api_key(
+            api_key_id=api_key_id, evidence_seeker_id=evidence_seeker.id, db=db
+        )
+
+        if not api_key:
+            raise HTTPException(status_code=404, detail="API key not found")
+
+        return APIKeyRead.from_orm(api_key)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get API key: {str(e)}")
+
+
+@router.put("/{evidence_seeker_uuid}/api-keys/{api_key_id}", response_model=APIKeyRead)
+def update_api_key(
+    evidence_seeker_uuid: str,
+    api_key_id: int,
+    api_key_data: APIKeyUpdate,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Update an API key for an evidence seeker."""
+    try:
+        # Check if user has access to the evidence seeker
+        from .evidence_seekers import get_evidence_seeker_by_identifier
+
+        evidence_seeker = get_evidence_seeker_by_identifier(
+            evidence_seeker_uuid, db, current_user.id
+        )
+
+        success = config_service.update_api_key(
+            api_key_id=api_key_id,
+            evidence_seeker_id=evidence_seeker.id,
+            name=api_key_data.name,
+            description=api_key_data.description,
+            is_active=api_key_data.is_active,
+            db=db,
+        )
+
+        if not success:
+            raise HTTPException(status_code=404, detail="API key not found")
+
+        # Get updated API key
+        api_key = config_service.get_api_key(
+            api_key_id=api_key_id, evidence_seeker_id=evidence_seeker.id, db=db
+        )
+
+        return APIKeyRead.from_orm(api_key)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to update API key: {str(e)}"
+        )
+
+
+@router.delete("/{evidence_seeker_uuid}/api-keys/{api_key_id}")
+def delete_api_key(
+    evidence_seeker_uuid: str,
+    api_key_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Delete (deactivate) an API key for an evidence seeker."""
+    try:
+        # Check if user has access to the evidence seeker
+        from .evidence_seekers import get_evidence_seeker_by_identifier
+
+        evidence_seeker = get_evidence_seeker_by_identifier(
+            evidence_seeker_uuid, db, current_user.id
+        )
+
+        success = config_service.delete_api_key(
+            api_key_id=api_key_id, evidence_seeker_id=evidence_seeker.id, db=db
+        )
+
+        if not success:
+            raise HTTPException(status_code=404, detail="API key not found")
+
+        return {"message": "API key deleted successfully"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to delete API key: {str(e)}"
+        )
+
+
+@router.post("/api-keys/validate", response_model=APIKeyValidationResponse)
+def validate_api_key_format(
+    validation_data: APIKeyValidation,
+    current_user=Depends(get_current_user),
+):
+    """Validate API key format for a provider."""
+    try:
+        is_valid = config_service.validate_api_key_format(
+            validation_data.provider, validation_data.api_key
+        )
+
+        message = (
+            f"Valid {validation_data.provider} API key format"
+            if is_valid
+            else f"Invalid {validation_data.provider} API key format"
+        )
+
+        return APIKeyValidationResponse(
+            is_valid=is_valid, provider=validation_data.provider, message=message
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to validate API key: {str(e)}"
+        )
+
+
+@router.get("/ai-config")
+def get_ai_config():
+    """Get AI-related configuration settings."""
+    try:
+        return config_service.get_ai_config()
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get AI config: {str(e)}"
+        )
+
+
+@router.get("/system-stats", response_model=SearchStatistics)
+def get_system_stats(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Get system statistics for AI components."""
+    try:
+        stats = config_service.get_system_stats(db=db)
+        return SearchStatistics(**stats)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get system stats: {str(e)}"
+        )
+
+
+@router.get("/providers")
+def get_supported_providers():
+    """Get list of supported AI providers."""
+    try:
+        config = config_service.get_ai_config()
+        return {
+            "supported_providers": config["supported_providers"],
+            "embedding_model": config["embedding_model"],
+            "vector_dimensions": config["embedding_dimensions"],
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get providers: {str(e)}"
+        )
+
+
+@router.post("/{evidence_seeker_uuid}/api-keys/{api_key_id}/decrypt")
+def get_decrypted_api_key(
+    evidence_seeker_uuid: str,
+    api_key_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Get a decrypted API key for use (use with caution)."""
+    try:
+        # Check if user has access to the evidence seeker
+        from .evidence_seekers import get_evidence_seeker_by_identifier
+
+        evidence_seeker = get_evidence_seeker_by_identifier(
+            evidence_seeker_uuid, db, current_user.id
+        )
+
+        decrypted_key = config_service.get_decrypted_api_key(
+            api_key_id=api_key_id, evidence_seeker_id=evidence_seeker.id, db=db
+        )
+
+        if decrypted_key is None:
+            raise HTTPException(
+                status_code=404, detail="API key not found, expired, or inactive"
+            )
+
+        return {
+            "api_key_id": api_key_id,
+            "decrypted_key": decrypted_key,
+            "warning": "This decrypted key should only be used immediately and not stored",
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to decrypt API key: {str(e)}"
+        )

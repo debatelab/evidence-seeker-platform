@@ -17,6 +17,10 @@ from app.api.auth import router as auth_router
 from app.api.users import router as users_router
 from app.api.evidence_seekers import router as evidence_seekers_router
 from app.api.documents import router as documents_router
+from app.api.embeddings import router as embeddings_router
+from app.api.search import router as search_router
+from app.api.config import router as config_router
+from app.api.progress import router as progress_router
 
 
 def create_application() -> FastAPI:
@@ -85,6 +89,26 @@ def create_application() -> FastAPI:
         documents_router,
         prefix=settings.api_v1_prefix + "/documents",
         tags=["Documents"],
+    )
+    app.include_router(
+        embeddings_router,
+        prefix=settings.api_v1_prefix + "/embeddings",
+        tags=["Embeddings"],
+    )
+    app.include_router(
+        search_router,
+        prefix=settings.api_v1_prefix + "/search",
+        tags=["Search"],
+    )
+    app.include_router(
+        config_router,
+        prefix=settings.api_v1_prefix + "/config",
+        tags=["Configuration"],
+    )
+    app.include_router(
+        progress_router,
+        prefix=settings.api_v1_prefix + "/progress",
+        tags=["Progress"],
     )
 
     # Health check endpoint

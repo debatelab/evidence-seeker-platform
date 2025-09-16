@@ -1,6 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    status,
+    UploadFile,
+    File,
+    Form,
+    BackgroundTasks,
+)
 from fastapi.responses import FileResponse
 import os
+import asyncio
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from ..core.database import get_db
@@ -9,13 +19,37 @@ from ..models.document import Document
 from ..models.evidence_seeker import EvidenceSeeker
 from ..core.auth import get_current_user
 from ..core.file_utils import validate_file, save_upload_file, delete_file
+from ..core.embedding_service import embedding_service
+from ..api.progress import track_embedding_generation
 
 
 router = APIRouter()
 
 
+async def generate_document_embeddings(document_id: int):
+    """Background task to generate embeddings for a document"""
+    # Create a new database session for the background task
+    from ..core.database import SessionLocal
+
+    db = SessionLocal()
+    try:
+        # Generate embeddings using the embedding service
+        success = await embedding_service.generate_embeddings_for_document(
+            document_id, db
+        )
+        if success:
+            print(f"Successfully generated embeddings for document {document_id}")
+        else:
+            print(f"Failed to generate embeddings for document {document_id}")
+    except Exception as e:
+        print(f"Error generating embeddings for document {document_id}: {str(e)}")
+    finally:
+        db.close()
+
+
 @router.post("/upload", response_model=DocumentRead)
 def upload_document(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     title: str = Form(...),
     description: Optional[str] = Form(None),
@@ -88,6 +122,10 @@ def upload_document(
     db.add(db_document)
     db.commit()
     db.refresh(db_document)
+
+    # Trigger embedding generation in the background
+    background_tasks.add_task(generate_document_embeddings, db_document.id)
+
     return db_document
 
 

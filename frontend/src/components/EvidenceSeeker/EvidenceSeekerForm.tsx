@@ -1,55 +1,28 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router";
-import {
-  EvidenceSeeker,
-  EvidenceSeekerCreate,
-  EvidenceSeekerUpdate,
-} from "../../types/evidenceSeeker";
-import {
-  useEvidenceSeeker,
-  useEvidenceSeekers,
-} from "../../hooks/useEvidenceSeeker";
+import React, { useState } from "react";
+import { useNavigate } from "react-router";
+import { EvidenceSeekerCreate } from "../../types/evidenceSeeker";
+import { useEvidenceSeekers } from "../../hooks/useEvidenceSeeker";
 import PageLayout from "../PageLayout";
 
 interface EvidenceSeekerFormProps {
-  evidenceSeeker?: EvidenceSeeker;
   onSuccess?: () => void;
   onCancel?: () => void;
 }
 
 const EvidenceSeekerForm: React.FC<EvidenceSeekerFormProps> = ({
-  evidenceSeeker,
   onSuccess,
   onCancel,
 }) => {
-  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { evidenceSeeker: fetchedSeeker, loading: fetchLoading } =
-    useEvidenceSeeker(parseInt(id || "0"));
-  const { createEvidenceSeeker, updateEvidenceSeeker } = useEvidenceSeekers();
-
-  // Use the prop if provided, otherwise use the fetched data
-  const currentSeeker = evidenceSeeker || (id ? fetchedSeeker : null);
-  const isEditMode = !!currentSeeker;
+  const { createEvidenceSeeker } = useEvidenceSeekers();
 
   const [formData, setFormData] = useState({
-    title: currentSeeker?.title || "",
-    description: currentSeeker?.description || "",
-    isPublic: currentSeeker?.isPublic || false,
+    title: "",
+    description: "",
+    isPublic: false,
   });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-
-  // Update form data when currentSeeker changes (for edit mode)
-  useEffect(() => {
-    if (currentSeeker) {
-      setFormData({
-        title: currentSeeker.title || "",
-        description: currentSeeker.description || "",
-        isPublic: currentSeeker.isPublic || false,
-      });
-    }
-  }, [currentSeeker]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -78,38 +51,22 @@ const EvidenceSeekerForm: React.FC<EvidenceSeekerFormProps> = ({
     setLoading(true);
 
     try {
-      let success = false;
-
-      if (currentSeeker) {
-        // Update existing
-        const updateData: EvidenceSeekerUpdate = {
-          title: formData.title,
-          description: formData.description,
-          isPublic: formData.isPublic,
-        };
-        success =
-          (await updateEvidenceSeeker(currentSeeker.id, updateData)) || false;
-      } else {
-        // Create new
-        const createData: EvidenceSeekerCreate = {
-          title: formData.title,
-          description: formData.description,
-          isPublic: formData.isPublic,
-        };
-        success = (await createEvidenceSeeker(createData)) !== null;
-      }
+      // Create new Evidence Seeker
+      const createData: EvidenceSeekerCreate = {
+        title: formData.title,
+        description: formData.description,
+        isPublic: formData.isPublic,
+      };
+      const success = (await createEvidenceSeeker(createData)) !== null;
 
       if (success) {
-        if (currentSeeker) {
-          // For updates, navigate back to the list page with success message
-          navigate("/evidence-seekers", {
-            state: { message: "Evidence Seeker updated successfully!" },
-          });
-        } else {
-          // For creation, navigate to the list page
-          navigate("/evidence-seekers", {
-            state: { message: "Evidence Seeker created successfully!" },
-          });
+        // Navigate to the list page with success message
+        navigate("/evidence-seekers", {
+          state: { message: "Evidence Seeker created successfully!" },
+        });
+
+        if (onSuccess) {
+          onSuccess();
         }
       }
     } catch (err) {
@@ -140,7 +97,7 @@ const EvidenceSeekerForm: React.FC<EvidenceSeekerFormProps> = ({
       <div className="bg-white shadow-sm rounded-lg border border-gray-200">
         <div className="px-6 py-4 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-gray-900">
-            {isEditMode ? "Edit Evidence Seeker" : "Create Evidence Seeker"}
+            Create Evidence Seeker
           </h2>
         </div>
 
@@ -239,7 +196,7 @@ const EvidenceSeekerForm: React.FC<EvidenceSeekerFormProps> = ({
               disabled={loading}
               className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? "Saving..." : isEditMode ? "Update" : "Create"}
+              {loading ? "Saving..." : "Create"}
             </button>
           </div>
         </form>

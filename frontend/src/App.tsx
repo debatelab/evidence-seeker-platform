@@ -11,6 +11,7 @@ import LoginForm from "./components/Auth/LoginForm";
 import RegisterForm from "./components/Auth/RegisterForm";
 import EvidenceSeekerList from "./components/EvidenceSeeker/EvidenceSeekerList";
 import EvidenceSeekerForm from "./components/EvidenceSeeker/EvidenceSeekerForm";
+import EvidenceSeekerManagementWrapper from "./components/EvidenceSeeker/EvidenceSeekerManagementWrapper";
 import DocumentList from "./components/Document/DocumentList";
 import DocumentUpload from "./components/Document/DocumentUpload";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -263,23 +264,13 @@ const App: React.FC = () => {
           <AuthPage />
         ),
     },
+
     {
-      path: "/evidence-seekers/:id",
+      path: "/evidence-seekers/:evidenceSeekerId/manage",
       element:
         isAuthenticated && user ? (
           <AppLayout>
-            <EvidenceSeekerForm />
-          </AppLayout>
-        ) : (
-          <AuthPage />
-        ),
-    },
-    {
-      path: "/evidence-seekers/:evidenceSeekerId/documents",
-      element:
-        isAuthenticated && user ? (
-          <AppLayout>
-            <DocumentWrapper Component={DocumentList} />
+            <EvidenceSeekerManagementWrapper />
           </AppLayout>
         ) : (
           <AuthPage />

@@ -32,7 +32,7 @@ const UploadSuccess: React.FC<UploadSuccessProps> = ({
   };
 
   const handleViewDocuments = () => {
-    navigate(`/evidence-seekers/${evidenceSeekerUuid}/documents`);
+    navigate(`/evidence-seekers/${evidenceSeekerUuid}/manage`);
   };
 
   return (

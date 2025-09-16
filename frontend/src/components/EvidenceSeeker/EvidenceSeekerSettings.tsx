@@ -1,0 +1,355 @@
+/**
+ * Evidence Seeker Settings component for editing basic information
+ */
+
+import React, { useState, useEffect } from "react";
+import { Settings, Save, X, Check } from "lucide-react";
+import {
+  EvidenceSeeker,
+  EvidenceSeekerUpdate,
+} from "../../types/evidenceSeeker";
+import { useEvidenceSeekers } from "../../hooks/useEvidenceSeeker";
+
+interface EvidenceSeekerSettingsProps {
+  evidenceSeekerUuid: string;
+}
+
+const EvidenceSeekerSettings: React.FC<EvidenceSeekerSettingsProps> = ({
+  evidenceSeekerUuid,
+}) => {
+  const { evidenceSeekers, updateEvidenceSeeker } = useEvidenceSeekers();
+  const [evidenceSeeker, setEvidenceSeeker] = useState<EvidenceSeeker | null>(
+    null
+  );
+  const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const [formData, setFormData] = useState({
+    title: "",
+    description: "",
+    isPublic: false,
+  });
+
+  useEffect(() => {
+    if (evidenceSeekers.length > 0 && evidenceSeekerUuid) {
+      const seeker = evidenceSeekers.find(
+        (es) => es.uuid === evidenceSeekerUuid
+      );
+      if (seeker) {
+        setEvidenceSeeker(seeker);
+        setFormData({
+          title: seeker.title || "",
+          description: seeker.description || "",
+          isPublic: seeker.isPublic || false,
+        });
+      }
+    }
+  }, [evidenceSeekers, evidenceSeekerUuid]);
+
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+
+    if (!formData.title.trim()) {
+      newErrors.title = "Title is required";
+    } else if (formData.title.length > 100) {
+      newErrors.title = "Title must be 100 characters or less";
+    }
+
+    if (formData.description.length > 500) {
+      newErrors.description = "Description must be 500 characters or less";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSave = async () => {
+    if (!evidenceSeeker || !validateForm()) {
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const updateData: EvidenceSeekerUpdate = {
+        title: formData.title,
+        description: formData.description,
+        isPublic: formData.isPublic,
+      };
+
+      const success = await updateEvidenceSeeker(evidenceSeeker.id, updateData);
+
+      if (success) {
+        setIsEditing(false);
+        // Update local state
+        setEvidenceSeeker({
+          ...evidenceSeeker,
+          title: formData.title,
+          description: formData.description,
+          isPublic: formData.isPublic,
+        });
+      } else {
+        setErrors({ general: "Failed to update evidence seeker" });
+      }
+    } catch (error) {
+      setErrors({ general: "An error occurred while updating" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCancel = () => {
+    if (evidenceSeeker) {
+      setFormData({
+        title: evidenceSeeker.title || "",
+        description: evidenceSeeker.description || "",
+        isPublic: evidenceSeeker.isPublic || false,
+      });
+    }
+    setIsEditing(false);
+    setErrors({});
+  };
+
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors((prev) => ({ ...prev, [name]: "" }));
+    }
+  };
+
+  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, checked } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: checked }));
+  };
+
+  if (!evidenceSeeker) {
+    return (
+      <div className="flex justify-center items-center p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <span className="ml-2 text-gray-600">Loading settings...</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-3">
+          <Settings className="h-6 w-6 text-blue-600" />
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900">
+              Evidence Seeker Settings
+            </h3>
+            <p className="text-sm text-gray-600">
+              Manage basic information and visibility settings
+            </p>
+          </div>
+        </div>
+
+        {!isEditing && (
+          <button
+            onClick={() => setIsEditing(true)}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+          >
+            <Settings className="h-4 w-4" />
+            <span>Edit Settings</span>
+          </button>
+        )}
+      </div>
+
+      {/* Error Display */}
+      {errors.general && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="text-red-800">{errors.general}</div>
+        </div>
+      )}
+
+      {/* Settings Form */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div className="p-6">
+          {isEditing ? (
+            // Edit Mode
+            <div className="space-y-6">
+              <div>
+                <label
+                  htmlFor="title"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Title *
+                </label>
+                <input
+                  type="text"
+                  id="title"
+                  name="title"
+                  value={formData.title}
+                  onChange={handleInputChange}
+                  className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    errors.title ? "border-red-300" : "border-gray-300"
+                  }`}
+                  placeholder="Enter a title for your evidence seeker"
+                />
+                {errors.title && (
+                  <p className="mt-1 text-sm text-red-600">{errors.title}</p>
+                )}
+                <p className="mt-1 text-sm text-gray-500">
+                  {formData.title.length}/100 characters
+                </p>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="description"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Description
+                </label>
+                <textarea
+                  id="description"
+                  name="description"
+                  value={formData.description}
+                  onChange={handleInputChange}
+                  rows={4}
+                  className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    errors.description ? "border-red-300" : "border-gray-300"
+                  }`}
+                  placeholder="Describe what this evidence seeker is for..."
+                />
+                {errors.description && (
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.description}
+                  </p>
+                )}
+                <p className="mt-1 text-sm text-gray-500">
+                  {formData.description.length}/500 characters
+                </p>
+              </div>
+
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="isPublic"
+                  name="isPublic"
+                  checked={formData.isPublic}
+                  onChange={handleCheckboxChange}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <label
+                  htmlFor="isPublic"
+                  className="ml-2 block text-sm text-gray-900"
+                >
+                  Make this evidence seeker public
+                </label>
+              </div>
+              <p className="text-sm text-gray-500 ml-6">
+                Public evidence seekers can be viewed and tested by anyone, even
+                without an account.
+              </p>
+
+              <div className="flex justify-end space-x-3 pt-4">
+                <button
+                  onClick={handleCancel}
+                  className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 flex items-center space-x-2"
+                >
+                  <X className="h-4 w-4" />
+                  <span>Cancel</span>
+                </button>
+                <button
+                  onClick={handleSave}
+                  disabled={loading}
+                  className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                >
+                  {loading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4" />
+                      <span>Save Changes</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          ) : (
+            // View Mode
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">
+                    Title
+                  </h4>
+                  <p className="text-gray-900">{evidenceSeeker.title}</p>
+                </div>
+
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">
+                    Visibility
+                  </h4>
+                  <span
+                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      evidenceSeeker.isPublic
+                        ? "bg-green-100 text-green-800"
+                        : "bg-yellow-100 text-yellow-800"
+                    }`}
+                  >
+                    {evidenceSeeker.isPublic ? "Public" : "Private"}
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-sm font-medium text-gray-700 mb-2">
+                  Description
+                </h4>
+                <p className="text-gray-900">
+                  {evidenceSeeker.description || "No description provided."}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t border-gray-200">
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700 mb-1">
+                    Created
+                  </h4>
+                  <p className="text-sm text-gray-600">
+                    {new Date(evidenceSeeker.createdAt).toLocaleDateString()}
+                  </p>
+                </div>
+
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700 mb-1">
+                    Last Updated
+                  </h4>
+                  <p className="text-sm text-gray-600">
+                    {evidenceSeeker.updatedAt
+                      ? new Date(evidenceSeeker.updatedAt).toLocaleDateString()
+                      : "Never"}
+                  </p>
+                </div>
+
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700 mb-1">
+                    UUID
+                  </h4>
+                  <p className="text-sm text-gray-600 font-mono">
+                    {evidenceSeeker.uuid}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default EvidenceSeekerSettings;

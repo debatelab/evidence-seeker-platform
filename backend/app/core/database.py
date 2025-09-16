@@ -59,3 +59,8 @@ def create_tables() -> None:
 def drop_tables() -> None:
     """Drop all database tables"""
     Base.metadata.drop_all(bind=engine)
+
+
+def get_db_connection_string() -> str:
+    """Get database connection string for external libraries like LlamaIndex"""
+    return settings.database_url
