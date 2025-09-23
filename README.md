@@ -20,20 +20,21 @@ This is the full feature set for the initial release.
 
 ### **User & Access Control**
 
-* **Authentication**: Users can register and log in.  
-* **Roles**: An evse_admin can invite other users to an Evidence Seeker and assign one of two roles:  
-  * evse_admin: Full control over the Evidence Seeker.  
-  * evse_reader: Can view and test the Evidence Seeker, even if private.
+* **Authentication**: Users can register and log in.
+* **Roles**: Users can have different roles with varying levels of access:
+  * **PLATFORM_ADMIN**: Full administrative access to all Evidence Seekers and platform-wide user management (can delete users, manage all content).
+  * **EVSE_ADMIN**: Full control over specific Evidence Seekers they create or are assigned to (can invite others, manage documents, configure settings).
+  * **EVSE_READER**: Can view and test specific Evidence Seekers they have access to, even if private.
 
 ### **Evidence Seeker Management**
 
-* **CRUD**: An evse_admin can create, view, update, and delete an Evidence Seeker (including its logo, title, and description).  
-* **Publishing**: An evse_admin can publish/unpublish an Evidence Seeker to control public visibility.  
+* **CRUD**: An EVSE_ADMIN can create, view, update, and delete an Evidence Seeker (including its logo, title, and description).  
+* **Publishing**: An EVSE_ADMIN can publish/unpublish an Evidence Seeker to control public visibility.  
 * **Testing**: Admins and readers can test any Evidence Seeker they have access to via a simple text input interface.
 
 ### **Document & Configuration**
 
-* **Document Management**: An evse_admin can upload (.pdf, .txt), manage metadata for (title, description), and delete documents for an Evidence Seeker.  
+* **Document Management**: An EVSE_ADMIN can upload (.pdf, .txt), manage metadata for (title, description), and delete documents for an Evidence Seeker.  
 * **Embedding Generation**: Upon upload, document embeddings are automatically generated and stored.  
 * **Simple Configuration**: A user-friendly interface for essential settings, like selecting an inference provider and entering API tokens (which must be stored encrypted).  
 * **Expert Configuration**: A text area for advanced YAML configuration will be considered a **post-MVP feature** to ensure the deadline is met.
@@ -111,16 +112,19 @@ This iterative plan is designed to tackle risk early and deliver a functional pr
 5. **Component Library**: Build reusable React components for common UI patterns
 6. **File Validation**: Add file type validation and size limits
 
-### **Iteration 3: AI Boilerplate Integration (Week 3)**
+### **Iteration 3: AI Integration & User Roles (Week 3)**
 
-**Goal**: Connect the evidence-seeker Python library to the application.
+**Goal**: Complete AI infrastructure and implement user collaboration features.
 
-1. **Embedding Pipeline**: Hook into the document upload process. After a file is saved, trigger the evidence-seeker library to generate and store its embeddings in the pgvector column.  
-2. **Query Endpoint**: Create the core backend API endpoint that accepts a user's statement, passes it to the evidence-seeker pipeline for analysis, and returns the result.  
+1. **Embedding Pipeline**: Hook into the document upload process. After a file is saved, trigger the evidence-seeker library to generate and store its embeddings in the pgvector column.
+2. **Query Endpoint**: Create the core backend API endpoint that accepts a user's statement, passes it to the evidence-seeker pipeline for analysis, and returns the result.
 3. **Configuration Management**: Implement the "Minimal Config Mode" for securely storing API keys and other essential settings.
-4. **Retry Logic**: Implement retry mechanisms for AI API calls with exponential backoff
-5. **Progress Indicators**: Add real-time progress updates for long-running operations
-6. **Error Handling**: Comprehensive error handling for AI service failures
+4. **User Roles & Permissions**: Implement the role-based access control system with three roles:
+   - **PLATFORM_ADMIN**: Full administrative access to all Evidence Seekers and platform-wide user management
+   - **EVSE_ADMIN**: Full control over specific Evidence Seekers they create or are assigned to
+   - **EVSE_READER**: Can view and test specific Evidence Seekers they have access to
+5. **Role Management UI**: Build interface for admins to invite users and assign roles to Evidence Seekers.
+6. **API Security**: Secure all relevant API endpoints, ensuring users can only access or modify the Evidence Seekers they have permission for.
 
 ### **Iteration 4: Testing Interface & Public View (Week 4)**
 
@@ -133,17 +137,17 @@ This iterative plan is designed to tackle risk early and deliver a functional pr
 5. **Export Functionality**: Add ability to export test results
 6. **Shareable Links**: Create shareable links for public Evidence Seekers
 
-### **Iteration 5: Permissions & Final Polish (Week 5)**
+### **Iteration 5: Final Polish & Production Readiness (Week 5)**
 
-**Goal**: Finalize multi-user collaboration and prepare for MVP launch.
+**Goal**: Polish the user experience and prepare for MVP launch.
 
-1. **Invitation System**: Implement the logic to invite users by email and assign roles (evse_admin vs. evse_reader).  
-2. **API Security**: Secure all relevant API endpoints, ensuring users can only access or modify the Evidence Seekers they have permission for.  
-3. **UI/UX Polish**: Refine the user interface, add feedback messages (e.g., "Upload successful"), and conduct thorough testing.  
-4. **Documentation**: Clean up and finalize the README.md.
-5. **Monitoring**: Add basic monitoring and health check dashboard
-6. **Backup Strategy**: Implement backup procedures for uploads and database
-7. **Admin Dashboard**: Create basic admin view for system health
+1. **UI/UX Polish**: Refine the user interface, add feedback messages (e.g., "Upload successful"), and conduct thorough testing.
+2. **Documentation**: Clean up and finalize the README.md.
+3. **Monitoring**: Add basic monitoring and health check dashboard
+4. **Backup Strategy**: Implement backup procedures for uploads and database
+5. **Admin Dashboard**: Create basic admin view for system health
+6. **Performance Optimization**: Final performance tuning and caching improvements
+7. **Production Configuration**: Environment setup and deployment preparation
 
 ## **⚠️ Error Handling & User Feedback**
 
@@ -470,6 +474,28 @@ evidence-seeker-platform/
 - Testing infrastructure ✅
 - CI/CD pipeline ✅
 
-*Next Steps: Iteration 2 will focus on Evidence Seeker management and document handling.*
+**Iteration 2 - Implementation Complete!** ✅
 
-*Last Updated: August 2025*
+*Status: Evidence Seeker and document management working*
+- Evidence Seeker CRUD operations ✅
+- Document upload and management ✅
+- File handling with validation ✅
+- Frontend management interface ✅
+- State-based upload flow ✅
+
+**Iteration 3 - AI Integration & User Roles** ✅
+
+*Status: AI infrastructure and user collaboration features complete*
+- Vector database setup with pgvector ✅
+- Embedding generation with LlamaIndex ✅
+- Search interface and API endpoints ✅
+- Configuration management ✅
+- Progress tracking system ✅
+- **User roles and permissions system** ✅ (Complete)
+- **Evidence-seeker library integration** ⏳ (Next Priority)
+
+*Current State: The AI infrastructure is fully prepared and functional. Documents can be uploaded, embeddings generated, and vector search performed. The comprehensive user role system with GDPR-compliant access control is now implemented, enabling secure collaboration features. Ready to integrate the core evidence-seeker library for fact-checking functionality.*
+
+*Strategy: User roles foundation established - now integrating the evidence-seeker library for the core fact-checking MVP feature.*
+
+*Last Updated: September 2025*

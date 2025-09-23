@@ -1,5 +1,5 @@
 from fastapi import Depends, Request, HTTPException, status
-from fastapi_users import BaseUserManager, IntegerIDMixin, schemas
+from fastapi_users import BaseUserManager, IntegerIDMixin, schemas, FastAPIUsers
 from fastapi_users.authentication import (
     AuthenticationBackend,
     BearerTransport,
@@ -8,6 +8,7 @@ from fastapi_users.authentication import (
 from fastapi_users_db_sqlalchemy import SQLAlchemyUserDatabase
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
+from sqlalchemy import select
 from typing import Optional
 import secrets
 
@@ -21,6 +22,32 @@ class UserManager(IntegerIDMixin, BaseUserManager[User, int]):
 
     reset_password_token_secret = settings.secret_key
     verification_token_secret = settings.secret_key
+
+    async def validate_username(self, username: str) -> None:
+        """Validate username uniqueness"""
+        result = await self.user_db.session.execute(
+            select(User).where(User.username == username)
+        )
+        user = result.scalar_one_or_none()
+        if user is not None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Username already taken",
+            )
+
+    async def create(
+        self,
+        user_create: schemas.UC,
+        safe: bool = False,
+        request: Optional[Request] = None,
+    ) -> User:
+        """Create a new user with username validation"""
+        # Validate username uniqueness before creating user
+        if hasattr(user_create, "username"):
+            await self.validate_username(user_create.username)
+
+        # Call parent create method
+        return await super().create(user_create, safe, request)
 
     async def on_after_register(self, user: User, request: Optional[Request] = None):
         """Hook called after user registration"""
@@ -68,18 +95,11 @@ auth_backend = AuthenticationBackend(
     get_strategy=get_jwt_strategy,
 )
 
+# FastAPI Users instance
+fastapi_users = FastAPIUsers[User, int](get_user_manager, [auth_backend])
+
 
 # Dependency to get current user
-def get_current_user(
-    db: Session = Depends(get_db),
-    user_manager=Depends(get_user_manager),
-) -> User:
+async def get_current_user(user: User = Depends(fastapi_users.current_user())) -> User:
     """Get the current authenticated user"""
-    # This is a simplified version - in production you'd want to get the user from the JWT token
-    # For now, we'll return the first user (test user)
-    user = db.query(User).first()
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated"
-        )
     return user

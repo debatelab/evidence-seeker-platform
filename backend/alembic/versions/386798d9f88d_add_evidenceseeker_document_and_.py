@@ -29,6 +29,9 @@ def upgrade() -> None:
         "users",
         sa.Column("id", sa.INTEGER(), autoincrement=True, nullable=False),
         sa.Column("email", sa.VARCHAR(), autoincrement=False, nullable=False),
+        sa.Column(
+            "username", sa.VARCHAR(length=50), autoincrement=False, nullable=False
+        ),
         sa.Column("hashed_password", sa.VARCHAR(), autoincrement=False, nullable=False),
         sa.Column("is_active", sa.BOOLEAN(), autoincrement=False, nullable=True),
         sa.Column("is_superuser", sa.BOOLEAN(), autoincrement=False, nullable=True),
@@ -51,6 +54,7 @@ def upgrade() -> None:
     )
     op.create_index("ix_users_id", "users", ["id"], unique=False)
     op.create_index("ix_users_email", "users", ["email"], unique=False)
+    op.create_index("ix_users_username", "users", ["username"], unique=True)
 
     # Create evidence_seekers table with UUID column
     op.create_table(
@@ -151,11 +155,13 @@ def upgrade() -> None:
         sa.Column("id", sa.INTEGER(), autoincrement=True, nullable=False),
         sa.Column("user_id", sa.INTEGER(), autoincrement=False, nullable=False),
         sa.Column(
-            "evidence_seeker_id", sa.INTEGER(), autoincrement=False, nullable=False
+            "evidence_seeker_id", sa.INTEGER(), autoincrement=False, nullable=True
         ),
         sa.Column(
             "role",
-            postgresql.ENUM("EVSE_ADMIN", "EVSE_READER", name="userrole"),
+            postgresql.ENUM(
+                "PLATFORM_ADMIN", "EVSE_ADMIN", "EVSE_READER", name="userrole"
+            ),
             autoincrement=False,
             nullable=False,
         ),
@@ -304,6 +310,9 @@ def downgrade() -> None:
         "users",
         sa.Column("id", sa.INTEGER(), autoincrement=True, nullable=False),
         sa.Column("email", sa.VARCHAR(), autoincrement=False, nullable=False),
+        sa.Column(
+            "username", sa.VARCHAR(length=50), autoincrement=False, nullable=False
+        ),
         sa.Column("hashed_password", sa.VARCHAR(), autoincrement=False, nullable=False),
         sa.Column("is_active", sa.BOOLEAN(), autoincrement=False, nullable=True),
         sa.Column("is_superuser", sa.BOOLEAN(), autoincrement=False, nullable=True),
@@ -326,4 +335,5 @@ def downgrade() -> None:
     )
     op.create_index("ix_users_id", "users", ["id"], unique=False)
     op.create_index("ix_users_email", "users", ["email"], unique=False)
+    op.create_index("ix_users_username", "users", ["username"], unique=True)
     # ### end Alembic commands ###

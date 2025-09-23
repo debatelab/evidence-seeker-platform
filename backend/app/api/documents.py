@@ -18,6 +18,12 @@ from ..schemas.document import DocumentCreate, DocumentRead, DocumentUpdate
 from ..models.document import Document
 from ..models.evidence_seeker import EvidenceSeeker
 from ..core.auth import get_current_user
+from ..core.permissions import (
+    require_evidence_seeker_admin,
+    require_evidence_seeker_reader,
+    check_evidence_seeker_permission,
+)
+from ..models.permission import UserRole
 from ..core.file_utils import validate_file, save_upload_file, delete_file
 from ..core.embedding_service import embedding_service
 from ..api.progress import track_embedding_generation
@@ -57,21 +63,32 @@ def upload_document(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    """Upload a new document"""
+    """Upload a new document - requires admin permissions for the evidence seeker"""
     # Validate file
     if not validate_file(file):
         raise HTTPException(status_code=400, detail="Invalid file type or size")
 
-    # Check if evidence_seeker exists and user has access
-    from .evidence_seekers import get_evidence_seeker_by_identifier
+    # Get the evidence seeker (permission check already done in dependency)
+    from uuid import UUID
 
     try:
-        seeker = get_evidence_seeker_by_identifier(
-            evidence_seeker_uuid, db, current_user.id
+        uuid_obj = UUID(evidence_seeker_uuid)
+        seeker = (
+            db.query(EvidenceSeeker).filter(EvidenceSeeker.uuid == uuid_obj).first()
         )
-    except HTTPException:
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="Invalid evidence seeker UUID")
+
+    if seeker is None:
+        raise HTTPException(status_code=404, detail="Evidence Seeker not found")
+
+    # Check admin permissions for the evidence seeker
+    if not check_evidence_seeker_permission(
+        current_user.id, seeker.id, UserRole.EVSE_ADMIN, db
+    ):
         raise HTTPException(
-            status_code=404, detail="Evidence Seeker not found or no access"
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions: admin access required",
         )
 
     # Save file and get file info
@@ -135,17 +152,28 @@ def get_documents(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    """Get all documents for an Evidence Seeker"""
-    # Check access
-    from .evidence_seekers import get_evidence_seeker_by_identifier
+    """Get all documents for an Evidence Seeker - requires reader permissions"""
+    # Get the evidence seeker
+    from uuid import UUID
 
     try:
-        seeker = get_evidence_seeker_by_identifier(
-            evidence_seeker_uuid, db, current_user.id
+        uuid_obj = UUID(evidence_seeker_uuid)
+        seeker = (
+            db.query(EvidenceSeeker).filter(EvidenceSeeker.uuid == uuid_obj).first()
         )
-    except HTTPException:
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=404, detail="Invalid evidence seeker UUID")
+
+    if seeker is None:
+        raise HTTPException(status_code=404, detail="Evidence Seeker not found")
+
+    # Check reader permissions
+    if not check_evidence_seeker_permission(
+        current_user.id, seeker.id, UserRole.EVSE_READER, db
+    ):
         raise HTTPException(
-            status_code=404, detail="Evidence Seeker not found or no access"
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions: read access required",
         )
 
     documents = (
@@ -156,13 +184,12 @@ def get_documents(
     return documents
 
 
-@router.get("/{document_uuid}/download")
-def download_document(
+def require_document_reader(
     document_uuid: str,
-    db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
-    """Download a document by UUID"""
+    """Dependency to check if user can read a document"""
     from uuid import UUID
 
     try:
@@ -174,17 +201,34 @@ def download_document(
     if document is None:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    # Check if user has access to the evidence_seeker
-    from .evidence_seekers import get_evidence_seeker_by_identifier
+    # Check if user has read access to the evidence seeker
+    if not check_evidence_seeker_permission(
+        current_user.id, document.evidence_seeker_id, UserRole.EVSE_READER, db
+    ):
+        raise HTTPException(
+            status_code=403, detail="Not authorized to access this document"
+        )
+
+    return current_user
+
+
+@router.get("/{document_uuid}/download")
+def download_document(
+    document_uuid: str,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_document_reader),
+):
+    """Download a document by UUID - requires reader permissions"""
+    from uuid import UUID
 
     try:
-        seeker = get_evidence_seeker_by_identifier(
-            document.evidence_seeker_uuid, db, current_user.id
-        )
-    except HTTPException:
-        raise HTTPException(
-            status_code=403, detail="Not authorized to download this document"
-        )
+        uuid_obj = UUID(document_uuid)
+        document = db.query(Document).filter(Document.uuid == uuid_obj).first()
+    except (ValueError, TypeError):
+        document = None
+
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found")
 
     # Check if file exists
     if not os.path.exists(document.file_path):
@@ -198,13 +242,12 @@ def download_document(
     )
 
 
-@router.delete("/{document_uuid}")
-def delete_document(
+def require_document_admin(
     document_uuid: str,
-    db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
-    """Delete a document by UUID"""
+    """Dependency to check if user can administer a document"""
     from uuid import UUID
 
     try:
@@ -216,19 +259,34 @@ def delete_document(
     if document is None:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    # Check if user has access to the evidence_seeker
-    seeker = (
-        db.query(EvidenceSeeker)
-        .filter(
-            EvidenceSeeker.id == document.evidence_seeker_id,
-            EvidenceSeeker.created_by == current_user.id,
-        )
-        .first()
-    )
-    if seeker is None:
+    # Check if user has admin access to the evidence seeker
+    if not check_evidence_seeker_permission(
+        current_user.id, document.evidence_seeker_id, UserRole.EVSE_ADMIN, db
+    ):
         raise HTTPException(
             status_code=403, detail="Not authorized to delete this document"
         )
+
+    return current_user
+
+
+@router.delete("/{document_uuid}")
+def delete_document(
+    document_uuid: str,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_document_admin),
+):
+    """Delete a document by UUID - requires admin permissions"""
+    from uuid import UUID
+
+    try:
+        uuid_obj = UUID(document_uuid)
+        document = db.query(Document).filter(Document.uuid == uuid_obj).first()
+    except (ValueError, TypeError):
+        document = None
+
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found")
 
     # Delete file
     delete_file(document.file_path)

@@ -13,6 +13,7 @@ const API_BASE_URL =
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
   timeout: 10000,
+  validateStatus: (status) => status < 400, // Throw for 4xx/5xx responses
   // Remove default Content-Type to allow automatic setting for FormData
 });
 
@@ -43,6 +44,12 @@ apiClient.interceptors.response.use(
       localStorage.removeItem("access_token");
       localStorage.removeItem("user");
       window.location.href = "/login";
+    } else if (error.response?.status === 403) {
+      // Handle forbidden access - user doesn't have permission
+      console.warn(
+        "Access forbidden:",
+        error.response.data?.detail || "Insufficient permissions"
+      );
     }
     return Promise.reject(error);
   }
@@ -66,11 +73,16 @@ export const authAPI = {
     return response.data;
   },
 
-  register: async (email: string, password: string) => {
+  register: async (email: string, username: string, password: string) => {
     const response = await apiClient.post("/auth/register", {
       email,
+      username,
       password,
     });
+    // Explicitly check for error status codes since axios might not throw in some cases
+    if (response.status >= 400) {
+      throw new Error(response.data?.detail || "Registration failed");
+    }
     return response.data;
   },
 
@@ -105,6 +117,27 @@ export const userAPI = {
 
   deleteCurrentUser: async () => {
     const response = await apiClient.delete("/users/me");
+    return response.data;
+  },
+};
+
+// Permissions API endpoints
+export const permissionsAPI = {
+  getMyPermissions: async () => {
+    const response = await apiClient.get("/permissions/me");
+    return response.data;
+  },
+};
+
+// Documents API endpoints
+export const documentsAPI = {
+  downloadDocument: async (documentUuid: string): Promise<Blob> => {
+    const response = await apiClient.get(
+      `/documents/${documentUuid}/download`,
+      {
+        responseType: "blob",
+      }
+    );
     return response.data;
   },
 };

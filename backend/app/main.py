@@ -17,6 +17,7 @@ from app.api.auth import router as auth_router
 from app.api.users import router as users_router
 from app.api.evidence_seekers import router as evidence_seekers_router
 from app.api.documents import router as documents_router
+from app.api.permissions import router as permissions_router
 from app.api.embeddings import router as embeddings_router
 from app.api.search import router as search_router
 from app.api.config import router as config_router
@@ -79,7 +80,9 @@ def create_application() -> FastAPI:
     app.include_router(
         auth_router, prefix=settings.api_v1_prefix, tags=["Authentication"]
     )
-    app.include_router(users_router, prefix=settings.api_v1_prefix, tags=["Users"])
+    app.include_router(
+        users_router, prefix=settings.api_v1_prefix + "/users", tags=["Users"]
+    )
     app.include_router(
         evidence_seekers_router,
         prefix=settings.api_v1_prefix + "/evidence-seekers",
@@ -89,6 +92,11 @@ def create_application() -> FastAPI:
         documents_router,
         prefix=settings.api_v1_prefix + "/documents",
         tags=["Documents"],
+    )
+    app.include_router(
+        permissions_router,
+        prefix=settings.api_v1_prefix + "/permissions",
+        tags=["Permissions"],
     )
     app.include_router(
         embeddings_router,

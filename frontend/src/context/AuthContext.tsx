@@ -4,10 +4,19 @@ import React, {
   useState,
   useEffect,
   useCallback,
+  useRef,
   ReactNode,
 } from "react";
 import { User, AuthState, LoginRequest, RegisterRequest } from "../types/auth";
-import { authAPI, apiUtils } from "../utils/api";
+import { authAPI, permissionsAPI, apiUtils } from "../utils/api";
+
+// Polling configuration
+const PERMISSION_POLLING_CONFIG = {
+  interval: 60000, // 60 seconds
+  enabled: true,
+  maxRetries: 3,
+  backoffMultiplier: 2,
+};
 
 interface AuthContextProps extends AuthState {
   login: (
@@ -19,6 +28,7 @@ interface AuthContextProps extends AuthState {
   logout: () => Promise<{ success: boolean }>;
   clearError: () => void;
   checkAuthStatus: () => Promise<boolean>;
+  refreshPermissions: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextProps | undefined>(undefined);
@@ -69,6 +79,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const userResponse = await authAPI.getCurrentUser();
       const user = userResponse;
 
+      // Fetch user permissions
+      try {
+        const permissionsData = await permissionsAPI.getMyPermissions();
+        user.permissions = permissionsData.permissions || [];
+      } catch (error) {
+        console.warn("Failed to fetch user permissions:", error);
+        user.permissions = [];
+      }
+
       apiUtils.setUser(user);
 
       setAuthState({
@@ -98,6 +117,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       const response = await authAPI.register(
         userData.email,
+        userData.username,
         userData.password
       );
 
@@ -156,6 +176,72 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [authState.token, logout]);
 
+  const refreshPermissions = useCallback(async (): Promise<boolean> => {
+    if (!authState.isAuthenticated || !authState.user) {
+      return false;
+    }
+
+    try {
+      const permissionsData = await permissionsAPI.getMyPermissions();
+      const updatedUser = {
+        ...authState.user,
+        permissions: permissionsData.permissions || [],
+      };
+
+      // Update localStorage
+      apiUtils.setUser(updatedUser);
+
+      // Update state
+      setAuthState((prev) => ({
+        ...prev,
+        user: updatedUser,
+      }));
+
+      return true;
+    } catch (error) {
+      console.warn("Failed to refresh permissions:", error);
+      return false;
+    }
+  }, [authState.isAuthenticated, authState.user]);
+
+  // Permission polling effect
+  useEffect(() => {
+    if (!PERMISSION_POLLING_CONFIG.enabled || !authState.isAuthenticated) {
+      return;
+    }
+
+    const pollPermissions = async () => {
+      // Only poll if document is visible
+      if (document.hidden) {
+        return;
+      }
+
+      await refreshPermissions();
+    };
+
+    // Set up polling interval
+    const intervalId = setInterval(
+      pollPermissions,
+      PERMISSION_POLLING_CONFIG.interval
+    );
+
+    // Handle visibility change to pause/resume polling
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        // Tab became visible, refresh permissions immediately
+        refreshPermissions();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    // Cleanup
+    return () => {
+      clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [authState.isAuthenticated, refreshPermissions]);
+
   return (
     <AuthContext.Provider
       value={{
@@ -165,6 +251,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         logout,
         clearError,
         checkAuthStatus,
+        refreshPermissions,
       }}
     >
       {children}

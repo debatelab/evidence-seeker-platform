@@ -3,59 +3,35 @@
  */
 
 import React, { useState, useEffect } from "react";
-import { useParams, Link } from "react-router";
+import { Link, useLocation, useNavigate, Outlet } from "react-router";
 import {
   FileText,
   Search,
   Settings,
   ArrowLeft,
   Database,
-  Zap,
   Key,
+  Users,
 } from "lucide-react";
 import { EvidenceSeeker } from "../../types/evidenceSeeker";
 import { useEvidenceSeekers } from "../../hooks/useEvidenceSeeker";
 import PageLayout from "../PageLayout";
-import DocumentList from "../Document/DocumentList";
-import { SearchInterface } from "../Search/SearchInterface";
-import { APIKeyManager } from "../Config/APIKeyManager";
-import EvidenceSeekerSettings from "./EvidenceSeekerSettings";
 
 interface EvidenceSeekerManagementProps {
   evidenceSeekerUuid: string;
 }
 
-type TabType = "documents" | "search" | "settings" | "config";
+type TabType = "documents" | "search" | "settings" | "users" | "config";
 
 const EvidenceSeekerManagement: React.FC<EvidenceSeekerManagementProps> = ({
   evidenceSeekerUuid,
 }) => {
   const { evidenceSeekers } = useEvidenceSeekers();
-  const [activeTab, setActiveTab] = useState<TabType>("documents");
+  const location = useLocation();
+  const navigate = useNavigate();
   const [evidenceSeeker, setEvidenceSeeker] = useState<EvidenceSeeker | null>(
     null
   );
-
-  useEffect(() => {
-    if (evidenceSeekers.length > 0 && evidenceSeekerUuid) {
-      // Find the evidence seeker by UUID
-      const seeker = evidenceSeekers.find(
-        (es) => es.uuid === evidenceSeekerUuid
-      );
-      setEvidenceSeeker(seeker || null);
-    }
-  }, [evidenceSeekers, evidenceSeekerUuid]);
-
-  if (!evidenceSeeker) {
-    return (
-      <PageLayout variant="wide">
-        <div className="flex justify-center items-center p-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <span className="ml-2 text-gray-600">Loading Evidence Seeker...</span>
-        </div>
-      </PageLayout>
-    );
-  }
 
   const tabs = [
     {
@@ -77,6 +53,12 @@ const EvidenceSeekerManagement: React.FC<EvidenceSeekerManagementProps> = ({
       description: "Basic information and visibility",
     },
     {
+      id: "users" as TabType,
+      label: "User Management",
+      icon: Users,
+      description: "Manage who can access and modify this evidence seeker",
+    },
+    {
       id: "config" as TabType,
       label: "API Keys",
       icon: Key,
@@ -84,22 +66,37 @@ const EvidenceSeekerManagement: React.FC<EvidenceSeekerManagementProps> = ({
     },
   ];
 
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case "documents":
-        return <DocumentList evidenceSeekerUuid={evidenceSeekerUuid} />;
-      case "search":
-        return <SearchInterface evidenceSeekerUuid={evidenceSeekerUuid} />;
-      case "settings":
-        return (
-          <EvidenceSeekerSettings evidenceSeekerUuid={evidenceSeekerUuid} />
-        );
-      case "config":
-        return <APIKeyManager evidenceSeekerUuid={evidenceSeekerUuid} />;
-      default:
-        return <DocumentList evidenceSeekerUuid={evidenceSeekerUuid} />;
+  useEffect(() => {
+    if (evidenceSeekers.length > 0 && evidenceSeekerUuid) {
+      // Find the evidence seeker by UUID
+      const seeker = evidenceSeekers.find(
+        (es) => es.uuid === evidenceSeekerUuid
+      );
+      setEvidenceSeeker(seeker || null);
     }
+  }, [evidenceSeekers, evidenceSeekerUuid]);
+
+  // Get current tab from URL
+  const getActiveTabFromPath = (): TabType => {
+    const pathParts = location.pathname.split("/");
+    const lastPart = pathParts[pathParts.length - 1];
+    return (
+      (tabs.find((tab) => tab.id === lastPart)?.id as TabType) || "documents"
+    );
   };
+
+  const activeTab = getActiveTabFromPath();
+
+  if (!evidenceSeeker) {
+    return (
+      <PageLayout variant="wide">
+        <div className="flex justify-center items-center p-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <span className="ml-2 text-gray-600">Loading Evidence Seeker...</span>
+        </div>
+      </PageLayout>
+    );
+  }
 
   return (
     <PageLayout variant="wide">
@@ -157,7 +154,7 @@ const EvidenceSeekerManagement: React.FC<EvidenceSeekerManagementProps> = ({
                 return (
                   <button
                     key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
+                    onClick={() => navigate(tab.id)}
                     className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm ${
                       activeTab === tab.id
                         ? "border-blue-500 text-blue-600"
@@ -201,7 +198,7 @@ const EvidenceSeekerManagement: React.FC<EvidenceSeekerManagementProps> = ({
             </div>
 
             {/* Content */}
-            {renderTabContent()}
+            <Outlet />
           </div>
         </div>
       </div>

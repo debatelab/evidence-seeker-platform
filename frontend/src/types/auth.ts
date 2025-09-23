@@ -1,13 +1,17 @@
 // Authentication types for the Evidence Seeker Platform
 
+import { Permission } from "./permission";
+
 export interface User {
   id: number;
   email: string;
+  username: string;
   is_active: boolean;
   is_superuser: boolean;
   is_verified: boolean;
   created_at?: string;
   updated_at?: string;
+  permissions?: Permission[];
 }
 
 export interface UserCreate {
@@ -33,6 +37,7 @@ export interface LoginRequest {
 
 export interface RegisterRequest {
   email: string;
+  username: string;
   password: string;
 }
 
@@ -63,6 +68,7 @@ export interface LoginFormData {
 
 export interface RegisterFormData {
   email: string;
+  username: string;
   password: string;
   confirmPassword: string;
 }

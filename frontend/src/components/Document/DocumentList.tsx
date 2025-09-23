@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Link, useParams } from "react-router";
 import { Document } from "../../types/document";
 import { useDocuments } from "../../hooks/useDocument";
+import { documentsAPI } from "../../utils/api";
 
 interface DocumentListProps {
   evidenceSeekerUuid: string;
@@ -26,20 +27,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
 
   const handleDownload = async (doc: Document) => {
     try {
-      const response = await fetch(
-        `http://localhost:8000/api/v1/documents/${doc.uuid}/download`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Download failed");
-      }
-
-      const blob = await response.blob();
+      const blob = await documentsAPI.downloadDocument(doc.uuid);
       const url = window.URL.createObjectURL(blob);
       const a = window.document.createElement("a");
       a.style.display = "none";

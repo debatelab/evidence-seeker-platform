@@ -9,6 +9,7 @@ class UserRead(schemas.BaseUser[int]):
 
     id: int
     email: EmailStr
+    username: str
     is_active: bool = Field(alias="isActive", default=True)
     is_superuser: bool = Field(alias="isSuperuser", default=False)
     is_verified: bool = Field(alias="isVerified", default=False)
@@ -25,6 +26,7 @@ class UserCreate(schemas.BaseUserCreate):
     """User schema for user creation"""
 
     email: EmailStr
+    username: str = Field(..., min_length=3, max_length=50, pattern=r"^[a-zA-Z0-9_-]+$")
     password: str
     is_active: Optional[bool] = True
     is_superuser: Optional[bool] = False
@@ -35,6 +37,9 @@ class UserUpdate(schemas.BaseUserUpdate):
     """User schema for user updates"""
 
     email: Optional[EmailStr] = None
+    username: Optional[str] = Field(
+        None, min_length=3, max_length=50, pattern=r"^[a-zA-Z0-9_-]+$"
+    )
     password: Optional[str] = None
     is_active: Optional[bool] = None
     is_superuser: Optional[bool] = None
@@ -72,6 +77,7 @@ class RegisterRequest(BaseModel):
     """Registration request schema"""
 
     email: EmailStr
+    username: str = Field(..., min_length=3, max_length=50, pattern=r"^[a-zA-Z0-9_-]+$")
     password: str
 
 
@@ -89,3 +95,13 @@ class AuthResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     message: str = "Authentication successful"
+
+
+class UserSearchResult(BaseModel):
+    """User search result schema for role assignment"""
+
+    id: int
+    username: str
+
+    class Config:
+        from_attributes = True

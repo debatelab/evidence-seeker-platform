@@ -26,12 +26,12 @@ export interface Permission {
   id: number;
   userId: number;
   evidenceSeekerId: number;
-  role: "evse_admin" | "evse_reader";
+  role: "EVSE_ADMIN" | "EVSE_READER";
   createdAt: string;
 }
 
 export interface PermissionCreate {
   userId: number;
   evidenceSeekerId: number;
-  role: "evse_admin" | "evse_reader";
+  role: "EVSE_ADMIN" | "EVSE_READER";
 }

@@ -11,23 +11,52 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
   onSuccess,
   onSwitchToLogin,
 }) => {
-  const { register, isLoading, error, clearError } = useAuth();
-  const [formData, setFormData] = useState<RegisterFormData>({
-    email: "",
-    password: "",
-    confirmPassword: "",
+  const { register, login, isLoading, error, clearError } = useAuth();
+
+  // Initialize form data from sessionStorage to preserve across remounts
+  const [formData, setFormData] = useState<RegisterFormData>(() => {
+    const saved = sessionStorage.getItem("registerFormData");
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        // Ignore invalid data
+      }
+    }
+    return {
+      email: "",
+      username: "",
+      password: "",
+      confirmPassword: "",
+    };
   });
+
   const [validationErrors, setValidationErrors] = useState<
     Partial<RegisterFormData>
   >({});
+  console.log("Validation Errors:", validationErrors);
 
-  // Clear errors when form data changes
+  // Save form data to sessionStorage whenever it changes
   useEffect(() => {
-    if (error) {
-      clearError();
+    sessionStorage.setItem("registerFormData", JSON.stringify(formData));
+  }, [formData]);
+
+  // Clear field-specific validation errors when that field changes
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+
+    // Clear validation error for this specific field when user starts typing
+    if (validationErrors[name as keyof RegisterFormData]) {
+      setValidationErrors((prev) => ({
+        ...prev,
+        [name]: undefined,
+      }));
     }
-    setValidationErrors({});
-  }, [formData, error, clearError]);
+  };
 
   const validateForm = (): boolean => {
     const errors: Partial<RegisterFormData> = {};
@@ -36,6 +65,15 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
       errors.email = "Email is required";
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       errors.email = "Email is invalid";
+    }
+
+    if (!formData.username) {
+      errors.username = "Username is required";
+    } else if (formData.username.length < 3 || formData.username.length > 50) {
+      errors.username = "Username must be between 3 and 50 characters";
+    } else if (!/^[a-zA-Z0-9_-]+$/.test(formData.username)) {
+      errors.username =
+        "Username can only contain letters, numbers, underscores, and hyphens";
     }
 
     if (!formData.password) {
@@ -57,14 +95,6 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
     return Object.keys(errors).length === 0;
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -74,11 +104,43 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
 
     const result = await register({
       email: formData.email,
+      username: formData.username,
       password: formData.password,
     });
+    console.log("Registration result:", result);
 
     if (result.success) {
-      onSuccess?.();
+      // Automatically log in the user after successful registration
+      const loginResult = await login({
+        email: formData.email,
+        password: formData.password,
+      });
+
+      if (loginResult.success) {
+        // Clear the form data and sessionStorage since login was successful
+        setFormData({
+          email: "",
+          username: "",
+          password: "",
+          confirmPassword: "",
+        });
+        sessionStorage.removeItem("registerFormData");
+        onSuccess?.();
+      } else {
+        // If auto-login fails, still proceed but log the issue
+        console.warn(
+          "Auto-login failed after registration:",
+          loginResult.error
+        );
+        // Don't clear form data on login failure
+        onSuccess?.();
+      }
+    } else {
+      // Handle any registration error
+      setValidationErrors((prev) => ({
+        ...prev,
+        username: result.error || "Registration failed",
+      }));
     }
   };
 
@@ -116,6 +178,32 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
           {validationErrors.email && (
             <p className="mt-1 text-sm text-red-600">
               {validationErrors.email}
+            </p>
+          )}
+        </div>
+
+        <div>
+          <label
+            htmlFor="username"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
+            Username
+          </label>
+          <input
+            type="text"
+            id="username"
+            name="username"
+            value={formData.username}
+            onChange={handleInputChange}
+            className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+              validationErrors.username ? "border-red-500" : "border-gray-300"
+            }`}
+            placeholder="Choose a username"
+            disabled={isLoading}
+          />
+          {validationErrors.username && (
+            <p className="mt-1 text-sm text-red-600">
+              {validationErrors.username}
             </p>
           )}
         </div>

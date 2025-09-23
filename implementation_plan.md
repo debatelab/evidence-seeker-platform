@@ -1,144 +1,306 @@
-# Implementation Plan
+# URL-Based Subroutes for Evidence Seeker Management
 
-Integrate AI boilerplate functionality into the Evidence Seeker Platform, including embedding generation, vector search capabilities, and configuration management to prepare for the evidence-seeker library integration.
+## Overview
+Implement URL-based routing for Evidence Seeker management tabs to solve the issue where the active tab resets to "Documents" after user management operations. This will provide persistent tab state, bookmarkable URLs, and better browser navigation support.
 
-This implementation focuses on building the foundational AI infrastructure that will support the evidence-seeker pipeline, ensuring scalability for multiple concurrent users while maintaining security and performance standards.
+## Current State Analysis
 
-[Types]
-Define new data structures for embeddings, vector search, and configuration management.
+### Problem
+- **Single Route**: `/evidence-seekers/:id/manage` renders one component with client-side tabs
+- **State Loss**: Tab state is lost on re-renders (when user management operations complete)
+- **No URL Persistence**: Active tab isn't reflected in the URL
+- **Re-render Reset**: Operations in `UserRoleManager` cause parent re-renders that reset `activeTab` to "documents"
 
-**Embedding Types:**
-- `EmbeddingVector`: Array of float32 values representing document embeddings (768 dimensions for paraphrase-multilingual-mpnet-base-v2)
-- `EmbeddingMetadata`: Contains embedding generation timestamp, model used, and processing status
-- `VectorSearchResult`: Contains document matches with similarity scores and metadata
+### Current Architecture
+```
+App.tsx Route: /evidence-seekers/:evidenceSeekerId/manage
+├── EvidenceSeekerManagementWrapper
+    └── EvidenceSeekerManagement (with client-side tabs)
+        ├── DocumentList
+        ├── SearchInterface
+        ├── EvidenceSeekerSettings
+        ├── UserRoleManager
+        └── APIKeyManager
+```
 
-**Configuration Types:**
-- `APIKeyConfig`: Encrypted storage for API keys with provider-specific validation
-- `EmbeddingConfig`: Model selection, dimensions, and processing parameters
-- `PipelineConfig`: Evidence seeker pipeline settings and thresholds
+## Implementation Strategy
 
-**Search Types:**
-- `SearchQuery`: User's statement with optional filters and search parameters
-- `SearchResult`: Analysis result with confidence scores and supporting evidence
-- `ProgressUpdate`: Real-time progress tracking for long-running operations
+### Target Architecture
+```
+App.tsx Routes:
+├── /evidence-seekers/:evidenceSeekerId/manage (redirects to /documents)
+├── /evidence-seekers/:evidenceSeekerId/manage/documents
+├── /evidence-seekers/:evidenceSeekerId/manage/search
+├── /evidence-seekers/:evidenceSeekerId/manage/settings
+├── /evidence-seekers/:evidenceSeekerId/manage/users
+└── /evidence-seekers/:evidenceSeekerId/manage/config
 
-[Files]
-Create new files and modify existing ones to support AI functionality.
+EvidenceSeekerManagementWrapper
+└── EvidenceSeekerManagement (layout with navigation)
+    └── <Outlet /> (renders child routes)
+```
 
-**New Files:**
-- `backend/app/models/embedding.py`: SQLAlchemy model for storing document embeddings with pgvector
-- `backend/app/models/api_key.py`: Model for encrypted API key storage
-- `backend/app/schemas/embedding.py`: Pydantic schemas for embedding operations
-- `backend/app/schemas/api_key.py`: Schemas for API key management
-- `backend/app/schemas/search.py`: Schemas for vector search and analysis
-- `backend/app/core/embedding_service.py`: Service for generating and managing embeddings using LlamaIndex
-- `backend/app/core/vector_search.py`: Vector search implementation using PGVectorStore
-- `backend/app/core/config_service.py`: Configuration management with encryption
-- `backend/app/api/embeddings.py`: API endpoints for embedding operations
-- `backend/app/api/search.py`: API endpoints for vector search and analysis
-- `backend/app/api/config.py`: API endpoints for configuration management
-- `frontend/src/types/embedding.ts`: TypeScript types for embeddings
-- `frontend/src/types/search.ts`: Types for search operations
-- `frontend/src/types/config.ts`: Types for configuration management
-- `frontend/src/hooks/useEmbedding.ts`: React hooks for embedding operations
-- `frontend/src/hooks/useSearch.ts`: Hooks for search functionality
-- `frontend/src/hooks/useConfig.ts`: Hooks for configuration management
-- `frontend/src/components/Search/SearchInterface.tsx`: Main search UI component
-- `frontend/src/components/Search/SearchResults.tsx`: Results display component
-- `frontend/src/components/Config/ConfigForm.tsx`: Configuration management UI
-- `frontend/src/components/Config/APIKeyManager.tsx`: API key management interface
-- `frontend/src/components/Progress/ProgressIndicator.tsx`: Real-time progress updates
+## Detailed Implementation Steps
 
-**Modified Files:**
-- `backend/app/models/document.py`: Add embedding relationship and status fields
-- `backend/app/api/documents.py`: Integrate embedding generation on upload using LlamaIndex workflow
-- `backend/app/core/config.py`: Add AI-related configuration settings including embedding model
-- `backend/requirements.txt`: Add LlamaIndex, pgvector, and embedding dependencies
-- `backend/app/main.py`: Include new API routers for embeddings, search, and config
-- `frontend/src/types/document.ts`: Add embedding-related fields
-- `frontend/src/components/Document/DocumentUpload.tsx`: Add progress tracking for embedding generation
-- `frontend/src/App.tsx`: Add new routes for search and configuration
+### Phase 1: Update App.tsx Routing
 
-[Functions]
-Implement core functions for AI operations and configuration management.
+#### 1.1 Add Nested Routes Structure
+```typescript
+// In App.tsx router configuration
+{
+  path: "/evidence-seekers/:evidenceSeekerId/manage",
+  element: (
+    <AppLayout>
+      <EvidenceSeekerManagementWrapper />
+    </AppLayout>
+  ),
+  children: [
+    {
+      path: "documents",
+      element: <DocumentWrapper Component={DocumentList} />
+    },
+    {
+      path: "search",
+      element: <DocumentWrapper Component={SearchInterface} />
+    },
+    {
+      path: "settings",
+      element: <DocumentWrapper Component={EvidenceSeekerSettings} />
+    },
+    {
+      path: "users",
+      element: <DocumentWrapper Component={UserRoleManager} />
+    },
+    {
+      path: "config",
+      element: <DocumentWrapper Component={APIKeyManager} />
+    },
+    {
+      index: true,
+      element: <Navigate to="documents" replace />
+    }
+  ]
+}
+```
 
-**New Functions:**
-- `generate_embeddings(document_id, config)`: Generate embeddings using HuggingFaceEmbedding with paraphrase-multilingual-mpnet-base-v2
-- `store_embeddings(document_id, vectors, metadata)`: Store 768-dimensional embeddings in pgvector table
-- `vector_search(query_embedding, filters, limit)`: Perform vector similarity search using PGVectorStore
-- `analyze_statement(statement, context_docs)`: Analyze user statements (fake implementation initially)
-- `encrypt_api_key(api_key, user_id)`: Encrypt and store API keys using Fernet
-- `decrypt_api_key(encrypted_key)`: Decrypt API keys for use with embedding models
-- `validate_config(config)`: Validate configuration settings including model compatibility
-- `update_progress(operation_id, progress, status)`: Update operation progress for real-time UI updates
+#### 1.2 Update DocumentWrapper for All Components
+Currently `DocumentWrapper` only handles components that need `evidenceSeekerUuid`. Update it to work with all tab components:
 
-**Modified Functions:**
-- `upload_document()`: Enhanced to trigger LlamaIndex document processing and embedding generation
-- `save_upload_file()`: Updated to handle embedding processing workflow
-- `get_documents()`: Include embedding status and generation progress in response
+```typescript
+const TabWrapper = ({
+  Component,
+  needsEvidenceSeeker = true
+}: {
+  Component: React.ComponentType<any>;
+  needsEvidenceSeeker?: boolean;
+}) => {
+  // ... existing Evidence Seeker resolution logic ...
 
-[Classes]
-Define new classes for AI services and configuration management.
+  if (needsEvidenceSeeker && !evidenceSeeker) {
+    return <LoadingComponent />;
+  }
 
-**New Classes:**
-- `EmbeddingService`: Handles embedding generation using LlamaIndex and HuggingFaceEmbedding
-- `VectorSearchService`: Manages vector search operations with PGVectorStore
-- `ConfigService`: Manages encrypted configuration storage with Fernet encryption
-- `ProgressTracker`: Tracks long-running operation progress with WebSocket support
-- `APIKeyManager`: Handles API key encryption/decryption for secure storage
-- `SearchAnalyzer`: Processes search queries and returns results with confidence scores
+  return needsEvidenceSeeker
+    ? <Component evidenceSeekerUuid={evidenceSeeker.uuid} />
+    : <Component evidenceSeekerId={evidenceSeekerId} />;
+};
+```
 
-**Modified Classes:**
-- `Document`: Add embedding-related fields and relationships
-- `EvidenceSeeker`: Add configuration relationship for API keys and settings
+### Phase 2: Refactor EvidenceSeekerManagement Component
 
-[Dependencies]
-Add required dependencies for AI functionality and security based on pgvector tutorial.
+#### 2.1 Remove Client-Side Tab State
+```typescript
+// Remove these state variables
+const [activeTab, setActiveTab] = useState<TabType>("documents");
 
-**New Packages:**
-- `llama-index-vector-stores-postgres`: For PostgreSQL vector store integration
-- `llama-index-embeddings-huggingface`: For HuggingFace embedding model support
-- `sentence-transformers>=2.0.0`: Required for paraphrase-multilingual-mpnet-base-v2 model
-- `pgvector==0.2.4`: PostgreSQL vector extension support (already present)
-- `cryptography==41.0.7`: For API key encryption (already present)
-- `websockets==12.0`: Real-time progress updates
-- `asyncio`: For concurrent processing (standard library)
+// Remove this useEffect that sets default tab
+```
 
-**Version Updates:**
-- `sqlalchemy==2.0.23`: Ensure pgvector compatibility (already present)
-- `pydantic==2.5.0`: Latest version for better validation (already present)
+#### 2.2 Add Route-Based Navigation Logic
+```typescript
+import { useLocation, useNavigate } from "react-router";
 
-[Testing]
-Comprehensive testing strategy for AI functionality.
+// Get current tab from URL
+const location = useLocation();
+const navigate = useNavigate();
 
-**Unit Tests:**
-- `test_embedding_service.py`: Test embedding generation with paraphrase-multilingual-mpnet-base-v2
-- `test_vector_search.py`: Test search functionality and accuracy with pgvector
-- `test_config_service.py`: Test configuration encryption/decryption
-- `test_progress_tracking.py`: Test progress update mechanisms
+const getActiveTabFromPath = (): TabType => {
+  const pathParts = location.pathname.split('/');
+  const lastPart = pathParts[pathParts.length - 1];
+  return (tabs.find(tab => tab.id === lastPart)?.id as TabType) || "documents";
+};
 
-**Integration Tests:**
-- `test_document_upload_with_embeddings.py`: End-to-end upload flow with LlamaIndex processing
-- `test_search_pipeline.py`: Complete search and analysis flow
-- `test_concurrent_uploads.py`: Multi-user upload scenarios with embedding generation
+const activeTab = getActiveTabFromPath();
+```
 
-**Frontend Tests:**
-- `SearchInterface.test.tsx`: Search UI component tests
-- `ConfigForm.test.tsx`: Configuration form tests
-- `ProgressIndicator.test.tsx`: Progress tracking tests
+#### 2.3 Update Tab Navigation
+```typescript
+// Replace onClick handlers
+onClick={() => setActiveTab(tab.id)}
 
-[Implementation Order]
-Sequential implementation following the pgvector tutorial workflow.
+// With navigation
+onClick={() => navigate(tab.id)}
+```
 
-1. **Database Setup**: Ensure pgvector extension and create vector tables
-2. **Core Dependencies**: Install LlamaIndex, HuggingFace embeddings, sentence-transformers
-3. **Embedding Service**: Implement EmbeddingService with HuggingFaceEmbedding configuration
-4. **Vector Store**: Set up PGVectorStore with 768 dimensions for the model
-5. **Document Integration**: Modify upload process to use LlamaIndex SimpleDirectoryReader
-6. **API Endpoints**: Create embedding and search API endpoints
-7. **Configuration Management**: Implement encrypted API key storage
-8. **Progress Tracking**: Add real-time progress updates for embedding generation
-9. **Frontend Components**: Build search interface and configuration UI
-10. **Testing**: Comprehensive testing of all AI components
-11. **Performance Optimization**: Add caching and concurrent processing
-12. **Documentation**: Update API documentation with embedding specifications
+#### 2.4 Replace renderTabContent with Outlet
+```typescript
+// Remove renderTabContent function
+// Remove the content area that renders based on activeTab
+
+// Add Outlet for child routes
+import { Outlet } from "react-router";
+
+<div className="p-6">
+  {/* Tab Description */}
+  <div className="mb-6">
+    {tabs.map((tab) => {
+      if (tab.id === activeTab) {
+        // ... existing tab description logic ...
+      }
+      return null;
+    })}
+  </div>
+
+  {/* Content - now rendered by child routes */}
+  <Outlet />
+</div>
+```
+
+### Phase 3: Update Component Props
+
+#### 3.1 Update UserRoleManager Props
+`UserRoleManager` currently receives `evidenceSeekerId` as a string ID, but needs to work with UUID. Update the component to accept `evidenceSeekerUuid`:
+
+```typescript
+interface UserRoleManagerProps {
+  evidenceSeekerUuid: string;  // Changed from evidenceSeekerId
+}
+```
+
+#### 3.2 Update All Tab Components
+Ensure all tab components can receive `evidenceSeekerUuid` prop consistently.
+
+### Phase 4: Add Backward Compatibility
+
+#### 4.1 Add Redirect from Old Route
+```typescript
+// In App.tsx, add a catch-all redirect
+{
+  path: "/evidence-seekers/:evidenceSeekerId/manage",
+  element: <Navigate to="/evidence-seekers/:evidenceSeekerId/manage/documents" replace />,
+  // Only when there are no child routes matched
+}
+```
+
+#### 4.2 Handle Direct Links
+Ensure all internal navigation uses the new routes.
+
+### Phase 5: Testing & Validation
+
+#### 5.1 Test Tab Persistence
+- Navigate to different tabs
+- Perform user management operations
+- Verify tab stays active after operations complete
+- Test browser back/forward buttons
+
+#### 5.2 Test URL Behavior
+- Bookmark specific tabs
+- Refresh page on different tabs
+- Share URLs with team members
+
+#### 5.3 Test Navigation Flow
+- Click tab navigation
+- Use browser navigation
+- Test mobile responsiveness
+
+#### 5.4 Update Tests
+- Update existing component tests
+- Add routing integration tests
+- Test error boundaries
+
+### Phase 6: Documentation Updates
+
+#### 6.1 Update README.md
+- Document new URL structure
+- Update navigation examples
+
+#### 6.2 Update Component Documentation
+- Update EvidenceSeekerManagement component docs
+- Document new prop interfaces
+
+## Implementation Checklist
+
+### Phase 1: Routing Updates
+- [ ] Update App.tsx with nested routes structure
+- [ ] Add Navigate component for index route
+- [ ] Update DocumentWrapper to TabWrapper for all components
+- [ ] Test route navigation works
+
+### Phase 2: Component Refactoring
+- [ ] Remove client-side tab state from EvidenceSeekerManagement
+- [ ] Add useLocation/useNavigate hooks
+- [ ] Implement getActiveTabFromPath logic
+- [ ] Update tab navigation to use navigate()
+- [ ] Replace renderTabContent with Outlet
+
+### Phase 3: Component Updates
+- [ ] Update UserRoleManager to accept evidenceSeekerUuid
+- [ ] Ensure all tab components work with consistent props
+- [ ] Update any component-specific prop passing
+
+### Phase 4: Compatibility
+- [ ] Add backward compatibility redirects
+- [ ] Update any hardcoded navigation links
+- [ ] Test existing functionality still works
+
+### Phase 5: Testing
+- [ ] Test tab persistence across operations
+- [ ] Test URL bookmarking and sharing
+- [ ] Test browser navigation (back/forward)
+- [ ] Update and run test suites
+
+### Phase 6: Documentation
+- [ ] Update README with new URL structure
+- [ ] Document component interface changes
+- [ ] Update any user-facing documentation
+
+## Success Criteria
+
+1. **Tab Persistence**: Active tab survives user management operations
+2. **URL Reflection**: Current tab is shown in browser URL
+3. **Bookmarkable**: Users can bookmark and share specific tab URLs
+4. **Browser Navigation**: Back/forward buttons work correctly
+5. **Backward Compatibility**: Old links redirect to appropriate tabs
+6. **No Route Changes**: User management operations don't trigger navigation
+
+## Rollback Plan
+
+If issues arise:
+1. Revert App.tsx route changes
+2. Restore client-side tab logic in EvidenceSeekerManagement
+3. Keep existing component interfaces
+4. No database changes needed
+
+## Risk Assessment
+
+- **Low Risk**: Adding routes alongside existing functionality
+- **Low Risk**: Outlet pattern is standard React Router practice
+- **Medium Risk**: Component prop interface changes
+- **Low Risk**: Backward compatibility redirects prevent breaking changes
+
+## Dependencies
+
+- React Router DOM (already installed)
+- No backend changes required
+- No database changes required
+
+## Timeline Estimate
+
+- Phase 1 (Routing): 1-2 hours
+- Phase 2 (Component Refactor): 2-3 hours
+- Phase 3 (Component Updates): 1 hour
+- Phase 4 (Compatibility): 30 minutes
+- Phase 5 (Testing): 1-2 hours
+- Phase 6 (Documentation): 30 minutes
+
+**Total Estimate**: 6-9 hours

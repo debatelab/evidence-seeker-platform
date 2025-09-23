@@ -3,7 +3,7 @@
  */
 
 import React, { useState, useEffect } from "react";
-import { Settings, Save, X, Check } from "lucide-react";
+import { Settings, Save, X } from "lucide-react";
 import {
   EvidenceSeeker,
   EvidenceSeekerUpdate,
@@ -143,9 +143,9 @@ const EvidenceSeekerSettings: React.FC<EvidenceSeekerSettingsProps> = ({
         <div className="flex items-center space-x-3">
           <Settings className="h-6 w-6 text-blue-600" />
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">
-              Evidence Seeker Settings
-            </h3>
+            <h4 className="text-md font-semibold text-gray-900">
+              Basic Settings
+            </h4>
             <p className="text-sm text-gray-600">
               Manage basic information and visibility settings
             </p>

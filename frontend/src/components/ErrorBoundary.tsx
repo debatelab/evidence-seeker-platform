@@ -1,4 +1,6 @@
 import React, { Component, ReactNode } from "react";
+import { AuthRequiredMessage } from "./Error/AuthRequiredMessage";
+import { AccessDeniedMessage } from "./Error/AccessDeniedMessage";
 
 interface Props {
   children: ReactNode;
@@ -8,6 +10,7 @@ interface Props {
 interface State {
   hasError: boolean;
   error?: Error;
+  errorType?: "auth" | "permission" | "general";
 }
 
 class ErrorBoundary extends Component<Props, State> {
@@ -17,7 +20,22 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error };
+    // Determine error type based on error message or properties
+    let errorType: "auth" | "permission" | "general" = "general";
+
+    if (
+      error.message.includes("401") ||
+      error.message.includes("Unauthorized")
+    ) {
+      errorType = "auth";
+    } else if (
+      error.message.includes("403") ||
+      error.message.includes("Forbidden")
+    ) {
+      errorType = "permission";
+    }
+
+    return { hasError: true, error, errorType };
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
@@ -30,6 +48,28 @@ class ErrorBoundary extends Component<Props, State> {
         return this.props.fallback;
       }
 
+      // Show specific error messages for auth and permission errors
+      if (this.state.errorType === "auth") {
+        return (
+          <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+            <div className="max-w-md w-full">
+              <AuthRequiredMessage />
+            </div>
+          </div>
+        );
+      }
+
+      if (this.state.errorType === "permission") {
+        return (
+          <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+            <div className="max-w-md w-full">
+              <AccessDeniedMessage />
+            </div>
+          </div>
+        );
+      }
+
+      // Default general error
       return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50">
           <div className="max-w-md w-full bg-white shadow-lg rounded-lg p-6 text-center">

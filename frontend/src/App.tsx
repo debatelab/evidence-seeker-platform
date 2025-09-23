@@ -4,8 +4,10 @@ import {
   RouterProvider,
   Link,
   useParams,
+  Navigate,
 } from "react-router";
 import { useAuth } from "./hooks/useAuth";
+import { usePermissions } from "./hooks/usePermissions";
 import AuthLayout from "./components/Auth/AuthLayout";
 import LoginForm from "./components/Auth/LoginForm";
 import RegisterForm from "./components/Auth/RegisterForm";
@@ -14,15 +16,22 @@ import EvidenceSeekerForm from "./components/EvidenceSeeker/EvidenceSeekerForm";
 import EvidenceSeekerManagementWrapper from "./components/EvidenceSeeker/EvidenceSeekerManagementWrapper";
 import DocumentList from "./components/Document/DocumentList";
 import DocumentUpload from "./components/Document/DocumentUpload";
+import { SearchInterface } from "./components/Search/SearchInterface";
+import EvidenceSeekerSettings from "./components/EvidenceSeeker/EvidenceSeekerSettings";
+import { UserRoleManager } from "./components/EvidenceSeeker/UserRoleManager";
+import { APIKeyManager } from "./components/Config/APIKeyManager";
 import ErrorBoundary from "./components/ErrorBoundary";
+import PlatformSettings from "./pages/PlatformSettings";
 import { useEvidenceSeekers } from "./hooks/useEvidenceSeeker";
 import { EvidenceSeeker } from "./types/evidenceSeeker";
 
-// Wrapper component to provide Evidence Seeker UUID to document components
-const DocumentWrapper = ({
+// Wrapper component to provide Evidence Seeker UUID to tab components
+const TabWrapper = ({
   Component,
+  needsEvidenceSeeker = true,
 }: {
   Component: React.ComponentType<any>;
+  needsEvidenceSeeker?: boolean;
 }) => {
   const { evidenceSeekerId } = useParams<{ evidenceSeekerId: string }>();
   const { evidenceSeekers } = useEvidenceSeekers();
@@ -41,7 +50,7 @@ const DocumentWrapper = ({
     }
   }, [evidenceSeekers, evidenceSeekerId]);
 
-  if (!evidenceSeeker) {
+  if (needsEvidenceSeeker && !evidenceSeeker) {
     return (
       <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
@@ -55,7 +64,11 @@ const DocumentWrapper = ({
     );
   }
 
-  return <Component evidenceSeekerUuid={evidenceSeeker.uuid} />;
+  return needsEvidenceSeeker ? (
+    <Component evidenceSeekerUuid={evidenceSeeker!.uuid} />
+  ) : (
+    <Component evidenceSeekerUuid={evidenceSeekerId} />
+  );
 };
 
 const App: React.FC = () => {
@@ -148,65 +161,77 @@ const App: React.FC = () => {
   );
 
   // Layout component with navigation
-  const AppLayout = ({ children }: { children: React.ReactNode }) => (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-8">
-              <div className="flex items-center">
-                <div className="h-8 w-8 bg-blue-600 rounded-full flex items-center justify-center">
-                  <svg
-                    className="h-5 w-5 text-white"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-                    />
-                  </svg>
+  const AppLayout = ({ children }: { children: React.ReactNode }) => {
+    const { hasPlatformAdminAccess } = usePermissions();
+    console.log({ hasPlatformAdminAccess: hasPlatformAdminAccess() });
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <nav className="bg-white shadow">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center py-4">
+              <div className="flex items-center space-x-8">
+                <div className="flex items-center">
+                  <div className="h-8 w-8 bg-blue-600 rounded-full flex items-center justify-center">
+                    <svg
+                      className="h-5 w-5 text-white"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+                      />
+                    </svg>
+                  </div>
+                  <h1 className="ml-3 text-xl font-bold text-gray-900">
+                    Evidence Seeker Platform
+                  </h1>
                 </div>
-                <h1 className="ml-3 text-xl font-bold text-gray-900">
-                  Evidence Seeker Platform
-                </h1>
+                <div className="flex space-x-4">
+                  <Link
+                    to="/"
+                    className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+                  >
+                    Dashboard
+                  </Link>
+                  <Link
+                    to="/evidence-seekers"
+                    className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+                  >
+                    Evidence Seekers
+                  </Link>
+                  {hasPlatformAdminAccess() && (
+                    <Link
+                      to="/platform-settings"
+                      className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+                    >
+                      Platform Admin
+                    </Link>
+                  )}
+                </div>
               </div>
-              <div className="flex space-x-4">
-                <Link
-                  to="/"
-                  className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+              <div className="flex items-center space-x-4">
+                <span className="text-sm text-gray-700">
+                  Welcome, {user?.email}
+                </span>
+                <button
+                  onClick={logout}
+                  className="bg-red-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
                 >
-                  Dashboard
-                </Link>
-                <Link
-                  to="/evidence-seekers"
-                  className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
-                >
-                  Evidence Seekers
-                </Link>
+                  Logout
+                </button>
               </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-700">
-                Welcome, {user?.email}
-              </span>
-              <button
-                onClick={logout}
-                className="bg-red-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
-              >
-                Logout
-              </button>
             </div>
           </div>
-        </div>
-      </nav>
-      {children}
-    </div>
-  );
+        </nav>
+        {children}
+      </div>
+    );
+  };
 
   // Auth component
   const AuthPage = () => (
@@ -275,13 +300,55 @@ const App: React.FC = () => {
         ) : (
           <AuthPage />
         ),
+      children: [
+        {
+          path: "documents",
+          element: <TabWrapper Component={DocumentList} />,
+        },
+        {
+          path: "search",
+          element: <TabWrapper Component={SearchInterface} />,
+        },
+        {
+          path: "settings",
+          element: <TabWrapper Component={EvidenceSeekerSettings} />,
+        },
+        {
+          path: "users",
+          element: (
+            <TabWrapper
+              Component={UserRoleManager}
+              needsEvidenceSeeker={false}
+            />
+          ),
+        },
+        {
+          path: "config",
+          element: <TabWrapper Component={APIKeyManager} />,
+        },
+        {
+          index: true,
+          element: <Navigate to="documents" replace />,
+        },
+      ],
     },
     {
       path: "/evidence-seekers/:evidenceSeekerId/documents/upload",
       element:
         isAuthenticated && user ? (
           <AppLayout>
-            <DocumentWrapper Component={DocumentUpload} />
+            <TabWrapper Component={DocumentUpload} />
+          </AppLayout>
+        ) : (
+          <AuthPage />
+        ),
+    },
+    {
+      path: "/platform-settings",
+      element:
+        isAuthenticated && user ? (
+          <AppLayout>
+            <PlatformSettings />
           </AppLayout>
         ) : (
           <AuthPage />
