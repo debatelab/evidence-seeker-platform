@@ -1,0 +1,16 @@
+Evidence Seeker Platform - Email Verification
+
+Welcome to Evidence Seeker Platform!
+
+Thank you for registering. To complete your account setup and start using our platform, please verify your email address.
+
+Click the link below to verify your email:
+http://localhost:3000/verify-email?token={{ token }}
+
+This verification link will expire in 24 hours.
+
+If you didn't create an account, you can safely ignore this email.
+
+This email was sent to {{ email }}. If you have any questions, please contact our support team.
+
+© 2025 Evidence Seeker Platform. All rights reserved.

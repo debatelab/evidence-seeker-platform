@@ -42,6 +42,17 @@ class Settings(BaseSettings):
     max_file_size: int = 10 * 1024 * 1024  # 10MB in bytes
     allowed_extensions: list = [".pdf", ".txt"]
 
+    # Email settings
+    smtp_server: str = "smtp.gmail.com"
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: str = ""
+    email_from: str = "noreply@evidence-seeker.com"
+    email_from_name: str = "Evidence Seeker Platform"
+
+    # Email templates
+    email_templates_dir: str = "backend/app/templates/email"
+
     model_config = ConfigDict(
         env_file=".env",
         case_sensitive=False,

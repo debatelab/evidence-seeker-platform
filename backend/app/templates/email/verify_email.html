@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Verify Your Email - Evidence Seeker Platform</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        line-height: 1.6;
+        color: #333;
+      }
+      .container {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      .header {
+        background-color: #2563eb;
+        color: white;
+        padding: 20px;
+        text-align: center;
+      }
+      .content {
+        padding: 30px 20px;
+        background-color: #f8fafc;
+      }
+      .button {
+        display: inline-block;
+        background-color: #2563eb;
+        color: white;
+        padding: 12px 24px;
+        text-decoration: none;
+        border-radius: 5px;
+        margin: 20px 0;
+      }
+      .footer {
+        text-align: center;
+        padding: 20px;
+        color: #666;
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>Evidence Seeker Platform</h1>
+      </div>
+      <div class="content">
+        <h2>Welcome to Evidence Seeker Platform!</h2>
+        <p>
+          Thank you for registering. To complete your account setup and start
+          using our platform, please verify your email address.
+        </p>
+
+        <p>Click the button below to verify your email:</p>
+
+        <a
+          href="http://localhost:3000/verify-email?token={{ token }}"
+          class="button"
+          >Verify Email Address</a
+        >
+
+        <p>
+          If the button doesn't work, you can also copy and paste this link into
+          your browser:
+        </p>
+        <p>
+          <a href="http://localhost:3000/verify-email?token={{ token }}"
+            >http://localhost:3000/verify-email?token={{ token }}</a
+          >
+        </p>
+
+        <p><strong>This verification link will expire in 24 hours.</strong></p>
+
+        <p>
+          If you didn't create an account, you can safely ignore this email.
+        </p>
+      </div>
+      <div class="footer">
+        <p>
+          This email was sent to {{ email }}. If you have any questions, please
+          contact our support team.
+        </p>
+        <p>&copy; 2025 Evidence Seeker Platform. All rights reserved.</p>
+      </div>
+    </div>
+  </body>
+</html>

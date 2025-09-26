@@ -50,6 +50,23 @@ async def get_current_user(user: User = Depends(fastapi_users.current_user())):
     return user
 
 
+@router.post("/auth/resend-verification")
+async def resend_verification(
+    request: Request,
+    user_manager: UserManager = Depends(get_user_manager),
+    current_user: User = Depends(fastapi_users.current_user()),
+):
+    """Resend verification email to current user"""
+    try:
+        await user_manager.request_verify(current_user, request)
+        return {"message": "Verification email sent successfully"}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to send verification email: {str(e)}",
+        )
+
+
 @router.get("/auth/test")
 async def test_auth_endpoint():
     """Test endpoint to verify authentication is working"""

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { RegisterFormData } from "../../types/auth";
 
@@ -11,7 +12,8 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
   onSuccess,
   onSwitchToLogin,
 }) => {
-  const { register, login, isLoading, error, clearError } = useAuth();
+  const { register, isLoading, error, clearError } = useAuth();
+  const navigate = useNavigate();
 
   // Initialize form data from sessionStorage to preserve across remounts
   const [formData, setFormData] = useState<RegisterFormData>(() => {
@@ -110,31 +112,19 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
     console.log("Registration result:", result);
 
     if (result.success) {
-      // Automatically log in the user after successful registration
-      const loginResult = await login({
-        email: formData.email,
-        password: formData.password,
+      // Clear the form data and sessionStorage since registration was successful
+      setFormData({
+        email: "",
+        username: "",
+        password: "",
+        confirmPassword: "",
       });
+      sessionStorage.removeItem("registerFormData");
 
-      if (loginResult.success) {
-        // Clear the form data and sessionStorage since login was successful
-        setFormData({
-          email: "",
-          username: "",
-          password: "",
-          confirmPassword: "",
-        });
-        sessionStorage.removeItem("registerFormData");
-        onSuccess?.();
-      } else {
-        // If auto-login fails, still proceed but log the issue
-        console.warn(
-          "Auto-login failed after registration:",
-          loginResult.error
-        );
-        // Don't clear form data on login failure
-        onSuccess?.();
-      }
+      // Redirect to email verification page
+      navigate("/verify-email", {
+        state: { email: formData.email },
+      });
     } else {
       // Handle any registration error
       setValidationErrors((prev) => ({

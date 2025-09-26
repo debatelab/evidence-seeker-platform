@@ -15,6 +15,7 @@ import secrets
 from app.core.database import get_async_db, get_db
 from app.models.user import User
 from app.core.config import settings
+from app.core.email_service import EmailService
 
 
 class UserManager(IntegerIDMixin, BaseUserManager[User, int]):
@@ -22,6 +23,10 @@ class UserManager(IntegerIDMixin, BaseUserManager[User, int]):
 
     reset_password_token_secret = settings.secret_key
     verification_token_secret = settings.secret_key
+
+    def __init__(self, user_db, email_service: EmailService):
+        super().__init__(user_db)
+        self.email_service = email_service
 
     async def validate_username(self, username: str) -> None:
         """Validate username uniqueness"""
@@ -56,14 +61,22 @@ class UserManager(IntegerIDMixin, BaseUserManager[User, int]):
     async def on_after_forgot_password(
         self, user: User, token: str, request: Optional[Request] = None
     ):
-        """Hook called after forgot password request"""
-        print(f"User {user.id} has forgot their password. Reset token: {token}")
+        """Hook called after forgot password request - sends password reset email"""
+        try:
+            await self.email_service.send_password_reset_email(user.email, token)
+            print(f"Password reset email sent to {user.email}")
+        except Exception as e:
+            print(f"Failed to send password reset email to {user.email}: {e}")
 
     async def on_after_request_verify(
         self, user: User, token: str, request: Optional[Request] = None
     ):
-        """Hook called after verification request"""
-        print(f"Verification requested for user {user.id}. Verification token: {token}")
+        """Hook called after verification request - sends verification email"""
+        try:
+            await self.email_service.send_verification_email(user.email, token)
+            print(f"Verification email sent to {user.email}")
+        except Exception as e:
+            print(f"Failed to send verification email to {user.email}: {e}")
 
 
 async def get_user_db(session: AsyncSession = Depends(get_async_db)):
@@ -71,9 +84,17 @@ async def get_user_db(session: AsyncSession = Depends(get_async_db)):
     yield SQLAlchemyUserDatabase(session, User)
 
 
-async def get_user_manager(user_db=Depends(get_user_db)):
+def get_email_service() -> EmailService:
+    """Get email service instance"""
+    return EmailService()
+
+
+async def get_user_manager(
+    user_db=Depends(get_user_db),
+    email_service: EmailService = Depends(get_email_service),
+):
     """Get user manager instance"""
-    yield UserManager(user_db)
+    yield UserManager(user_db, email_service)
 
 
 def get_jwt_strategy() -> JWTStrategy:
@@ -102,4 +123,15 @@ fastapi_users = FastAPIUsers[User, int](get_user_manager, [auth_backend])
 # Dependency to get current user
 async def get_current_user(user: User = Depends(fastapi_users.current_user())) -> User:
     """Get the current authenticated user"""
+    return user
+
+
+# Dependency to get current verified user
+async def get_current_verified_user(user: User = Depends(get_current_user)) -> User:
+    """Get the current user and ensure they are verified"""
+    if not user.is_verified:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Email not verified. Please verify your email first.",
+        )
     return user

@@ -11,6 +11,9 @@ import { usePermissions } from "./hooks/usePermissions";
 import AuthLayout from "./components/Auth/AuthLayout";
 import LoginForm from "./components/Auth/LoginForm";
 import RegisterForm from "./components/Auth/RegisterForm";
+import EmailVerification from "./components/Auth/EmailVerification";
+import ForgotPassword from "./components/Auth/ForgotPassword";
+import ResetPassword from "./components/Auth/ResetPassword";
 import EvidenceSeekerList from "./components/EvidenceSeeker/EvidenceSeekerList";
 import EvidenceSeekerForm from "./components/EvidenceSeeker/EvidenceSeekerForm";
 import EvidenceSeekerManagementWrapper from "./components/EvidenceSeeker/EvidenceSeekerManagementWrapper";
@@ -342,6 +345,18 @@ const App: React.FC = () => {
         ) : (
           <AuthPage />
         ),
+    },
+    {
+      path: "/verify-email",
+      element: <EmailVerification />,
+    },
+    {
+      path: "/forgot-password",
+      element: <ForgotPassword />,
+    },
+    {
+      path: "/reset-password",
+      element: <ResetPassword />,
     },
     {
       path: "/platform-settings",
