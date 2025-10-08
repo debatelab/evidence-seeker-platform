@@ -29,11 +29,15 @@ import { useEvidenceSeekers } from "./hooks/useEvidenceSeeker";
 import { EvidenceSeeker } from "./types/evidenceSeeker";
 
 // Wrapper component to provide Evidence Seeker UUID to tab components
-const TabWrapper = ({
+interface EvidenceSeekerUuidProp {
+  evidenceSeekerUuid?: string; // optional when needsEvidenceSeeker=false scenario
+}
+
+const TabWrapper = <P extends EvidenceSeekerUuidProp = EvidenceSeekerUuidProp>({
   Component,
   needsEvidenceSeeker = true,
 }: {
-  Component: React.ComponentType<any>;
+  Component: React.ComponentType<P>;
   needsEvidenceSeeker?: boolean;
 }) => {
   const { evidenceSeekerId } = useParams<{ evidenceSeekerId: string }>();
@@ -67,11 +71,12 @@ const TabWrapper = ({
     );
   }
 
-  return needsEvidenceSeeker ? (
-    <Component evidenceSeekerUuid={evidenceSeeker!.uuid} />
-  ) : (
-    <Component evidenceSeekerUuid={evidenceSeekerId} />
-  );
+  if (needsEvidenceSeeker) {
+    return (
+      <Component {...({ evidenceSeekerUuid: evidenceSeeker!.uuid } as P)} />
+    );
+  }
+  return <Component {...({ evidenceSeekerUuid: evidenceSeekerId } as P)} />;
 };
 
 const App: React.FC = () => {
@@ -86,11 +91,6 @@ const App: React.FC = () => {
       console.log("App - User is authenticated, should show welcome page.");
     }
   }, [isAuthenticated, user]);
-
-  const handleRegisterSuccess = () => {
-    console.log("Registration successful!");
-    setIsLoginMode(true);
-  };
 
   const handleSwitchToRegister = () => {
     setIsLoginMode(false);
@@ -249,10 +249,7 @@ const App: React.FC = () => {
       {isLoginMode ? (
         <LoginForm onSwitchToRegister={handleSwitchToRegister} />
       ) : (
-        <RegisterForm
-          onSuccess={handleRegisterSuccess}
-          onSwitchToLogin={handleSwitchToLogin}
-        />
+        <RegisterForm onSwitchToLogin={handleSwitchToLogin} />
       )}
     </AuthLayout>
   );

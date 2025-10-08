@@ -129,7 +129,7 @@ const UploadSuccess: React.FC<UploadSuccessProps> = ({
                 </div>
                 <div className="ml-3">
                   <h4 className="text-sm font-medium text-blue-800">
-                    What's Next?
+                    What\u2019s Next?
                   </h4>
                   <div className="mt-2 text-sm text-blue-700">
                     <ul className="list-disc list-inside space-y-1">
