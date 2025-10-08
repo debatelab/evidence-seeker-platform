@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Document, DocumentCreate } from "../types/document";
 import api from "../utils/api";
 
@@ -7,7 +7,7 @@ export const useDocuments = (evidenceSeekerUuid: string) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchDocuments = async () => {
+  const fetchDocuments = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -20,7 +20,7 @@ export const useDocuments = (evidenceSeekerUuid: string) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [evidenceSeekerUuid]);
 
   const uploadDocument = async (
     data: DocumentCreate
@@ -69,7 +69,7 @@ export const useDocuments = (evidenceSeekerUuid: string) => {
     if (evidenceSeekerUuid) {
       fetchDocuments();
     }
-  }, [evidenceSeekerUuid]);
+  }, [evidenceSeekerUuid, fetchDocuments]);
 
   return {
     documents,
@@ -86,7 +86,7 @@ export const useDocument = (id: number) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchDocument = async () => {
+  const fetchDocument = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -97,13 +97,13 @@ export const useDocument = (id: number) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
   useEffect(() => {
     if (id) {
       fetchDocument();
     }
-  }, [id]);
+  }, [id, fetchDocument]);
 
   return {
     document,

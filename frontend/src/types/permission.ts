@@ -15,7 +15,7 @@ export interface Permission extends PermissionBase {
   createdAt: string;
 }
 
-export interface PermissionCreate extends PermissionBase {}
+export type PermissionCreate = PermissionBase
 
 export interface PermissionUpdate {
   role?: PermissionRole;

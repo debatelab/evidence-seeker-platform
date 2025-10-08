@@ -13,9 +13,8 @@ const DocumentList: React.FC<DocumentListProps> = ({
   evidenceSeekerUuid,
   onDocumentSelect,
 }) => {
-  const { documents, loading, error, deleteDocument } = useDocuments(
-    evidenceSeekerUuid
-  );
+  const { documents, loading, error, deleteDocument } =
+    useDocuments(evidenceSeekerUuid);
 
   const handleDelete = async (uuid: string) => {
     const success = await deleteDocument(uuid);

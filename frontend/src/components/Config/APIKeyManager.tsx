@@ -8,13 +8,11 @@ import {
   Plus,
   Edit,
   Trash2,
-  Eye,
-  EyeOff,
   Check,
   X,
   AlertTriangle,
   Loader2,
-} from "lucide-react";
+} from "lucide-react"; // removed Eye/EyeOff imports (unused)
 import { useAPIKeys, useAPIKeyValidation } from "../../hooks/useConfig";
 import { APIKeyRead, APIKeyCreate, APIKeyUpdate } from "../../types/config";
 
@@ -32,14 +30,14 @@ export const APIKeyManager: React.FC<APIKeyManagerProps> = ({
     createApiKey,
     updateApiKey,
     deleteApiKey,
-    refetch,
+    refetch: _refetch,
   } = useAPIKeys(evidenceSeekerUuid);
 
   const { validateApiKey, loading: validationLoading } = useAPIKeyValidation();
 
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingKey, setEditingKey] = useState<APIKeyRead | null>(null);
-  const [visibleKeys, setVisibleKeys] = useState<Set<number>>(new Set());
+  // Removed unused visibleKeys state (visibility toggling not implemented)
   const [validationResults, setValidationResults] = useState<
     Record<number, { isValid: boolean; message: string }>
   >({});
@@ -107,17 +105,7 @@ export const APIKeyManager: React.FC<APIKeyManagerProps> = ({
     }
   };
 
-  const toggleKeyVisibility = (keyId: number) => {
-    setVisibleKeys((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(keyId)) {
-        newSet.delete(keyId);
-      } else {
-        newSet.add(keyId);
-      }
-      return newSet;
-    });
-  };
+  // toggleKeyVisibility removed (feature not active)
 
   const validateKey = async (apiKey: APIKeyRead) => {
     try {

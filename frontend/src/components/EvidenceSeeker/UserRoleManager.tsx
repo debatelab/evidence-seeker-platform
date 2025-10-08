@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Users, UserPlus, Edit2, Trash2, Shield, Eye } from "lucide-react";
 import { PermissionRole } from "../../types/permission";
 import { useUserManagement } from "../../hooks/useUserManagement";
@@ -26,10 +26,10 @@ export const UserRoleManager: React.FC<UserRoleManagerProps> = ({
     null
   );
 
-    const {
-      getUsersWithRoles,
-      assignRole,
-      updateRole: _updateRole,
+  const {
+    getUsersWithRoles,
+    assignRole,
+    updateRole: _updateRole,
     removeRole,
     isLoading,
     error,
@@ -37,18 +37,18 @@ export const UserRoleManager: React.FC<UserRoleManagerProps> = ({
   const { canManageEvidenceSeeker } = usePermissions();
   const { refreshPermissions } = useAuth();
 
-  useEffect(() => {
-    loadUsers();
-  }, [evidenceSeekerUuid]);
-
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
     try {
       const data = await getUsersWithRoles(evidenceSeekerUuid);
       setUsers(data);
     } catch (err) {
       console.error("Failed to load users:", err);
     }
-  };
+  }, [getUsersWithRoles, evidenceSeekerUuid]);
+
+  useEffect(() => {
+    loadUsers();
+  }, [loadUsers]);
 
   const handleRoleUpdate = async (userId: number, newRole: PermissionRole) => {
     try {

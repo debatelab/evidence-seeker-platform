@@ -1,18 +1,18 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { AlertTriangle, CheckCircle, Loader2 } from "lucide-react";
 
 interface EmailVerificationProps {
   email?: string;
-  onVerificationComplete?: () => void;
-  onResendEmail?: () => void;
+  _onVerificationComplete?: () => void; // underscored: reserved for future use
+  _onResendEmail?: () => void; // underscored: reserved for future use
   showResendOption?: boolean;
 }
 
 const EmailVerification: React.FC<EmailVerificationProps> = ({
   email: propEmail,
-  onVerificationComplete,
-  onResendEmail,
+  _onVerificationComplete: _onVerificationComplete,
+  _onResendEmail: _onResendEmail,
   showResendOption = false,
 }) => {
   const [searchParams] = useSearchParams();
@@ -28,45 +28,48 @@ const EmailVerification: React.FC<EmailVerificationProps> = ({
   const locationEmail = location.state?.email;
   const displayEmail = propEmail || locationEmail;
 
+  const verifyEmail = useCallback(
+    async (verificationToken: string) => {
+      setIsVerifying(true);
+      setError(null);
+
+      try {
+        const response = await fetch("/api/v1/auth/verify", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: new URLSearchParams({
+            token: verificationToken,
+          }),
+        });
+
+        if (response.ok) {
+          setIsVerified(true);
+          setTimeout(() => {
+            navigate("/dashboard");
+          }, 2000);
+        } else {
+          const errorData = await response.json();
+          setError(
+            errorData.detail ||
+              "Verification failed. The link may be expired or invalid."
+          );
+        }
+      } catch (err) {
+        setError("Network error. Please try again.");
+      } finally {
+        setIsVerifying(false);
+      }
+    },
+    [navigate]
+  );
+
   useEffect(() => {
     if (token && !isVerified) {
       verifyEmail(token);
     }
-  }, [token]);
-
-  const verifyEmail = async (verificationToken: string) => {
-    setIsVerifying(true);
-    setError(null);
-
-    try {
-      const response = await fetch("/api/v1/auth/verify", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: new URLSearchParams({
-          token: verificationToken,
-        }),
-      });
-
-      if (response.ok) {
-        setIsVerified(true);
-        setTimeout(() => {
-          navigate("/dashboard");
-        }, 2000);
-      } else {
-        const errorData = await response.json();
-        setError(
-          errorData.detail ||
-            "Verification failed. The link may be expired or invalid."
-        );
-      }
-    } catch (err) {
-      setError("Network error. Please try again.");
-    } finally {
-      setIsVerifying(false);
-    }
-  };
+  }, [token, isVerified, verifyEmail]);
 
   const handleResendVerification = async () => {
     setIsResending(true);
@@ -131,7 +134,7 @@ const EmailVerification: React.FC<EmailVerificationProps> = ({
           <p className="mt-2 text-sm text-gray-600">
             {displayEmail ? (
               <>
-                We've sent a verification link to{" "}
+                We&apos;ve sent a verification link to{" "}
                 <strong>{displayEmail}</strong>
               </>
             ) : (
@@ -183,8 +186,8 @@ const EmailVerification: React.FC<EmailVerificationProps> = ({
         {(showResendOption || !token) && (
           <div className="text-center">
             <p className="text-sm text-gray-600 mb-4">
-              Didn't receive the email? Check your spam folder or request a new
-              one.
+              Didn&apos;t receive the email? Check your spam folder or request a
+              new one.
             </p>
             <button
               onClick={handleResendVerification}

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router";
+// navigate removed (unused)
 import { Document, DocumentCreate } from "../../types/document";
 import { useDocuments } from "../../hooks/useDocument";
 import UploadForm from "./UploadForm";
@@ -18,7 +18,6 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({
   evidenceSeekerUuid,
   onUploadSuccess,
 }) => {
-  const navigate = useNavigate();
   const { uploadDocument } = useDocuments(evidenceSeekerUuid);
 
   const [uploadState, setUploadState] = useState<UploadState>("form-input");
@@ -27,9 +26,9 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({
   const [currentDescription, setCurrentDescription] = useState<string>("");
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [uploadError, setUploadError] = useState<string>("");
-  const [uploadedDocument, setUploadedDocument] = useState<Document | null>(
+  const [_uploadedDocument, setUploadedDocument] = useState<Document | null>(
     null
-  );
+  ); // underscored to satisfy no-unused-vars rule
 
   const handleStartUpload = async (
     file: File,

@@ -2,18 +2,14 @@
  * Main search interface component for AI-powered document search
  */
 
-import React, { useState, useEffect } from "react";
-import { Search, Filter, Loader2, FileText, Clock, Target } from "lucide-react";
+import React, { useState } from "react";
+import { Search, Loader2, FileText, Clock, Target } from "lucide-react";
 import {
   useSearch,
   useSearchStatistics,
   useProgressUpdates,
 } from "../../hooks/useSearch";
-import {
-  SearchQuery,
-  SearchResult,
-  SearchStatistics,
-} from "../../types/search";
+import { SearchQuery, SearchResult } from "../../types/search";
 
 interface SearchInterfaceProps {
   evidenceSeekerUuid: string;
@@ -21,25 +17,27 @@ interface SearchInterfaceProps {
 }
 
 export const SearchInterface: React.FC<SearchInterfaceProps> = ({
-  evidenceSeekerUuid,
+  evidenceSeekerUuid: _evidenceSeekerUuid,
   onResultSelect,
 }) => {
   const [query, setQuery] = useState("");
   const [limit, setLimit] = useState(10);
   const [similarityThreshold, setSimilarityThreshold] = useState(0.1);
-  const [selectedDocumentIds, setSelectedDocumentIds] = useState<number[]>([]);
-  const [currentOperationId, setCurrentOperationId] = useState<string | null>(
+  const [_selectedDocumentIds, _setSelectedDocumentIds] = useState<number[]>(
+    []
+  );
+  const [currentOperationId, _setCurrentOperationId] = useState<string | null>(
     null
   );
 
   const { search, loading: searchLoading, error: searchError } = useSearch();
-  const { stats, loading: statsLoading } = useSearchStatistics();
-  const { currentUpdate, connected } = useProgressUpdates(
+  const { stats, loading: _statsLoading } = useSearchStatistics();
+  const { currentUpdate, connected: _connected } = useProgressUpdates(
     currentOperationId || ""
   );
 
   const [results, setResults] = useState<SearchResult[]>([]);
-  const [searchPerformed, setSearchPerformed] = useState(false);
+  const [_searchPerformed, _setSearchPerformed] = useState(false);
 
   const handleSearch = async () => {
     if (!query.trim()) return;
@@ -49,13 +47,12 @@ export const SearchInterface: React.FC<SearchInterfaceProps> = ({
         query: query.trim(),
         limit,
         similarity_threshold: similarityThreshold,
-        document_ids:
-          selectedDocumentIds.length > 0 ? selectedDocumentIds : undefined,
+        // document_ids intentionally omitted (underscore placeholder state)
       };
 
       const response = await search(searchQuery);
       setResults(response.results);
-      setSearchPerformed(true);
+      _setSearchPerformed(true);
     } catch (error) {
       console.error("Search failed:", error);
     }
@@ -71,9 +68,7 @@ export const SearchInterface: React.FC<SearchInterfaceProps> = ({
     return `${(score * 100).toFixed(1)}%`;
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString();
-  };
+  // formatDate removed (unused)
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">
@@ -228,7 +223,7 @@ export const SearchInterface: React.FC<SearchInterfaceProps> = ({
       )}
 
       {/* Search Results */}
-      {searchPerformed && (
+      {_searchPerformed && (
         <div className="bg-white rounded-lg shadow-sm border">
           <div className="p-4 border-b border-gray-200">
             <h2 className="text-lg font-semibold text-gray-900">

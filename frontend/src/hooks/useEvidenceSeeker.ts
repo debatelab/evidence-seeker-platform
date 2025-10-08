@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   EvidenceSeeker,
   EvidenceSeekerCreate,
@@ -100,7 +100,7 @@ export const useEvidenceSeeker = (id: number) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchEvidenceSeeker = async () => {
+  const fetchEvidenceSeeker = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -111,13 +111,13 @@ export const useEvidenceSeeker = (id: number) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
   useEffect(() => {
     if (id) {
       fetchEvidenceSeeker();
     }
-  }, [id]);
+  }, [id, fetchEvidenceSeeker]);
 
   return {
     evidenceSeeker,

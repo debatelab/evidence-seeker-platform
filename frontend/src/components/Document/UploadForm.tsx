@@ -24,7 +24,7 @@ const UploadForm: React.FC<UploadFormProps> = ({ onStartUpload }) => {
     (
       acceptedFiles: File[],
       fileRejections: FileRejection[],
-      event: DropEvent
+      _event: DropEvent
     ) => {
       // Clear previous errors
       setError(null);

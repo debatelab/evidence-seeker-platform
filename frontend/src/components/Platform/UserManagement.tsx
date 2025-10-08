@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Users,
   Trash2,
@@ -42,9 +42,18 @@ export const UserManagement: React.FC = () => {
   const { hasPlatformAdminAccess } = usePermissions();
   const { user: currentUser } = useAuth();
 
+  const loadUsers = useCallback(async () => {
+    try {
+      const response = await getAllUsers();
+      setUsers(response.users || []);
+    } catch (err) {
+      console.error("Failed to load users:", err);
+    }
+  }, [getAllUsers]);
+
   useEffect(() => {
     loadUsers();
-  }, []);
+  }, [loadUsers]);
 
   useEffect(() => {
     // Filter users based on search query
@@ -61,14 +70,7 @@ export const UserManagement: React.FC = () => {
     }
   }, [users, searchQuery]);
 
-  const loadUsers = async () => {
-    try {
-      const response = await getAllUsers();
-      setUsers(response.users || []);
-    } catch (err) {
-      console.error("Failed to load users:", err);
-    }
-  };
+  // loadUsers moved above and memoized with useCallback
 
   const handleDeleteUser = async (userId: number) => {
     if (
