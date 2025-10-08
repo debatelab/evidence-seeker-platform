@@ -21,6 +21,7 @@
         "react-router-dom": "^7.8.2"
     },
     "devDependencies": {
+        "rollup": "4.46.4",
         "@testing-library/jest-dom": "^6.1.5",
         "@testing-library/react": "^14.1.2",
         "@testing-library/user-event": "^14.5.1",
@@ -40,5 +41,12 @@
         "typescript": "^5.3.2",
         "vite": "^5.0.8",
         "vitest": "^0.34.6"
+    },
+    "optionalDependencies": {
+        "@rollup/rollup-linux-x64-gnu": "*"
+    },
+    "engines": {
+        "node": ">=24.0.2",
+        "npm": ">=11.3.0"
     }
 }

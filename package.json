@@ -47,4 +47,8 @@
     ],
     "author": "Evidence Seeker Team",
     "license": "MIT"
+        ,"engines": {
+            "node": ">=24.0.2",
+            "npm": ">=11.3.0"
+        }
 }

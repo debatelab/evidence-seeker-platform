@@ -76,7 +76,37 @@ This stack is chosen for rapid development, type safety, and operational simplic
 | **Development** | **Hybrid Approach** | Run **Postgres in Docker** for stability. Run the **FastAPI backend and React frontend locally** for fast hot-reloading. |
 | **Environment Management** | **.env files** | Secure configuration management with environment variables |
 
-## **📊 Data Model Overview**
+## **� Runtime Requirements (Node & npm)**
+
+To avoid issues with optional native Rollup binaries (e.g. `@rollup/rollup-linux-x64-gnu` not resolving on CI), this repository standardizes on:
+
+* **Node.js:** 24.0.2 or later
+* **npm:** 11.3.0 or later (ships with the fix for optional dependency installation across platforms)
+
+Enforcement aids:
+* `.nvmrc` at the repo root (run `nvm use` after cloning)
+* `engines` field in root and frontend `package.json`
+
+### Clean Reinstall Steps (after updating Node/npm)
+
+```bash
+rm -rf node_modules frontend/node_modules package-lock.json
+nvm install 24.0.2 # or use your version manager (Volta, asdf)
+nvm use 24.0.2
+npm install
+```
+
+If using a workspace-aware install, the root `package-lock.json` will include the frontend workspace resolution.
+
+### CI Notes
+* GitHub Actions workflow pins Node 24.0.2 for the frontend job.
+* Optional dependency wildcard declared in `frontend/package.json` under `optionalDependencies` ensures Linux runners retrieve the correct Rollup native binary when needed.
+
+### Fallback (If Stuck on Node 20)
+You can keep the wildcard optional dependency and attempt a retry strategy, but sporadic install failures may occur due to npm’s older handling of platform-specific packages. Upgrading is strongly recommended.
+
+
+## **�📊 Data Model Overview**
 
 Core relationships:
 - **User** → **EvidenceSeeker** (many-to-many through permissions table)
