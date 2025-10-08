@@ -1,8 +1,8 @@
-import { render, screen } from "@testing-library/react";
+import { beforeEach, afterEach, test, expect } from "vitest";
 import "@testing-library/jest-dom";
+import { render, screen } from "@testing-library/react";
 import App from "../App";
 import { AuthProvider } from "../context/AuthContext";
-import { beforeEach, afterEach, test, expect } from "vitest";
 
 // Mock localStorage token and user before rendering
 beforeEach(() => {

@@ -97,7 +97,7 @@ jobs:
       - name: Run frontend tests
         run: |
           cd frontend
-          npm run test
+          npm run test:ci
 
   # Security scanning (conditionally runs Trivy heavy scan only on main branch to save disk)
   security:
