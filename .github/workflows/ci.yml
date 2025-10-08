@@ -207,6 +207,7 @@ jobs:
         tags: |
           ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/evidence-backend:sha-${{ github.sha }}
           ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/evidence-backend:latest
+          ${{ (startsWith(github.ref, 'refs/tags/') && format('{0}/{1}/evidence-backend:{2}', env.REGISTRY, env.IMAGE_OWNER, github.ref_name)) || '' }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
 
@@ -220,6 +221,7 @@ jobs:
         tags: |
           ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/evidence-frontend:sha-${{ github.sha }}
           ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/evidence-frontend:latest
+          ${{ (startsWith(github.ref, 'refs/tags/') && format('{0}/{1}/evidence-frontend:{2}', env.REGISTRY, env.IMAGE_OWNER, github.ref_name)) || '' }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
 
