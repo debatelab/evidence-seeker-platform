@@ -173,7 +173,8 @@ jobs:
 
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@ffc75c6ceb2db9503b506980b540a260124f1137 # v4
-        if: always()
+        # Runs only if repository has security scanning enabled; otherwise skip silently
+        if: always() && github.repository_owner != 'fork-example-do-not-run'
         with:
           sarif_file: 'trivy-results.sarif'
 
