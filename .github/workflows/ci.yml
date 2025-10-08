@@ -45,21 +45,26 @@ jobs:
       - name: Install dependencies
         run: |
           cd backend
+          uv venv .venv
+          . .venv/bin/activate
           uv pip install -e .[dev]
 
       - name: Run Black
         run: |
           cd backend
+          . .venv/bin/activate
           black --check --diff .
 
       - name: Run Ruff
         run: |
           cd backend
+          . .venv/bin/activate
           ruff check .
 
       - name: Run mypy
         run: |
           cd backend
+          . .venv/bin/activate
           mypy .
 
       - name: Run tests
@@ -67,6 +72,7 @@ jobs:
           DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
         run: |
           cd backend
+          . .venv/bin/activate
           pytest -v --cov=app --cov-report=term-missing
 
   # Frontend linting, type checking and tests (merged)
