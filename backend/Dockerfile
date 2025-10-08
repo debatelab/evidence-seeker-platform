@@ -19,11 +19,11 @@ RUN apt-get update && apt-get install -y \
 # Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 
-# Copy requirements first for better caching
-COPY requirements.txt .
-RUN uv pip install --system -r requirements.txt
+# Copy project metadata first for better caching
+COPY pyproject.toml uv.lock* ./
+RUN uv pip install --system .
 
-# Copy application code
+# Copy application code (exclude dev-only files via dockerignore if desired)
 COPY . .
 
 # Create non-root user

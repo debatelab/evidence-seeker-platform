@@ -440,9 +440,8 @@ evidence-seeker-platform/
 │   │   ├── schemas/       # Pydantic schemas
 │   │   └── main.py        # Application entry point
 │   ├── tests/             # Test files
-│   ├── requirements.txt   # Python dependencies
+│   ├── pyproject.toml     # Python project config & dependencies (managed with uv)
 │   ├── Dockerfile         # Backend container config
-│   └── pyproject.toml     # Python project config
 ├── frontend/               # React frontend
 │   ├── src/               # Source code
 │   │   ├── components/    # React components
