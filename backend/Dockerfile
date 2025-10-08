@@ -21,9 +21,12 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 
 # Copy project metadata first for better caching
 COPY pyproject.toml uv.lock* ./
+# Copy only package source and README needed for build (improves cache reuse)
+COPY app ./app
+COPY README.md ./
 RUN uv pip install --system .
 
-# Copy application code (exclude dev-only files via dockerignore if desired)
+# Copy the rest of the application code (migrations, scripts, templates, etc.)
 COPY . .
 
 # Create non-root user
