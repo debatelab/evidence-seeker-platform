@@ -23,7 +23,7 @@ FROM nginx:alpine
 # Copy built assets
 COPY --from=build /app/frontend/dist /usr/share/nginx/html
 
-# Copy nginx configuration
+# Copy nginx configuration (source path relative to root build context)
 COPY frontend/nginx.conf /etc/nginx/nginx.conf
 
 # Expose port
