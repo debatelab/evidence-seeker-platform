@@ -1,0 +1,57 @@
+version: "3.9"
+
+services:
+  backend:
+    image: ${BACKEND_IMAGE:?BACKEND_IMAGE not set}
+    restart: unless-stopped
+    env_file: .env.prod
+    environment:
+      # Example explicit overrides (can also live in env file)
+      DATABASE_URL: ${DATABASE_URL}
+    depends_on:
+      - db
+    ports:
+      - "8000:8000"
+
+  frontend:
+    image: ${FRONTEND_IMAGE:?FRONTEND_IMAGE not set}
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD not set}
+      POSTGRES_DB: ${POSTGRES_DB:-evidence}
+    volumes:
+      - evidence_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  vector_db:
+    image: ankane/pgvector:latest
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${VECTOR_USER:-vector}
+      POSTGRES_PASSWORD: ${VECTOR_PASSWORD:?VECTOR_PASSWORD not set}
+      POSTGRES_DB: ${VECTOR_DB:-vectordb}
+    volumes:
+      - vector_data:/var/lib/postgresql/data
+
+volumes:
+  evidence_data:
+  vector_data:
+
+# Usage notes:
+# 1. Copy to docker-compose.prod.yml and tailor as needed.
+# 2. Set BACKEND_IMAGE / FRONTEND_IMAGE to full immutable refs (including @sha256 digest) before running:
+#      export BACKEND_IMAGE="ghcr.io/debatelab/evidence-backend@sha256:<digest>"
+#      export FRONTEND_IMAGE="ghcr.io/debatelab/evidence-frontend@sha256:<digest>"
+# 3. Provide secrets via an .env.prod file NOT committed to git.
+# 4. Start stack: docker compose -f docker-compose.prod.yml up -d
+# 5. To update: adjust image env vars (or pull), then docker compose up -d
