@@ -1,9 +1,5 @@
 import { useState } from "react";
-import {
-  UserSearchResult,
-  UserRoleAssignment,
-  UserRoleUpdate,
-} from "../types/user";
+import { UserSearchResult } from "../types/user";
 import { PermissionRole } from "../types/permission";
 import apiClient from "../utils/api";
 

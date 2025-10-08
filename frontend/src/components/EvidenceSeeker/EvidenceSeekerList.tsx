@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router";
-import { EvidenceSeeker } from "../../types/evidenceSeeker";
 import { useEvidenceSeekers } from "../../hooks/useEvidenceSeeker";
 import PageLayout from "../PageLayout";
 

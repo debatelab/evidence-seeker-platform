@@ -8,7 +8,6 @@ import {
   EmbeddingStatus,
   EmbeddingRegenerateRequest,
   EmbeddingModelInfo,
-  BatchEmbeddingRequest,
   BatchEmbeddingResponse,
 } from "../types/embedding";
 

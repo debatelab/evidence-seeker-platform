@@ -4,15 +4,15 @@ import { useAuth } from "../../hooks/useAuth";
 import { RegisterFormData } from "../../types/auth";
 
 interface RegisterFormProps {
-  onSuccess?: () => void;
+  _onSuccess?: () => void; // underscored: reserved for future use
   onSwitchToLogin?: () => void;
 }
 
 const RegisterForm: React.FC<RegisterFormProps> = ({
-  onSuccess,
+  _onSuccess: _onSuccess,
   onSwitchToLogin,
 }) => {
-  const { register, isLoading, error, clearError } = useAuth();
+  const { register, isLoading, error } = useAuth();
   const navigate = useNavigate();
 
   // Initialize form data from sessionStorage to preserve across remounts

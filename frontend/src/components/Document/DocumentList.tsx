@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Link, useParams } from "react-router";
+import React from "react";
+import { Link } from "react-router";
 import { Document } from "../../types/document";
 import { useDocuments } from "../../hooks/useDocument";
 import { documentsAPI } from "../../utils/api";
@@ -13,16 +13,13 @@ const DocumentList: React.FC<DocumentListProps> = ({
   evidenceSeekerUuid,
   onDocumentSelect,
 }) => {
-  const { documents, loading, error, deleteDocument } =
-    useDocuments(evidenceSeekerUuid);
-  const [deleteLoading, setDeleteLoading] = useState<number | null>(null);
+  const { documents, loading, error, deleteDocument } = useDocuments(
+    evidenceSeekerUuid
+  );
 
   const handleDelete = async (uuid: string) => {
-    setDeleteLoading(null); // Remove loading state since we don't have the ID anymore
     const success = await deleteDocument(uuid);
-    if (!success) {
-      alert("Failed to delete document");
-    }
+    if (!success) alert("Failed to delete document");
   };
 
   const handleDownload = async (doc: Document) => {

@@ -24,7 +24,7 @@ export const RoleAssignmentForm: React.FC<RoleAssignmentFormProps> = ({
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { assignRole, isLoading, error } = useUserManagement();
+  const { assignRole, isLoading: _isLoading, error } = useUserManagement();
   const { refreshPermissions } = useAuth();
 
   const handleUserSelect = (user: UserSearchResult) => {

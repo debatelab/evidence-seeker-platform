@@ -4,10 +4,9 @@ import React, {
   useState,
   useEffect,
   useCallback,
-  useRef,
   ReactNode,
 } from "react";
-import { User, AuthState, LoginRequest, RegisterRequest } from "../types/auth";
+import { AuthState, LoginRequest, RegisterRequest } from "../types/auth";
 import { authAPI, permissionsAPI, apiUtils } from "../utils/api";
 
 // Polling configuration

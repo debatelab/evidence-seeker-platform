@@ -70,8 +70,8 @@ const UploadForm: React.FC<UploadFormProps> = ({ onStartUpload }) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = (_event: React.FormEvent) => {
+    _event.preventDefault();
 
     if (!selectedFile) {
       setError("Please select a file");

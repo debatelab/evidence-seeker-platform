@@ -26,10 +26,10 @@ export const UserRoleManager: React.FC<UserRoleManagerProps> = ({
     null
   );
 
-  const {
-    getUsersWithRoles,
-    assignRole,
-    updateRole,
+    const {
+      getUsersWithRoles,
+      assignRole,
+      updateRole: _updateRole,
     removeRole,
     isLoading,
     error,
