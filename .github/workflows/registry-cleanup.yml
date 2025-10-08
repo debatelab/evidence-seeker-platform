@@ -1,0 +1,73 @@
+name: GHCR Image Cleanup
+
+on:
+  schedule:
+    - cron: '0 3 * * 0'  # Weekly Sunday 03:00 UTC
+  workflow_dispatch:
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    env:
+      REGISTRY: ghcr.io
+      IMAGE_OWNER: debatelab
+      IMAGES: evidence-backend evidence-frontend
+      KEEP_LATEST: 15
+    steps:
+      - name: List image versions (pre)
+        run: |
+          echo "Listing current versions (first 50)";
+          for img in $IMAGES; do
+            echo "Image: $img";
+            gh api -H "Accept: application/vnd.github+json" \
+              /users/${IMAGE_OWNER}/packages/container/${img}/versions?per_page=50 | jq '.[].metadata.container.tags'
+          done || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Delete old untagged and excess versions
+        run: |
+          set -euo pipefail
+          for img in $IMAGES; do
+            echo "Processing $img";
+            versions=$(gh api -H "Accept: application/vnd.github+json" \
+              /users/${IMAGE_OWNER}/packages/container/${img}/versions?per_page=200)
+            # Build list of version IDs with their primary (first) tag
+            echo "$versions" | jq -r '.[] | {id: .id, tags: .metadata.container.tags} | @base64' | while read -r row; do
+              _jq() { echo "$row" | base64 --decode | jq -r "$1"; }
+              vid=$(_jq '.id')
+              tags=$(_jq '.tags')
+              # Keep if any tag matches latest retention policy
+              if echo "$tags" | grep -q 'latest'; then continue; fi
+              if echo "$tags" | grep -q 'sha-'; then
+                # Extract sha order by recency via API order. Keep first KEEP_LATEST sha tags overall.
+                :
+              fi
+            done
+            # Second pass: delete older SHA-tagged versions beyond KEEP_LATEST
+            sha_versions=$(echo "$versions" | jq -r '.[] | select(.metadata.container.tags | map(startswith("sha-")) | any) | .id')
+            count=0
+            for vid in $sha_versions; do
+              count=$((count+1))
+              if [ $count -le $KEEP_LATEST ]; then continue; fi
+              echo "Deleting excess sha version id $vid";
+              gh api --method DELETE -H "Accept: application/vnd.github+json" \
+                /users/${IMAGE_OWNER}/packages/container/${img}/versions/$vid || true
+            done
+          done
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: List image versions (post)
+        run: |
+          echo "Post-cleanup versions (first 30)";
+          for img in $IMAGES; do
+            echo "Image: $img";
+            gh api -H "Accept: application/vnd.github+json" \
+              /users/${IMAGE_OWNER}/packages/container/${img}/versions?per_page=30 | jq '.[].metadata.container.tags'
+          done || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
