@@ -27,21 +27,39 @@ This guide provides a comprehensive step-by-step process for deploying the Evide
 sudo apt update && sudo apt upgrade -y
 
 # Install required packages
-sudo apt install -y curl wget git ufw software-properties-common apt-transport-https ca-certificates gnupg lsb-release
+sudo apt install -y \
+    ca-certificates \
+    curl \
+    gnupg \
+    lsb-release
+
+# Add Docker's official GPG key
+sudo install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+sudo chmod a+r /etc/apt/keyrings/docker.gpg
+
+# Add Docker repository
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 
 # Install Docker
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 sudo apt update
-sudo apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+sudo apt install -y docker-ce docker-ce-cli containerd.io docker-compose docker-buildx-plugin docker-compose-plugin
 
-# Start and enable Docker
-sudo systemctl start docker
-sudo systemctl enable docker
+# Start and enable Docker (usually already done by installation)
+sudo systemctl enable --now docker
 
-# Add current user to docker group (logout and login again after this)
+# Add current user to docker group
 sudo usermod -aG docker $USER
+
+# Verify installation
+echo "Docker installation complete. Version:"
+docker --version
 ```
+
+You'll need to log out and back in (or run newgrp docker) for the group membership to take effect and use Docker without sudo.
 
 ### 1.2 Configure Firewall
 ```bash
@@ -69,14 +87,39 @@ cd /opt/evidence-seeker-platform
 
 ## Step 2: Clone and Configure Application
 
-### 2.1 Clone Repository
+
+### 2.1 add deploy key
+
+
+```bash
+# Generate a dedicated deploy key
+ssh-keygen -t ed25519 -f ~/.ssh/deploy_key -N ""
+
+# Add the public key to GitHub → Repo Settings → Deploy keys
+cat ~/.ssh/deploy_key.pub
+
+# Configure SSH config (cleaner for permanent setup)
+cat >> ~/.ssh/config << 'EOF'
+Host github.com
+    IdentityFile ~/.ssh/deploy_key
+    IdentitiesOnly yes
+EOF
+
+chmod 600 ~/.ssh/config
+
+# Then clone normally
+git clone git@github.com:username/repo.git
+```
+
+### 2.2 Clone github repo
+
 ```bash
 # Clone the application
-git clone https://github.com/debatelab/evidence-seeker-platform.git .
+git clone git@github.com:debatelab/evidence-seeker-platform.git .
 git checkout main  # or your production branch
 ```
 
-### 2.2 Configure Environment Variables
+### 2.3 Configure Environment Variables
 
 Create production environment files with secure secrets:
 
@@ -379,10 +422,10 @@ sudo certbot renew --dry-run
 
 # Add renewal hook to update symlinks
 sudo mkdir -p /etc/letsencrypt/renewal-hooks/deploy
-cat > /etc/letsencrypt/renewal-hooks/deploy/update_ssl_links.sh << 'EOF'
+sudo tee /etc/letsencrypt/renewal-hooks/deploy/update_ssl_links.sh > /dev/null << 'EOF'
 #!/bin/bash
-ln -sf /etc/letsencrypt/live/yourdomain.com/fullchain.pem /opt/evidence-seeker-platform/ssl/
-ln -sf /etc/letsencrypt/live/yourdomain.com/privkey.pem /opt/evidence-seeker-platform/ssl/
+ln -sf /etc/letsencrypt/live/b7233fdd-ac70-4e21-ae82-54a2e6c682e4.ka.bw-cloud-instance.org/fullchain.pem /opt/evidence-seeker-platform/ssl/
+ln -sf /etc/letsencrypt/live/b7233fdd-ac70-4e21-ae82-54a2e6c682e4.ka.bw-cloud-instance.org/privkey.pem /opt/evidence-seeker-platform/ssl/
 systemctl reload nginx
 EOF
 sudo chmod +x /etc/letsencrypt/renewal-hooks/deploy/update_ssl_links.sh
