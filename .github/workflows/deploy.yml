@@ -29,12 +29,34 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Resolve backend image digest
+        id: digest-backend
+        run: |
+          set -euo pipefail
+          IMAGE="ghcr.io/debatelab/evidence-backend:sha-${GITHUB_SHA}"
+          docker pull "$IMAGE" || docker pull ghcr.io/debatelab/evidence-backend:latest
+          DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' ghcr.io/debatelab/evidence-backend:sha-${GITHUB_SHA} 2>/dev/null || true)
+          if [ -z "$DIGEST" ]; then
+            DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' ghcr.io/debatelab/evidence-backend:latest)
+          fi
+            echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+      - name: Resolve frontend image digest
+        id: digest-frontend
+        run: |
+          set -euo pipefail
+          IMAGE="ghcr.io/debatelab/evidence-frontend:sha-${GITHUB_SHA}"
+          docker pull "$IMAGE" || docker pull ghcr.io/debatelab/evidence-frontend:latest
+          DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' ghcr.io/debatelab/evidence-frontend:sha-${GITHUB_SHA} 2>/dev/null || true)
+          if [ -z "$DIGEST" ]; then
+            DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' ghcr.io/debatelab/evidence-frontend:latest)
+          fi
+          echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
       - name: Deploy over SSH
         uses: appleboy/ssh-action@55dabf81b49d4120609345970c91507e2d734799 # v1.0.0
         env:
           IMAGE_REGISTRY: ghcr.io/debatelab
-          BACKEND_TAG: sha-${{ github.sha }}
-          FRONTEND_TAG: sha-${{ github.sha }}
+          BACKEND_DIGEST: ${{ steps.digest-backend.outputs.digest }}
+          FRONTEND_DIGEST: ${{ steps.digest-frontend.outputs.digest }}
         with:
           host: ${{ secrets.PRODUCTION_HOST }}
           username: ${{ secrets.PRODUCTION_USER }}
@@ -42,14 +64,10 @@ jobs:
           script: |
             set -euo pipefail
             cd /opt/evidence-seeker-platform
-
-            echo "Pulling images $IMAGE_REGISTRY/evidence-backend:${BACKEND_TAG} and latest fallback"
-            docker pull $IMAGE_REGISTRY/evidence-backend:${BACKEND_TAG} || docker pull $IMAGE_REGISTRY/evidence-backend:latest
-            docker pull $IMAGE_REGISTRY/evidence-frontend:${FRONTEND_TAG} || docker pull $IMAGE_REGISTRY/evidence-frontend:latest
-
-            # Update docker-compose override (expects env substitution in compose file)
-            export BACKEND_IMAGE="$IMAGE_REGISTRY/evidence-backend:${BACKEND_TAG}"
-            export FRONTEND_IMAGE="$IMAGE_REGISTRY/evidence-frontend:${FRONTEND_TAG}"
+            echo "Using backend image digest: ${BACKEND_DIGEST}"
+            echo "Using frontend image digest: ${FRONTEND_DIGEST}"
+            export BACKEND_IMAGE="${BACKEND_DIGEST}"
+            export FRONTEND_IMAGE="${FRONTEND_DIGEST}"
 
             echo "Stopping existing stack" && docker compose down || true
             echo "Starting updated stack" && docker compose up -d
@@ -78,6 +96,14 @@ jobs:
             curl -fsS http://localhost:8000/health > /dev/null
             curl -fsS http://localhost:3000 | grep -q "Evidence Seeker Platform"
             echo "Smoke tests OK"
+      - name: Slack notify success
+        if: success() && secrets.SLACK_WEBHOOK_URL
+        run: |
+          curl -X POST -H 'Content-type: application/json' --data "{\"text\":\"✅ Deploy succeeded for ${GITHUB_SHA}\"}" ${{ secrets.SLACK_WEBHOOK_URL }} || true
+      - name: Slack notify failure
+        if: failure() && secrets.SLACK_WEBHOOK_URL
+        run: |
+          curl -X POST -H 'Content-type: application/json' --data "{\"text\":\"❌ Deploy failed for ${GITHUB_SHA}\"}" ${{ secrets.SLACK_WEBHOOK_URL }} || true
 
   # Database backup before deployment
   backup:
