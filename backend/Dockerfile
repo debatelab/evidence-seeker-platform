@@ -32,6 +32,7 @@ RUN uv venv && \
 
 # Copy the rest of the source (migrations, scripts, templates, etc.)
 COPY . .
+RUN mkdir -p /app/uploads
 
 ########## Runtime Stage ##########
 FROM python:3.11-slim AS runtime
