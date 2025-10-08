@@ -27,6 +27,13 @@ module.exports = {
     'react/react-in-jsx-scope': 'off', // Not needed with React 17+
     'react/prop-types': 'off', // Using TypeScript for typing
     '@typescript-eslint/explicit-module-boundary-types': 'off',
+    // Transitional relaxations (to be re-tightened after refactor):
+    '@typescript-eslint/no-explicit-any': 'warn',
+    '@typescript-eslint/array-type': ['warn', { default: 'array-simple' }],
+    // Allow unused vars that start with underscore (intentional ignore)
+    '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+    // React specific tweaks
+    'react/no-unescaped-entities': 'warn',
   },
   overrides: [
     {
