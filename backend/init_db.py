@@ -5,6 +5,7 @@ Creates a test user for development purposes.
 """
 import asyncio
 import logging
+from typing import Any, cast
 
 from passlib.context import CryptContext  # type: ignore[import-untyped]
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -43,7 +44,7 @@ async def create_test_user() -> None:
         if user_exists:
             # Update existing user if they don't have a username
             if not hasattr(user_exists, "username") or user_exists.username is None:
-                user_exists.username = "testuser"  # type: ignore
+                cast(Any, user_exists).username = "testuser"
                 await session.commit()
                 print("✅ Updated existing test user with username")
 
