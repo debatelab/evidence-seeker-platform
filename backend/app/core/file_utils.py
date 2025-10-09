@@ -10,6 +10,8 @@ from .config import settings
 def validate_file(file: UploadFile) -> bool:
     """Validate uploaded file based on size and extension"""
     # Check file extension first
+    if file.filename is None:
+        raise HTTPException(status_code=400, detail="File has no filename")
     file_extension = Path(file.filename).suffix.lower()
     if file_extension not in settings.allowed_extensions:
         raise HTTPException(
@@ -47,6 +49,8 @@ def save_upload_file(file: UploadFile, evidence_seeker_id: int) -> str:
     upload_dir.mkdir(parents=True, exist_ok=True)
 
     # Generate unique filename
+    if file.filename is None:
+        raise HTTPException(status_code=400, detail="File has no filename")
     file_extension = Path(file.filename).suffix.lower()
     import uuid
 

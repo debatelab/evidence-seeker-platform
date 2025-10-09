@@ -4,14 +4,14 @@ API endpoints for vector search operations.
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from ..core.auth import get_current_user
 from ..core.database import get_db
 from ..core.vector_search import vector_search_service
-from ..models import Document
+from ..models import Document, User
 
 router = APIRouter()
 
@@ -57,8 +57,8 @@ class SearchStatistics(BaseModel):
 def search_documents(
     request: SearchRequest,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
-):
+    current_user: User = Depends(get_current_user),
+) -> SearchResponse:
     """Perform vector search across documents"""
     try:
         # If document_ids are specified, check user access
@@ -74,8 +74,10 @@ def search_documents(
                 from .evidence_seekers import get_evidence_seeker_by_identifier
 
                 try:
+                    # Extract scalar UUID value from document model
+                    evidence_seeker_uuid = document.evidence_seeker_uuid
                     get_evidence_seeker_by_identifier(
-                        document.evidence_seeker_uuid, db, current_user.id
+                        str(evidence_seeker_uuid), db, int(current_user.id)
                     )
                 except HTTPException:
                     raise HTTPException(
@@ -109,8 +111,8 @@ def search_documents(
 @router.get("/statistics", response_model=SearchStatistics)
 def get_search_statistics(
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
-):
+    current_user: User = Depends(get_current_user),
+) -> SearchStatistics:
     """Get statistics about the vector search index"""
     try:
         stats = vector_search_service.get_search_statistics(db)
@@ -123,10 +125,10 @@ def get_search_statistics(
 
 @router.get("/document-chunks/{document_id}")
 def get_document_chunks(
-    document_id: int,
+    document_id: int = Path(..., description="The document ID to get chunks for"),
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
-):
+    current_user: User = Depends(get_current_user),
+) -> dict[str, Any]:
     """Get all embedding chunks for a specific document"""
     # Check if document exists and user has access
     document = db.query(Document).filter(Document.id == document_id).first()
@@ -137,8 +139,10 @@ def get_document_chunks(
     from .evidence_seekers import get_evidence_seeker_by_identifier
 
     try:
+        # Extract scalar UUID value from document model
+        evidence_seeker_uuid = document.evidence_seeker_uuid
         get_evidence_seeker_by_identifier(
-            document.evidence_seeker_uuid, db, current_user.id
+            str(evidence_seeker_uuid), db, int(current_user.id)
         )
     except HTTPException:
         raise HTTPException(
@@ -156,13 +160,19 @@ def get_document_chunks(
 
 @router.post("/by-embedding")
 def search_by_embedding(
-    query_embedding: list[float],
-    limit: int | None = 10,
-    similarity_threshold: float | None = 0.1,
-    document_ids: list[int] | None = None,
+    query_embedding: list[float] = Body(
+        ..., description="The embedding vector to search with"
+    ),
+    limit: int | None = Query(10, description="Maximum number of results to return"),
+    similarity_threshold: float | None = Query(
+        0.1, description="Similarity threshold for results"
+    ),
+    document_ids: list[int] | None = Query(
+        None, description="Specific document IDs to search within"
+    ),
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
-):
+    current_user: User = Depends(get_current_user),
+) -> dict[str, Any]:
     """Search using a pre-computed embedding vector"""
     try:
         # If document_ids are specified, check user access
@@ -179,7 +189,7 @@ def search_by_embedding(
 
                 try:
                     get_evidence_seeker_by_identifier(
-                        document.evidence_seeker_uuid, db, current_user.id
+                        str(document.evidence_seeker_uuid), db, int(current_user.id)
                     )
                 except HTTPException:
                     raise HTTPException(
@@ -209,11 +219,15 @@ def search_by_embedding(
 
 @router.get("/similar-documents/{document_id}")
 def find_similar_documents(
-    document_id: int,
-    limit: int | None = 5,
+    document_id: int = Path(
+        ..., description="The document ID to find similar documents for"
+    ),
+    limit: int | None = Query(
+        5, description="Maximum number of similar documents to return"
+    ),
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
-):
+    current_user: User = Depends(get_current_user),
+) -> dict[str, Any]:
     """Find documents similar to the given document"""
     # Check if document exists and user has access
     document = db.query(Document).filter(Document.id == document_id).first()
@@ -224,8 +238,11 @@ def find_similar_documents(
     from .evidence_seekers import get_evidence_seeker_by_identifier
 
     try:
+        # Extract scalar UUID value from document model
+        evidence_seeker_uuid = document.evidence_seeker_uuid
+        # Ensure we pass a concrete int for current_user_id
         get_evidence_seeker_by_identifier(
-            document.evidence_seeker_uuid, db, current_user.id
+            str(evidence_seeker_uuid), db, int(current_user.id)
         )
     except HTTPException:
         raise HTTPException(

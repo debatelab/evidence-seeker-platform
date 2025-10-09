@@ -3,6 +3,7 @@ from pathlib import Path
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..core.auth import get_current_user
@@ -15,6 +16,7 @@ from ..core.permissions import (
 )
 from ..models.evidence_seeker import EvidenceSeeker
 from ..models.permission import UserRole
+from ..models.user import User
 from ..schemas.evidence_seeker import (
     EvidenceSeekerCreate,
     EvidenceSeekerRead,
@@ -33,23 +35,23 @@ def get_evidence_seeker_by_identifier(
     try:
         # Try to parse as UUID first
         uuid_obj = UUID(str(identifier))
-        seeker = (
-            db.query(EvidenceSeeker).filter(EvidenceSeeker.uuid == uuid_obj).first()
+        result = db.execute(
+            select(EvidenceSeeker).where(EvidenceSeeker.uuid == uuid_obj)
         )
+        seeker = result.scalar_one_or_none()
     except (ValueError, TypeError):
         # If not UUID, treat as integer ID
-        seeker = (
-            db.query(EvidenceSeeker)
-            .filter(EvidenceSeeker.id == int(identifier))
-            .first()
+        result = db.execute(
+            select(EvidenceSeeker).where(EvidenceSeeker.id == int(identifier))
         )
+        seeker = result.scalar_one_or_none()
 
     if seeker is None:
         raise HTTPException(status_code=404, detail="Evidence Seeker not found")
 
     # Check if user has read access to this evidence seeker
     if not check_evidence_seeker_permission(
-        current_user_id, seeker.id, UserRole.EVSE_READER, db
+        current_user_id, int(seeker.id), UserRole.EVSE_READER, db
     ):
         raise HTTPException(status_code=404, detail="Evidence Seeker not found")
 
@@ -67,19 +69,21 @@ def get_accessible_evidence_seekers(user_id: int, db: Session) -> list[EvidenceS
         accessible_ids.add(permission.evidence_seeker_id)
 
     # Also include evidence seekers created by the user or public ones
-    created_or_public = (
-        db.query(EvidenceSeeker)
-        .filter((EvidenceSeeker.created_by == user_id) | EvidenceSeeker.is_public)
-        .all()
+    result = db.execute(
+        select(EvidenceSeeker).where(
+            (EvidenceSeeker.created_by == user_id) | EvidenceSeeker.is_public
+        )
     )
+    created_or_public = result.scalars().all()
 
     for seeker in created_or_public:
         accessible_ids.add(seeker.id)
 
     if accessible_ids:
-        return (
-            db.query(EvidenceSeeker).filter(EvidenceSeeker.id.in_(accessible_ids)).all()
+        result = db.execute(
+            select(EvidenceSeeker).where(EvidenceSeeker.id.in_(list(accessible_ids)))
         )
+        return list(result.scalars().all())
     return []
 
 
@@ -87,8 +91,8 @@ def get_accessible_evidence_seekers(user_id: int, db: Session) -> list[EvidenceS
 def create_evidence_seeker(
     seeker: EvidenceSeekerCreate,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
-):
+    current_user: User = Depends(get_current_user),
+) -> EvidenceSeeker:
     """Create a new Evidence Seeker"""
     db_seeker = EvidenceSeeker(**seeker.dict(), created_by=current_user.id)
     db.add(db_seeker)
@@ -102,10 +106,10 @@ def get_evidence_seekers(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
-):
+    current_user: User = Depends(get_current_user),
+) -> list[EvidenceSeeker]:
     """Get all Evidence Seekers accessible to the current user"""
-    seekers = get_accessible_evidence_seekers(current_user.id, db)
+    seekers = get_accessible_evidence_seekers(int(current_user.id), db)
     return seekers[skip : skip + limit]
 
 
@@ -113,10 +117,10 @@ def get_evidence_seekers(
 def get_evidence_seeker(
     seeker_id: int | str,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
-):
+    current_user: User = Depends(get_current_user),
+) -> EvidenceSeeker:
     """Get a specific Evidence Seeker by ID or UUID"""
-    return get_evidence_seeker_by_identifier(seeker_id, db, current_user.id)
+    return get_evidence_seeker_by_identifier(seeker_id, db, int(current_user.id))
 
 
 @router.put("/{seeker_id}", response_model=EvidenceSeekerRead)
@@ -124,28 +128,30 @@ def update_evidence_seeker(
     seeker_id: int | str,
     seeker_update: EvidenceSeekerUpdate,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
-):
+    current_user: User = Depends(get_current_user),
+) -> EvidenceSeeker:
     """Update an Evidence Seeker - requires admin permissions"""
     # Get the seeker first to check permissions
     try:
         # Try to parse as UUID first
         uuid_obj = UUID(str(seeker_id))
-        seeker = (
-            db.query(EvidenceSeeker).filter(EvidenceSeeker.uuid == uuid_obj).first()
+        result = db.execute(
+            select(EvidenceSeeker).where(EvidenceSeeker.uuid == uuid_obj)
         )
+        seeker = result.scalar_one_or_none()
     except (ValueError, TypeError):
         # If not UUID, treat as integer ID
-        seeker = (
-            db.query(EvidenceSeeker).filter(EvidenceSeeker.id == int(seeker_id)).first()
+        result = db.execute(
+            select(EvidenceSeeker).where(EvidenceSeeker.id == int(seeker_id))
         )
+        seeker = result.scalar_one_or_none()
 
     if seeker is None:
         raise HTTPException(status_code=404, detail="Evidence Seeker not found")
 
     # Check admin permissions
     if not check_evidence_seeker_permission(
-        current_user.id, seeker.id, UserRole.EVSE_ADMIN, db
+        int(current_user.id), int(seeker.id), UserRole.EVSE_ADMIN, db
     ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -163,28 +169,30 @@ def update_evidence_seeker(
 def delete_evidence_seeker(
     seeker_id: int | str,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
-):
+    current_user: User = Depends(get_current_user),
+) -> dict:
     """Delete an Evidence Seeker - requires admin permissions"""
     # Get the seeker first to check permissions
     try:
         # Try to parse as UUID first
         uuid_obj = UUID(str(seeker_id))
-        seeker = (
-            db.query(EvidenceSeeker).filter(EvidenceSeeker.uuid == uuid_obj).first()
+        result = db.execute(
+            select(EvidenceSeeker).where(EvidenceSeeker.uuid == uuid_obj)
         )
+        seeker = result.scalar_one_or_none()
     except (ValueError, TypeError):
         # If not UUID, treat as integer ID
-        seeker = (
-            db.query(EvidenceSeeker).filter(EvidenceSeeker.id == int(seeker_id)).first()
+        result = db.execute(
+            select(EvidenceSeeker).where(EvidenceSeeker.id == int(seeker_id))
         )
+        seeker = result.scalar_one_or_none()
 
     if seeker is None:
         raise HTTPException(status_code=404, detail="Evidence Seeker not found")
 
     # Check admin permissions
     if not check_evidence_seeker_permission(
-        current_user.id, seeker.id, UserRole.EVSE_ADMIN, db
+        int(current_user.id), int(seeker.id), UserRole.EVSE_ADMIN, db
     ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -194,9 +202,10 @@ def delete_evidence_seeker(
     # Delete all associated documents and their files
     from ..models.document import Document
 
-    documents = (
-        db.query(Document).filter(Document.evidence_seeker_id == seeker.id).all()
+    result = db.execute(
+        select(Document).where(Document.evidence_seeker_id == seeker.id)
     )
+    documents = result.scalars().all()
 
     for document in documents:
         # Delete the actual file from disk

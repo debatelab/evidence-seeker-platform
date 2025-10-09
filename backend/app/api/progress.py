@@ -4,6 +4,7 @@ API endpoints for progress tracking of long-running operations.
 
 import asyncio
 import logging
+from collections.abc import Callable
 
 from fastapi import (
     APIRouter,
@@ -18,6 +19,7 @@ from sqlalchemy.orm import Session
 from ..core.auth import get_current_user
 from ..core.database import get_db
 from ..core.progress_tracker import ProgressUpdate, progress_tracker
+from ..models.user import User
 
 logger = logging.getLogger(__name__)
 
@@ -28,8 +30,8 @@ router = APIRouter()
 def get_operation_status(
     operation_id: str,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
-):
+    current_user: User = Depends(get_current_user),
+) -> dict[str, object]:
     """Get the status of a specific operation."""
     status = progress_tracker.get_operation_status(operation_id)
     if not status:
@@ -51,8 +53,8 @@ def get_user_operations(
     ),
     status: list[str] | None = Query(None, description="Filter by status"),
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
-):
+    current_user: User = Depends(get_current_user),
+) -> dict[str, object]:
     """Get all operations for the current user."""
     evidence_seeker_id = None
     if evidence_seeker_uuid:
@@ -61,9 +63,9 @@ def get_user_operations(
 
         try:
             evidence_seeker = get_evidence_seeker_by_identifier(
-                evidence_seeker_uuid, db, current_user.id
+                evidence_seeker_uuid, db, int(current_user.id)
             )
-            evidence_seeker_id = evidence_seeker.id
+            evidence_seeker_id = int(evidence_seeker.id)
         except HTTPException:
             raise HTTPException(
                 status_code=403,
@@ -71,7 +73,7 @@ def get_user_operations(
             ) from None
 
     operations = progress_tracker.get_user_operations(
-        user_id=current_user.id,
+        user_id=int(current_user.id),
         evidence_seeker_id=evidence_seeker_id,
         status_filter=status,
     )
@@ -83,8 +85,8 @@ def get_user_operations(
 def cancel_operation(
     operation_id: str,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
-):
+    current_user: User = Depends(get_current_user),
+) -> dict[str, str]:
     """Cancel a running operation."""
     status = progress_tracker.get_operation_status(operation_id)
     if not status:
@@ -114,10 +116,10 @@ def cancel_operation(
 class ConnectionManager:
     """Manages WebSocket connections for progress updates."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.active_connections: dict[str, list[WebSocket]] = {}
 
-    async def connect(self, operation_id: str, websocket: WebSocket):
+    async def connect(self, operation_id: str, websocket: WebSocket) -> None:
         """Connect a WebSocket to an operation."""
         await websocket.accept()
 
@@ -127,14 +129,14 @@ class ConnectionManager:
         self.active_connections[operation_id].append(websocket)
 
         # Subscribe to progress updates
-        def progress_callback(update: ProgressUpdate):
+        def progress_callback(update: ProgressUpdate) -> None:
             # This will be called from the progress tracker
             # We'll send the update via WebSocket
             asyncio.create_task(self.send_update(operation_id, update))
 
         progress_tracker.subscribe_to_operation(operation_id, progress_callback)
 
-    def disconnect(self, operation_id: str, websocket: WebSocket):
+    def disconnect(self, operation_id: str, websocket: WebSocket) -> None:
         """Disconnect a WebSocket from an operation."""
         if operation_id in self.active_connections:
             if websocket in self.active_connections[operation_id]:
@@ -143,7 +145,7 @@ class ConnectionManager:
             if not self.active_connections[operation_id]:
                 del self.active_connections[operation_id]
 
-    async def send_update(self, operation_id: str, update: ProgressUpdate):
+    async def send_update(self, operation_id: str, update: ProgressUpdate) -> None:
         """Send a progress update to all connected WebSockets for an operation."""
         if operation_id not in self.active_connections:
             return
@@ -185,7 +187,7 @@ async def websocket_progress(
     operation_id: str,
     websocket: WebSocket,
     token: str = Query(..., description="Authentication token"),
-):
+) -> None:
     """WebSocket endpoint for real-time progress updates."""
     try:
         # Validate token and get user (simplified - in production you'd validate JWT)
@@ -231,10 +233,12 @@ async def websocket_progress(
 
 
 # Integration with embedding service
-def create_embedding_progress_callback(operation_id: str):
+def create_embedding_progress_callback(
+    operation_id: str,
+) -> Callable[[ProgressUpdate], None]:
     """Create a progress callback for embedding operations."""
 
-    def callback(update: ProgressUpdate):
+    def callback(update: ProgressUpdate) -> None:
         # This callback will be called by the progress tracker
         # We can add additional logic here if needed
         logger.debug(
@@ -246,7 +250,7 @@ def create_embedding_progress_callback(operation_id: str):
 
 async def track_embedding_generation(
     document_id: int, user_id: int, evidence_seeker_id: int
-):
+) -> str:
     """Track the progress of embedding generation for a document."""
     from ..core.database import SessionLocal
     from ..core.embedding_service import embedding_service

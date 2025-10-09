@@ -62,7 +62,7 @@ class OperationInfo:
 class ProgressTracker:
     """Service for tracking progress of long-running operations."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.operations: dict[str, OperationInfo] = {}
         self.subscribers: dict[str, list[Callable]] = {}
         self._cleanup_task: asyncio.Task | None = None
@@ -295,7 +295,9 @@ class ProgressTracker:
             if status_filter and operation.status.value not in status_filter:
                 continue
 
-            operations.append(self.get_operation_status(operation.operation_id))
+            status = self.get_operation_status(operation.operation_id)
+            if status is not None:
+                operations.append(status)
 
         # Sort by creation time (most recent first)
         operations.sort(key=lambda x: x["created_at"], reverse=True)
@@ -327,7 +329,7 @@ class ProgressTracker:
 
         return False
 
-    def _notify_subscribers(self, operation_id: str, update: ProgressUpdate):
+    def _notify_subscribers(self, operation_id: str, update: ProgressUpdate) -> None:
         """Notify all subscribers of an operation update."""
         if operation_id not in self.subscribers:
             return
@@ -338,7 +340,7 @@ class ProgressTracker:
             except Exception as e:
                 logger.error(f"Error notifying subscriber: {str(e)}")
 
-    def cleanup_old_operations(self, max_age_hours: int = 24):
+    def cleanup_old_operations(self, max_age_hours: int = 24) -> None:
         """Clean up old completed/failed operations."""
         cutoff_time = datetime.utcnow().timestamp() - (max_age_hours * 3600)
         operations_to_remove = []
@@ -360,12 +362,12 @@ class ProgressTracker:
         if operations_to_remove:
             logger.info(f"Cleaned up {len(operations_to_remove)} old operations")
 
-    async def start_cleanup_task(self, interval_hours: int = 1):
+    async def start_cleanup_task(self, interval_hours: int = 1) -> None:
         """Start the periodic cleanup task."""
         if self._cleanup_task and not self._cleanup_task.done():
             return
 
-        async def cleanup_loop():
+        async def cleanup_loop() -> None:
             while True:
                 try:
                     self.cleanup_old_operations()

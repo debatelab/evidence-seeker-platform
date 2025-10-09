@@ -22,13 +22,17 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def fix_document_data():
+def fix_document_data() -> None:
     """Fix missing data in existing documents"""
     db = SessionLocal()
 
     try:
+        # Import select for SQLAlchemy 2.0 compatibility
+        from sqlalchemy import select
+
         # Get all documents
-        documents = db.query(Document).all()
+        result = db.execute(select(Document))
+        documents = result.scalars().all()
         logger.info(f"Found {len(documents)} documents to check")
 
         fixed_count = 0
@@ -41,21 +45,21 @@ def fix_document_data():
                 try:
                     if os.path.exists(doc.file_path):
                         file_size = os.path.getsize(doc.file_path)
-                        doc.file_size = file_size
+                        doc.file_size = file_size  # type: ignore
                         needs_update = True
                         logger.info(
                             f"Fixed file_size for document {doc.id}: {file_size} bytes"
                         )
                     else:
                         # Set default size if file doesn't exist
-                        doc.file_size = 0
+                        doc.file_size = 0  # type: ignore
                         needs_update = True
                         logger.warning(
                             f"File not found for document {doc.id}, setting size to 0"
                         )
                 except Exception as e:
                     logger.error(f"Error getting file size for document {doc.id}: {e}")
-                    doc.file_size = 0
+                    doc.file_size = 0  # type: ignore
                     needs_update = True
 
             # Fix mime_type if missing or generic
@@ -66,14 +70,14 @@ def fix_document_data():
             ):
 
                 # Determine mime type from file extension
-                mime_type = Document.get_mime_type_from_filename(doc.file_path)
+                mime_type = Document.get_mime_type_from_filename(str(doc.file_path))
                 if mime_type != "application/octet-stream":
-                    doc.mime_type = mime_type
+                    doc.mime_type = mime_type  # type: ignore
                     needs_update = True
                     logger.info(f"Fixed mime_type for document {doc.id}: {mime_type}")
                 else:
                     # Keep a generic type if we can't determine it
-                    doc.mime_type = "application/octet-stream"
+                    doc.mime_type = "application/octet-stream"  # type: ignore
                     if needs_update is False:
                         needs_update = True
 

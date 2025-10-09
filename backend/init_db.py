@@ -6,7 +6,7 @@ Creates a test user for development purposes.
 import asyncio
 import logging
 
-from passlib.context import CryptContext
+from passlib.context import CryptContext  # type: ignore[import-untyped]
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import async_engine
@@ -17,7 +17,7 @@ from app.models.user import User
 logging.getLogger("passlib").setLevel(logging.ERROR)
 
 
-async def create_test_user():
+async def create_test_user() -> None:
     """Create a test user for development"""
     from sqlalchemy import select
 
@@ -36,20 +36,20 @@ async def create_test_user():
     async with AsyncSession(async_engine) as session:
         # Check if user already exists using proper ORM query
         existing_user = await session.execute(
-            select(User).where(User.email == "test@example.com")
+            select(User).where(User.email == "test@example.com")  # type: ignore[arg-type]
         )
         user_exists = existing_user.scalar_one_or_none()
 
         if user_exists:
             # Update existing user if they don't have a username
             if not hasattr(user_exists, "username") or user_exists.username is None:
-                user_exists.username = "testuser"
+                user_exists.username = "testuser"  # type: ignore
                 await session.commit()
                 print("✅ Updated existing test user with username")
 
             # Check if user already has platform admin permission
             existing_permission = await session.execute(
-                select(Permission).where(
+                select(Permission).where(  # type: ignore[arg-type]
                     Permission.user_id == user_exists.id,
                     Permission.role == UserRole.PLATFORM_ADMIN,
                 )
@@ -96,7 +96,7 @@ async def create_test_user():
         print("   Role: PLATFORM_ADMIN")
 
 
-async def main():
+async def main() -> None:
     """Main initialization function"""
     print("🚀 Initializing database...")
     await create_test_user()

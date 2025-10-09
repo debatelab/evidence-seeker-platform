@@ -6,6 +6,7 @@ from fastapi_users.authentication import (
     JWTStrategy,
 )
 from fastapi_users_db_sqlalchemy import SQLAlchemyUserDatabase
+from collections.abc import AsyncGenerator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,15 +22,24 @@ class UserManager(IntegerIDMixin, BaseUserManager[User, int]):
     reset_password_token_secret = settings.secret_key
     verification_token_secret = settings.secret_key
 
-    def __init__(self, user_db, email_service: EmailService):
+    def __init__(
+        self, user_db: SQLAlchemyUserDatabase, email_service: EmailService | None = None
+    ) -> None:
         super().__init__(user_db)
         self.email_service = email_service
 
     async def validate_username(self, username: str) -> None:
         """Validate username uniqueness"""
-        result = await self.user_db.session.execute(
-            select(User).where(User.username == username)
-        )
+        # Access session through the database adapter
+        session = getattr(self.user_db, "session", None)
+        if session is None:
+            # Fallback for SQLAlchemy adapter
+            session = getattr(self.user_db, "_session", None)
+
+        if session is None:
+            return  # Skip validation if session can't be accessed
+
+        result = await session.execute(select(User).where(User.username == username))
         user = result.scalar_one_or_none()
         if user is not None:
             raise HTTPException(
@@ -51,32 +61,42 @@ class UserManager(IntegerIDMixin, BaseUserManager[User, int]):
         # Call parent create method
         return await super().create(user_create, safe, request)
 
-    async def on_after_register(self, user: User, request: Request | None = None):
+    async def on_after_register(
+        self, user: User, request: Request | None = None
+    ) -> None:
         """Hook called after user registration"""
         print(f"User {user.id} has registered.")
 
     async def on_after_forgot_password(
         self, user: User, token: str, request: Request | None = None
-    ):
+    ) -> None:
         """Hook called after forgot password request - sends password reset email"""
         try:
-            await self.email_service.send_password_reset_email(user.email, token)
+            # Extract scalar value to satisfy MyPy
+            user_email = str(user.email)
+            if self.email_service is not None:
+                await self.email_service.send_password_reset_email(user_email, token)
             print(f"Password reset email sent to {user.email}")
         except Exception as e:
             print(f"Failed to send password reset email to {user.email}: {e}")
 
     async def on_after_request_verify(
         self, user: User, token: str, request: Request | None = None
-    ):
+    ) -> None:
         """Hook called after verification request - sends verification email"""
         try:
-            await self.email_service.send_verification_email(user.email, token)
+            # Extract scalar value to satisfy MyPy
+            user_email = str(user.email)
+            if self.email_service is not None:
+                await self.email_service.send_verification_email(user_email, token)
             print(f"Verification email sent to {user.email}")
         except Exception as e:
             print(f"Failed to send verification email to {user.email}: {e}")
 
 
-async def get_user_db(session: AsyncSession = Depends(get_async_db)):
+async def get_user_db(
+    session: AsyncSession = Depends(get_async_db),
+) -> AsyncGenerator[SQLAlchemyUserDatabase, None]:
     """Get user database instance"""
     yield SQLAlchemyUserDatabase(session, User)
 
@@ -86,14 +106,6 @@ def get_email_service() -> EmailService:
     return EmailService()
 
 
-async def get_user_manager(
-    user_db=Depends(get_user_db),
-    email_service: EmailService = Depends(get_email_service),
-):
-    """Get user manager instance"""
-    yield UserManager(user_db, email_service)
-
-
 def get_jwt_strategy() -> JWTStrategy:
     """Get JWT strategy for authentication"""
     return JWTStrategy(
@@ -101,6 +113,14 @@ def get_jwt_strategy() -> JWTStrategy:
         lifetime_seconds=settings.jwt_expiration,
         algorithm=settings.jwt_algorithm,
     )
+
+
+async def get_user_manager(
+    user_db: SQLAlchemyUserDatabase = Depends(get_user_db),
+    email_service: EmailService = Depends(get_email_service),
+) -> AsyncGenerator[UserManager, None]:
+    """Get user manager instance"""
+    yield UserManager(user_db, email_service)
 
 
 # Bearer token transport

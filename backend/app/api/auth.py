@@ -36,13 +36,15 @@ router.include_router(
 
 
 @router.post("/auth/logout")
-async def logout(credentials: HTTPAuthorizationCredentials = Depends(security)):
+async def logout(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+) -> dict[str, str]:
     """Logout endpoint - in JWT, logout is handled client-side by removing token"""
     return {"message": "Successfully logged out"}
 
 
 @router.get("/auth/me", response_model=UserRead)
-async def get_current_user(user: User = Depends(fastapi_users.current_user())):
+async def get_current_user(user: User = Depends(fastapi_users.current_user())) -> User:
     """Get current authenticated user"""
     return user
 
@@ -52,7 +54,7 @@ async def resend_verification(
     request: Request,
     user_manager: UserManager = Depends(get_user_manager),
     current_user: User = Depends(fastapi_users.current_user()),
-):
+) -> dict[str, str]:
     """Resend verification email to current user"""
     try:
         await user_manager.request_verify(current_user, request)
@@ -65,7 +67,7 @@ async def resend_verification(
 
 
 @router.get("/auth/test")
-async def test_auth_endpoint():
+async def test_auth_endpoint() -> dict[str, str]:
     """Test endpoint to verify authentication is working"""
     return {"message": "Authentication endpoints are working!"}
 

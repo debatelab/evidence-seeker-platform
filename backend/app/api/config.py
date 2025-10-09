@@ -2,12 +2,15 @@
 API endpoints for configuration management and API key operations.
 """
 
+from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from ..core.auth import get_current_user
 from ..core.config_service import config_service
 from ..core.database import get_db
+from ..models.user import User
 from ..schemas.api_key import (
     APIKeyCreate,
     APIKeyRead,
@@ -25,16 +28,18 @@ def create_api_key(
     evidence_seeker_uuid: str,
     api_key_data: APIKeyCreate,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
-):
+    current_user: User = Depends(get_current_user),
+) -> APIKeyRead:
     """Create and store an encrypted API key for an evidence seeker."""
     try:
         # Check if user has access to the evidence seeker
         from .evidence_seekers import get_evidence_seeker_by_identifier
 
         evidence_seeker = get_evidence_seeker_by_identifier(
-            evidence_seeker_uuid, db, current_user.id
+            evidence_seeker_uuid, db, int(current_user.id)
         )
+        # Extract scalar seeker_id value
+        seeker_id: int = int(evidence_seeker.id)
 
         # Validate API key format
         if not config_service.validate_api_key_format(
@@ -47,7 +52,7 @@ def create_api_key(
 
         # Create the API key
         api_key = config_service.create_api_key(
-            evidence_seeker_id=evidence_seeker.id,
+            evidence_seeker_id=seeker_id,
             provider=api_key_data.provider,
             name=api_key_data.name,
             api_key=api_key_data.api_key,
@@ -71,19 +76,21 @@ def get_api_keys(
     evidence_seeker_uuid: str,
     provider: str | None = Query(None, description="Filter by provider"),
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
-):
+    current_user: User = Depends(get_current_user),
+) -> list[APIKeyRead]:
     """Get all API keys for an evidence seeker."""
     try:
         # Check if user has access to the evidence seeker
         from .evidence_seekers import get_evidence_seeker_by_identifier
 
         evidence_seeker = get_evidence_seeker_by_identifier(
-            evidence_seeker_uuid, db, current_user.id
+            evidence_seeker_uuid, db, int(current_user.id)
         )
+        # Extract scalar seeker_id value
+        seeker_id: int = int(evidence_seeker.id)
 
         api_keys = config_service.get_api_keys_for_evidence_seeker(
-            evidence_seeker_id=evidence_seeker.id, provider=provider, db=db
+            evidence_seeker_id=seeker_id, provider=provider, db=db
         )
 
         return [APIKeyRead.from_orm(key) for key in api_keys]
@@ -99,19 +106,21 @@ def get_api_key(
     evidence_seeker_uuid: str,
     api_key_id: int,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
-):
+    current_user: User = Depends(get_current_user),
+) -> APIKeyRead:
     """Get a specific API key for an evidence seeker."""
     try:
         # Check if user has access to the evidence seeker
         from .evidence_seekers import get_evidence_seeker_by_identifier
 
         evidence_seeker = get_evidence_seeker_by_identifier(
-            evidence_seeker_uuid, db, current_user.id
+            evidence_seeker_uuid, db, int(current_user.id)
         )
+        # Extract scalar seeker_id value
+        seeker_id: int = int(evidence_seeker.id)
 
         api_key = config_service.get_api_key(
-            api_key_id=api_key_id, evidence_seeker_id=evidence_seeker.id, db=db
+            api_key_id=api_key_id, evidence_seeker_id=seeker_id, db=db
         )
 
         if not api_key:
@@ -133,20 +142,22 @@ def update_api_key(
     api_key_id: int,
     api_key_data: APIKeyUpdate,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
-):
+    current_user: User = Depends(get_current_user),
+) -> APIKeyRead:
     """Update an API key for an evidence seeker."""
     try:
         # Check if user has access to the evidence seeker
         from .evidence_seekers import get_evidence_seeker_by_identifier
 
         evidence_seeker = get_evidence_seeker_by_identifier(
-            evidence_seeker_uuid, db, current_user.id
+            evidence_seeker_uuid, db, int(current_user.id)
         )
+        # Extract scalar seeker_id value
+        seeker_id: int = int(evidence_seeker.id)
 
         success = config_service.update_api_key(
             api_key_id=api_key_id,
-            evidence_seeker_id=evidence_seeker.id,
+            evidence_seeker_id=seeker_id,
             name=api_key_data.name,
             description=api_key_data.description,
             is_active=api_key_data.is_active,
@@ -158,7 +169,7 @@ def update_api_key(
 
         # Get updated API key
         api_key = config_service.get_api_key(
-            api_key_id=api_key_id, evidence_seeker_id=evidence_seeker.id, db=db
+            api_key_id=api_key_id, evidence_seeker_id=seeker_id, db=db
         )
 
         return APIKeyRead.from_orm(api_key)
@@ -176,19 +187,19 @@ def delete_api_key(
     evidence_seeker_uuid: str,
     api_key_id: int,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
-):
+    current_user: User = Depends(get_current_user),
+) -> dict[str, str]:
     """Delete (deactivate) an API key for an evidence seeker."""
     try:
         # Check if user has access to the evidence seeker
         from .evidence_seekers import get_evidence_seeker_by_identifier
 
         evidence_seeker = get_evidence_seeker_by_identifier(
-            evidence_seeker_uuid, db, current_user.id
+            evidence_seeker_uuid, db, int(current_user.id)
         )
 
         success = config_service.delete_api_key(
-            api_key_id=api_key_id, evidence_seeker_id=evidence_seeker.id, db=db
+            api_key_id=api_key_id, evidence_seeker_id=int(evidence_seeker.id), db=db
         )
 
         if not success:
@@ -207,8 +218,8 @@ def delete_api_key(
 @router.post("/api-keys/validate", response_model=APIKeyValidationResponse)
 def validate_api_key_format(
     validation_data: APIKeyValidation,
-    current_user=Depends(get_current_user),
-):
+    current_user: User = Depends(get_current_user),
+) -> APIKeyValidationResponse:
     """Validate API key format for a provider."""
     try:
         is_valid = config_service.validate_api_key_format(
@@ -232,7 +243,7 @@ def validate_api_key_format(
 
 
 @router.get("/ai-config")
-def get_ai_config():
+def get_ai_config() -> dict[str, Any]:
     """Get AI-related configuration settings."""
     try:
         return config_service.get_ai_config()
@@ -245,8 +256,8 @@ def get_ai_config():
 @router.get("/system-stats", response_model=SearchStatistics)
 def get_system_stats(
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
-):
+    current_user: User = Depends(get_current_user),
+) -> SearchStatistics:
     """Get system statistics for AI components."""
     try:
         stats = config_service.get_system_stats(db=db)
@@ -258,7 +269,7 @@ def get_system_stats(
 
 
 @router.get("/providers")
-def get_supported_providers():
+def get_supported_providers() -> dict[str, Any]:
     """Get list of supported AI providers."""
     try:
         config = config_service.get_ai_config()
@@ -278,19 +289,19 @@ def get_decrypted_api_key(
     evidence_seeker_uuid: str,
     api_key_id: int,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
-):
+    current_user: User = Depends(get_current_user),
+) -> dict[str, str | int]:
     """Get a decrypted API key for use (use with caution)."""
     try:
         # Check if user has access to the evidence seeker
         from .evidence_seekers import get_evidence_seeker_by_identifier
 
         evidence_seeker = get_evidence_seeker_by_identifier(
-            evidence_seeker_uuid, db, current_user.id
+            evidence_seeker_uuid, db, int(current_user.id)
         )
 
         decrypted_key = config_service.get_decrypted_api_key(
-            api_key_id=api_key_id, evidence_seeker_id=evidence_seeker.id, db=db
+            api_key_id=api_key_id, evidence_seeker_id=int(evidence_seeker.id), db=db
         )
 
         if decrypted_key is None:

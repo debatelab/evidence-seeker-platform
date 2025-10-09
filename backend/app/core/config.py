@@ -1,6 +1,5 @@
 from functools import lru_cache
 
-from pydantic import ConfigDict
 from pydantic_settings import BaseSettings
 
 
@@ -40,7 +39,7 @@ class Settings(BaseSettings):
     # File Upload Settings
     upload_dir: str = "uploads"
     max_file_size: int = 10 * 1024 * 1024  # 10MB in bytes
-    allowed_extensions: list = [".pdf", ".txt"]
+    allowed_extensions: list[str] = [".pdf", ".txt"]
 
     # Email settings
     smtp_server: str = "smtp.gmail.com"
@@ -53,10 +52,10 @@ class Settings(BaseSettings):
     # Email templates
     email_templates_dir: str = "backend/app/templates/email"
 
-    model_config = ConfigDict(
-        env_file=".env",
-        case_sensitive=False,
-    )
+    model_config = {
+        "env_file": ".env",
+        "case_sensitive": False,
+    }
 
 
 @lru_cache

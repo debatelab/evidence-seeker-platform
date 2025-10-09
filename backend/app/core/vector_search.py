@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 class VectorSearchService:
     """Service for performing vector similarity search using PGVectorStore."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.connection_string = get_db_connection_string()
         self.table_name = "embeddings"
 
@@ -27,11 +27,13 @@ class VectorSearchService:
         url = make_url(self.connection_string)
 
         # Initialize PGVectorStore using from_params method
+        # PGVectorStore expects strings for some params; convert port to str if present
+        port_str: str | None = str(url.port) if url.port is not None else None
         self.vector_store = PGVectorStore.from_params(
             database=url.database,
             host=url.host,
             password=url.password,
-            port=url.port,
+            port=port_str,
             user=url.username,
             table_name=self.table_name,
             embed_dim=768,  # Dimensions for paraphrase-multilingual-mpnet-base-v2

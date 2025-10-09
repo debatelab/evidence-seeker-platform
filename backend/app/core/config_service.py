@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 class ConfigService:
     """Service for managing encrypted configuration and API keys."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         # Generate or load encryption key
         self.encryption_key = self._get_or_create_encryption_key()
         self.fernet = Fernet(self.encryption_key)
@@ -67,7 +67,7 @@ class ConfigService:
         api_key: str,
         description: str | None = None,
         expires_in_days: int | None = None,
-        db: Session = None,
+        db: Session | None = None,
     ) -> APIKey:
         """Create and store an encrypted API key."""
         if db is None:
@@ -78,6 +78,7 @@ class ConfigService:
             should_close = True
         else:
             should_close = False
+        assert db is not None
 
         try:
             # Check if evidence seeker exists
@@ -132,7 +133,7 @@ class ConfigService:
                 db.close()
 
     def get_api_key(
-        self, api_key_id: int, evidence_seeker_id: int, db: Session = None
+        self, api_key_id: int, evidence_seeker_id: int, db: Session | None = None
     ) -> APIKey | None:
         """Get an API key record for an evidence seeker."""
         if db is None:
@@ -142,6 +143,7 @@ class ConfigService:
             should_close = True
         else:
             should_close = False
+        assert db is not None
 
         try:
             api_key = (
@@ -163,7 +165,7 @@ class ConfigService:
         self,
         evidence_seeker_id: int,
         provider: str | None = None,
-        db: Session = None,
+        db: Session | None = None,
     ) -> list[APIKey]:
         """Get all API keys for an evidence seeker, optionally filtered by provider."""
         if db is None:
@@ -173,6 +175,7 @@ class ConfigService:
             should_close = True
         else:
             should_close = False
+        assert db is not None
 
         try:
             query = db.query(APIKey).filter(
@@ -189,7 +192,7 @@ class ConfigService:
                 db.close()
 
     def get_decrypted_api_key(
-        self, api_key_id: int, evidence_seeker_id: int, db: Session = None
+        self, api_key_id: int, evidence_seeker_id: int, db: Session | None = None
     ) -> str | None:
         """Get a decrypted API key for use."""
         api_key_record = self.get_api_key(api_key_id, evidence_seeker_id, db)
@@ -201,7 +204,7 @@ class ConfigService:
             return None
 
         try:
-            decrypted_key = self.decrypt_api_key(api_key_record.encrypted_key)
+            decrypted_key = self.decrypt_api_key(api_key_record.encrypted_key)  # type: ignore
             # Update last used timestamp
             if db is None:
                 from app.core.database import SessionLocal
@@ -212,7 +215,7 @@ class ConfigService:
                 should_close = False
 
             try:
-                api_key_record.last_used_at = datetime.utcnow()
+                api_key_record.last_used_at = datetime.utcnow()  # type: ignore
                 db.commit()
             finally:
                 if should_close:
@@ -230,7 +233,7 @@ class ConfigService:
         name: str | None = None,
         description: str | None = None,
         is_active: bool | None = None,
-        db: Session = None,
+        db: Session | None = None,
     ) -> bool:
         """Update an API key record."""
         if db is None:
@@ -240,6 +243,7 @@ class ConfigService:
             should_close = True
         else:
             should_close = False
+        assert db is not None
 
         try:
             api_key = (
@@ -255,13 +259,13 @@ class ConfigService:
                 return False
 
             if name is not None:
-                api_key.name = name
+                api_key.name = name  # type: ignore[assignment]
             if description is not None:
-                api_key.description = description
+                api_key.description = description  # type: ignore[assignment]
             if is_active is not None:
-                api_key.is_active = is_active
+                api_key.is_active = is_active  # type: ignore
 
-            api_key.updated_at = datetime.utcnow()
+            api_key.updated_at = datetime.utcnow()  # type: ignore
             db.commit()
 
             logger.info(f"Updated API key {api_key_id}")
@@ -275,7 +279,7 @@ class ConfigService:
                 db.close()
 
     def delete_api_key(
-        self, api_key_id: int, evidence_seeker_id: int, db: Session = None
+        self, api_key_id: int, evidence_seeker_id: int, db: Session | None = None
     ) -> bool:
         """Soft delete an API key (mark as inactive)."""
         return self.update_api_key(
@@ -314,7 +318,7 @@ class ConfigService:
             "max_search_results": 50,
         }
 
-    def get_system_stats(self, db: Session = None) -> dict[str, Any]:
+    def get_system_stats(self, db: Session | None = None) -> dict[str, Any]:
         """Get system statistics for AI components."""
         if db is None:
             from app.core.database import SessionLocal
@@ -323,6 +327,7 @@ class ConfigService:
             should_close = True
         else:
             should_close = False
+        assert db is not None
 
         try:
             from app.models import Document, Embedding

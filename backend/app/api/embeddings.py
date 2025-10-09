@@ -2,6 +2,8 @@
 API endpoints for embedding operations.
 """
 
+from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -10,6 +12,7 @@ from ..core.auth import get_current_user
 from ..core.database import get_db
 from ..core.embedding_service import embedding_service
 from ..models import Document
+from ..models.user import User
 
 router = APIRouter()
 
@@ -32,11 +35,11 @@ class EmbeddingRegenerateRequest(BaseModel):
 
 
 @router.get("/status/{document_id}", response_model=EmbeddingStatusResponse)
-def get_embedding_status(
+async def get_embedding_status(
     document_id: int,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
-):
+    current_user: User = Depends(get_current_user),
+) -> EmbeddingStatusResponse:
     """Get the embedding status for a specific document"""
     # Check if document exists and user has access
     document = db.query(Document).filter(Document.id == document_id).first()
@@ -47,8 +50,10 @@ def get_embedding_status(
     from .evidence_seekers import get_evidence_seeker_by_identifier
 
     try:
+        # Use string form of UUID to satisfy typing
+        evidence_seeker_identifier: str = str(document.evidence_seeker_uuid)
         get_evidence_seeker_by_identifier(
-            document.evidence_seeker_uuid, db, current_user.id
+            evidence_seeker_identifier, db, int(current_user.id)
         )
     except HTTPException:
         raise HTTPException(
@@ -56,7 +61,7 @@ def get_embedding_status(
         ) from None
 
     # Get embedding status
-    status_info = embedding_service.get_document_embedding_status(document_id, db)
+    status_info = await embedding_service.get_document_embedding_status(document_id, db)
     if not status_info:
         raise HTTPException(status_code=404, detail="Document not found")
 
@@ -64,11 +69,11 @@ def get_embedding_status(
 
 
 @router.post("/regenerate")
-def regenerate_embeddings(
+async def regenerate_embeddings(
     request: EmbeddingRegenerateRequest,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
-):
+    current_user: User = Depends(get_current_user),
+) -> dict[str, str]:
     """Regenerate embeddings for a specific document"""
     # Check if document exists and user has access
     document = db.query(Document).filter(Document.id == request.document_id).first()
@@ -80,7 +85,7 @@ def regenerate_embeddings(
 
     try:
         get_evidence_seeker_by_identifier(
-            document.evidence_seeker_uuid, db, current_user.id
+            str(document.evidence_seeker_uuid), db, int(current_user.id)
         )
     except HTTPException:
         raise HTTPException(
@@ -88,13 +93,11 @@ def regenerate_embeddings(
         ) from None
 
     # Trigger embedding regeneration
-    import asyncio
-
-    # Note: In a real implementation, you'd want to use BackgroundTasks here
-    # For now, we'll run it synchronously for simplicity
+    # Note: In a real implementation, you'd want to use BackgroundTasks here.
+    # For now, we await directly for simplicity.
     try:
-        success = asyncio.run(
-            embedding_service.generate_embeddings_for_document(request.document_id, db)
+        success = await embedding_service.generate_embeddings_for_document(
+            request.document_id, db
         )
         if success:
             return {"message": "Embeddings regenerated successfully"}
@@ -109,17 +112,17 @@ def regenerate_embeddings(
 
 
 @router.get("/model-info")
-def get_embedding_model_info():
+def get_embedding_model_info() -> dict[str, Any]:
     """Get information about the current embedding model"""
     return embedding_service.get_embedding_model_info()
 
 
 @router.get("/batch-status")
-def get_batch_embedding_status(
+async def get_batch_embedding_status(
     document_ids: list[int] = Query(..., description="List of document IDs"),
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
-):
+    current_user: User = Depends(get_current_user),
+) -> dict[str, list[dict[str, object]]]:
     """Get embedding status for multiple documents"""
     results = []
 
@@ -135,15 +138,19 @@ def get_batch_embedding_status(
             from .evidence_seekers import get_evidence_seeker_by_identifier
 
             try:
+                # Extract identifier as string to satisfy typing
+                evidence_seeker_identifier: str = str(document.evidence_seeker_uuid)
                 get_evidence_seeker_by_identifier(
-                    document.evidence_seeker_uuid, db, current_user.id
+                    evidence_seeker_identifier, db, int(current_user.id)
                 )
             except HTTPException:
                 results.append({"document_id": doc_id, "error": "Not authorized"})
                 continue
 
             # Get status
-            status_info = embedding_service.get_document_embedding_status(doc_id, db)
+            status_info = await embedding_service.get_document_embedding_status(
+                doc_id, db
+            )
             if status_info:
                 results.append(status_info)
             else:

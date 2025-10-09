@@ -26,7 +26,9 @@ router.include_router(
 
 
 @router.get("/me", response_model=UserRead)
-async def get_current_user(user: User = Depends(fastapi_users.current_user())):
+async def get_current_user(
+    user: User = Depends(fastapi_users.current_user()),
+) -> UserRead:
     """Get current authenticated user information"""
     return user
 
@@ -36,14 +38,16 @@ async def update_current_user(
     user_update: UserUpdate,
     user: User = Depends(fastapi_users.current_user()),
     session: AsyncSession = Depends(get_async_db),
-):
+) -> UserRead:
     """Update current user information"""
     # This would be handled by fastapi-users, but we can add custom logic here
     return user
 
 
 @router.delete("/me")
-async def delete_current_user(user: User = Depends(fastapi_users.current_user())):
+async def delete_current_user(
+    user: User = Depends(fastapi_users.current_user()),
+) -> dict[str, str]:
     """Delete current user account"""
     # This would be handled by fastapi-users
     return {"message": "User account deleted successfully"}
@@ -54,13 +58,17 @@ async def delete_user(
     user_id: int,
     current_user: User = Depends(require_platform_admin),
     session: AsyncSession = Depends(get_async_db),
-):
+) -> dict[str, str]:
     """
     Delete a user account. Only platform admins can delete users.
     """
     try:
         # Check if user exists
-        user_to_delete = session.query(User).filter(User.id == user_id).first()
+        from sqlalchemy import select
+
+        stmt = select(User).where(User.id == user_id)
+        result = await session.execute(stmt)
+        user_to_delete = result.scalar_one_or_none()
         if not user_to_delete:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
@@ -74,15 +82,15 @@ async def delete_user(
             )
 
         # Delete the user (this will cascade delete permissions due to foreign key constraints)
-        session.delete(user_to_delete)
-        session.commit()
+        await session.delete(user_to_delete)
+        await session.commit()
 
         return {"message": "User deleted successfully"}
 
     except HTTPException:
         raise
     except Exception as e:
-        session.rollback()
+        await session.rollback()
         logger.error(f"Error deleting user {user_id}: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -95,7 +103,7 @@ async def search_users_for_assignment(
     q: str,
     current_user: User = Depends(fastapi_users.current_user()),
     session: AsyncSession = Depends(get_async_db),
-):
+) -> list[UserSearchResult]:
     """
     Search users by username/email for role assignment purposes.
     Returns username-only results (no emails) for GDPR compliance.
@@ -104,7 +112,6 @@ async def search_users_for_assignment(
     try:
         # Log the incoming request for debugging
         logger.info(f"User search request: q='{q}', user_id={current_user.id}")
-
         if not q or len(q.strip()) < 2:
             logger.info("Search query too short, returning empty results")
             return []
@@ -114,25 +121,23 @@ async def search_users_for_assignment(
         # Search by username only (GDPR compliance - no email exposure)
         from sqlalchemy import select
 
-        from app.models.user import User
-
         logger.info(f"Executing search query with term: '{search_term}'")
 
         # Use ORM query instead of raw SQL for better async handling
         stmt = (
             select(User.id, User.username)
-            .where(User.username.ilike(f"%{search_term}%"), User.is_active)
+            .where(User.username.ilike(search_term), User.is_active)
             .order_by(User.username)
             .limit(20)
         )
 
         result = await session.execute(stmt)
-        users = result.fetchall()
-        logger.info(f"Found {len(users)} users matching search")
+        rows = result.all()
+        logger.info(f"Found {len(rows)} users matching search")
 
         # Convert to proper UserSearchResult format
         user_results = [
-            UserSearchResult(id=user.id, username=user.username) for user in users
+            UserSearchResult(id=row.id, username=row.username) for row in rows
         ]
 
         logger.info(f"Returning {len(user_results)} user search results")
@@ -150,7 +155,7 @@ async def search_users_for_assignment(
 async def get_all_users(
     current_user: User = Depends(require_platform_admin),
     session: AsyncSession = Depends(get_async_db),
-):
+) -> dict[str, list[dict[str, object]]]:
     """
     Get all users with role summaries. Only platform admins can view all users.
     Returns user info with simplified role display for platform admin interface.
@@ -175,7 +180,8 @@ async def get_all_users(
                 Permission.role == UserRole.PLATFORM_ADMIN,
             )
             platform_admin_result = await session.execute(platform_admin_stmt)
-            has_platform_admin = platform_admin_result.scalar() > 0
+            platform_admin_count = int(platform_admin_result.scalar_one())
+            has_platform_admin = platform_admin_count > 0
 
             # Count total evidence seeker permissions (EVSE_ADMIN + EVSE_READER)
             evse_permissions_stmt = select(func.count(Permission.id)).where(
@@ -183,7 +189,7 @@ async def get_all_users(
                 Permission.role.in_([UserRole.EVSE_ADMIN, UserRole.EVSE_READER]),
             )
             evse_permissions_result = await session.execute(evse_permissions_stmt)
-            evse_permissions_count = evse_permissions_result.scalar()
+            evse_permissions_count: int = int(evse_permissions_result.scalar_one())
 
             # Determine display role and summary
             if has_platform_admin:
@@ -222,7 +228,7 @@ async def get_all_users(
 
 
 @router.get("/test")
-async def test_users_endpoint():
+async def test_users_endpoint() -> dict[str, str]:
     """Test endpoint to verify user management endpoints are working"""
     return {"message": "User management endpoints are working!"}
 

@@ -6,7 +6,7 @@ from app.models.permission import Permission, UserRole
 from app.models.user import User
 
 
-def test_create_evidence_seeker_requires_auth(client: TestClient):
+def test_create_evidence_seeker_requires_auth(client: TestClient) -> None:
     """Test that creating evidence seeker requires authentication"""
     response = client.post(
         "/api/v1/evidence-seekers/",
@@ -17,7 +17,7 @@ def test_create_evidence_seeker_requires_auth(client: TestClient):
 
 def test_create_evidence_seeker_success(
     client: TestClient, test_user: User, db: Session
-):
+) -> None:
     """Test successful evidence seeker creation"""
     # Login first
     login_response = client.post(
@@ -42,7 +42,7 @@ def test_create_evidence_seeker_success(
     assert data["createdBy"] == test_user.id
 
 
-def test_get_evidence_seekers_requires_auth(client: TestClient):
+def test_get_evidence_seekers_requires_auth(client: TestClient) -> None:
     """Test that getting evidence seekers requires authentication"""
     response = client.get("/api/v1/evidence-seekers/")
     assert response.status_code == 401
@@ -50,7 +50,7 @@ def test_get_evidence_seekers_requires_auth(client: TestClient):
 
 def test_get_evidence_seekers_shows_owned_and_public(
     client: TestClient, test_user: User, db: Session
-):
+) -> None:
     """Test that users can see evidence seekers they own or have access to"""
     # Create some evidence seekers
     seeker1 = EvidenceSeeker(title="Owned Seeker", created_by=test_user.id)
@@ -84,7 +84,7 @@ def test_get_evidence_seekers_shows_owned_and_public(
 
 def test_get_evidence_seekers_with_permissions(
     client: TestClient, test_user: User, db: Session
-):
+) -> None:
     """Test that users can see evidence seekers they have permissions for"""
     # Create a private evidence seeker
     private_seeker = EvidenceSeeker(
@@ -122,7 +122,7 @@ def test_get_evidence_seekers_with_permissions(
 
 def test_get_specific_evidence_seeker_requires_access(
     client: TestClient, test_user: User, db: Session
-):
+) -> None:
     """Test that getting specific evidence seeker requires proper access"""
     # Create a private evidence seeker
     private_seeker = EvidenceSeeker(
@@ -244,7 +244,7 @@ def test_update_evidence_seeker_requires_admin_permission(
 
 def test_delete_evidence_seeker_requires_admin_permission(
     client: TestClient, test_user: User, db: Session
-):
+) -> None:
     """Test that deleting evidence seeker requires admin permission"""
     # Create an evidence seeker owned by someone else
     other_seeker = EvidenceSeeker(title="Other Seeker", created_by=999)
@@ -284,7 +284,7 @@ def test_delete_evidence_seeker_requires_admin_permission(
 
 def test_platform_admin_has_full_access(
     client: TestClient, test_user: User, db: Session
-):
+) -> None:
     """Test that platform admins have access to all evidence seekers"""
     # Create evidence seekers owned by others
     seeker1 = EvidenceSeeker(title="Seeker 1", created_by=999)
@@ -336,7 +336,7 @@ def test_platform_admin_has_full_access(
 
 def test_get_evidence_seeker_users_requires_admin_permission(
     client: TestClient, test_user: User, db: Session
-):
+) -> None:
     """Test that getting evidence seeker users requires admin permission"""
     # Create an evidence seeker owned by someone else
     other_seeker = EvidenceSeeker(title="Other Seeker", created_by=999)
@@ -361,7 +361,7 @@ def test_get_evidence_seeker_users_requires_admin_permission(
 
 def test_get_evidence_seeker_users_success(
     client: TestClient, test_user: User, db: Session
-):
+) -> None:
     """Test getting users for an evidence seeker with admin permission"""
     # Create an evidence seeker
     seeker = EvidenceSeeker(title="Test Seeker", created_by=test_user.id)
@@ -414,7 +414,7 @@ def test_get_evidence_seeker_users_success(
 
 def test_assign_evidence_seeker_role_requires_admin_permission(
     client: TestClient, test_user: User, db: Session
-):
+) -> None:
     """Test that assigning roles requires admin permission"""
     # Create an evidence seeker owned by someone else
     other_seeker = EvidenceSeeker(title="Other Seeker", created_by=999)
@@ -450,7 +450,7 @@ def test_assign_evidence_seeker_role_requires_admin_permission(
 
 def test_assign_evidence_seeker_role_success(
     client: TestClient, test_user: User, db: Session
-):
+) -> None:
     """Test successful role assignment"""
     # Create an evidence seeker
     seeker = EvidenceSeeker(title="Test Seeker", created_by=test_user.id)
@@ -498,7 +498,7 @@ def test_assign_evidence_seeker_role_success(
 
 def test_assign_evidence_seeker_role_update_existing(
     client: TestClient, test_user: User, db: Session
-):
+) -> None:
     """Test updating existing role assignment"""
     # Create an evidence seeker
     seeker = EvidenceSeeker(title="Test Seeker", created_by=test_user.id)
@@ -547,7 +547,7 @@ def test_assign_evidence_seeker_role_update_existing(
 
 def test_remove_evidence_seeker_user_requires_admin_permission(
     client: TestClient, test_user: User, db: Session
-):
+) -> None:
     """Test that removing users requires admin permission"""
     # Create an evidence seeker owned by someone else
     other_seeker = EvidenceSeeker(title="Other Seeker", created_by=999)
@@ -591,7 +591,7 @@ def test_remove_evidence_seeker_user_requires_admin_permission(
 
 def test_remove_evidence_seeker_user_success(
     client: TestClient, test_user: User, db: Session
-):
+) -> None:
     """Test successful user removal"""
     # Create an evidence seeker
     seeker = EvidenceSeeker(title="Test Seeker", created_by=test_user.id)
@@ -644,7 +644,7 @@ def test_remove_evidence_seeker_user_success(
     assert remaining_perm is None
 
 
-def test_user_search_for_assignment_requires_auth(client: TestClient):
+def test_user_search_for_assignment_requires_auth(client: TestClient) -> None:
     """Test that user search for assignment requires authentication"""
     response = client.get("/api/v1/users/search-for-assignment?q=test")
     assert response.status_code == 401
@@ -652,7 +652,7 @@ def test_user_search_for_assignment_requires_auth(client: TestClient):
 
 def test_user_search_for_assignment_success(
     client: TestClient, test_user: User, db: Session
-):
+) -> None:
     """Test successful user search for assignment"""
     # Create some test users
     user1 = User(
@@ -708,7 +708,7 @@ def test_user_search_for_assignment_success(
 
 def test_user_search_for_assignment_minimum_length(
     client: TestClient, test_user: User, db: Session
-):
+) -> None:
     """Test that user search requires minimum query length"""
     # Login
     login_response = client.post(

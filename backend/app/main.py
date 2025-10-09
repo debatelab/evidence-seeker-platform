@@ -64,7 +64,7 @@ def create_application() -> FastAPI:
     @app.exception_handler(RequestValidationError)
     async def validation_exception_handler(
         request: Request, exc: RequestValidationError
-    ):
+    ) -> JSONResponse:
         exc_str = f"{exc}".replace("\n", " ").replace("   ", " ")
         logging.error(f"{request}: {exc_str}")
         content = {"status_code": 10422, "message": exc_str, "data": None}
@@ -74,7 +74,9 @@ def create_application() -> FastAPI:
 
     # Global exception handler
     @app.exception_handler(HTTPException)
-    async def http_exception_handler(request, exc):
+    async def http_exception_handler(
+        request: Request, exc: HTTPException
+    ) -> JSONResponse:
         return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
 
     # Include routers
@@ -122,13 +124,13 @@ def create_application() -> FastAPI:
 
     # Health check endpoint
     @app.get("/health")
-    async def health_check():
+    async def health_check() -> dict:
         """Health check endpoint"""
         return {"status": "healthy", "version": settings.version}
 
     # Root endpoint
     @app.get("/")
-    async def root():
+    async def root() -> dict:
         """Root endpoint"""
         return {
             "message": "Welcome to Evidence Seeker Platform API",
@@ -138,7 +140,7 @@ def create_application() -> FastAPI:
 
     # Startup event
     @app.on_event("startup")
-    async def startup_event():
+    async def startup_event() -> None:
         """Application startup event"""
         logger.info("Starting Evidence Seeker Platform API")
         create_tables()
@@ -146,7 +148,7 @@ def create_application() -> FastAPI:
 
     # Shutdown event
     @app.on_event("shutdown")
-    async def shutdown_event():
+    async def shutdown_event() -> None:
         """Application shutdown event"""
         logger.info("Shutting down Evidence Seeker Platform API")
 

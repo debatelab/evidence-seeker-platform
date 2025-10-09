@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 class EmbeddingService:
     """Service for generating and managing document embeddings using LlamaIndex."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.model_name = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
         self.embedding_dimension = 768
         self.chunk_size = 512
@@ -55,7 +55,7 @@ class EmbeddingService:
                 return False
 
             # Update status to processing
-            document.embedding_status = EmbeddingStatus.PROCESSING
+            document.embedding_status = EmbeddingStatus.PROCESSING  # type: ignore[assignment]
             db.commit()
 
             start_time = time.time()
@@ -64,7 +64,7 @@ class EmbeddingService:
             file_path = Path(document.file_path)
             if not file_path.exists():
                 logger.error(f"Document file not found: {file_path}")
-                document.embedding_status = EmbeddingStatus.FAILED
+                document.embedding_status = EmbeddingStatus.FAILED  # type: ignore[assignment]
                 db.commit()
                 return False
 
@@ -78,7 +78,7 @@ class EmbeddingService:
 
             if not llama_documents:
                 logger.error(f"No content loaded from document {document_id}")
-                document.embedding_status = EmbeddingStatus.FAILED
+                document.embedding_status = EmbeddingStatus.FAILED  # type: ignore[assignment]
                 db.commit()
                 return False
 
@@ -123,15 +123,15 @@ class EmbeddingService:
 
             # Update document status
             if embeddings_created > 0:
-                document.embedding_status = EmbeddingStatus.COMPLETED
-                document.embedding_generated_at = datetime.utcnow()
-                document.embedding_model = self.model_name
-                document.embedding_dimensions = self.embedding_dimension
+                document.embedding_status = EmbeddingStatus.COMPLETED  # type: ignore[assignment]
+                document.embedding_generated_at = datetime.utcnow()  # type: ignore[assignment]
+                document.embedding_model = self.model_name  # type: ignore[assignment]
+                document.embedding_dimensions = self.embedding_dimension  # type: ignore[assignment]
                 logger.info(
                     f"Successfully generated {embeddings_created} embeddings for document {document_id}"
                 )
             else:
-                document.embedding_status = EmbeddingStatus.FAILED
+                document.embedding_status = EmbeddingStatus.FAILED  # type: ignore[assignment]
                 logger.error(f"No embeddings generated for document {document_id}")
 
             db.commit()
@@ -142,8 +142,9 @@ class EmbeddingService:
                 f"Error generating embeddings for document {document_id}: {str(e)}"
             )
             try:
-                document.embedding_status = EmbeddingStatus.FAILED
-                db.commit()
+                if document:
+                    document.embedding_status = EmbeddingStatus.FAILED  # type: ignore[assignment]
+                    db.commit()
             except Exception:
                 pass
             return False

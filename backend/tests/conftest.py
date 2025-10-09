@@ -40,7 +40,7 @@ def test_client(test_app):
 
 
 @pytest.fixture(scope="function")
-async def test_db():
+async def test_db() -> AsyncSession:
     """Create test database session"""
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -55,7 +55,7 @@ async def test_db():
 @pytest.fixture(scope="function")
 async def test_user(test_db: AsyncSession):
     """Create test user"""
-    from passlib.context import CryptContext
+    from passlib.context import CryptContext  # type: ignore[import-untyped]
 
     pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
     hashed_password = pwd_context.hash("testpassword123")
@@ -76,7 +76,7 @@ async def test_user(test_db: AsyncSession):
 
 
 @pytest.fixture(scope="function")
-def auth_headers(test_user):
+def auth_headers(test_user) -> dict[str, str]:
     """Create authorization headers for test user"""
 
     from app.core.auth import get_jwt_strategy

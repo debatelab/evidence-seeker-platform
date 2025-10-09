@@ -1,4 +1,5 @@
 from fastapi import Depends, HTTPException, status
+from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
 from app.core.auth import get_current_user
@@ -23,26 +24,28 @@ def check_evidence_seeker_permission(
         bool: True if user has permission, False otherwise
     """
     # First check if user is a platform admin - they have global access to everything
-    platform_admin_permission = (
-        db.query(Permission)
-        .filter(
-            Permission.user_id == user_id,
-            Permission.role == UserRole.PLATFORM_ADMIN,
+    result = db.execute(
+        select(Permission).where(
+            and_(
+                Permission.user_id == user_id,
+                Permission.role == UserRole.PLATFORM_ADMIN,
+            )
         )
-        .first()
     )
+    platform_admin_permission = result.scalar_one_or_none()
     if platform_admin_permission:
         return True
 
     # Check specific evidence seeker permissions
-    permission = (
-        db.query(Permission)
-        .filter(
-            Permission.user_id == user_id,
-            Permission.evidence_seeker_id == evidence_seeker_id,
+    result = db.execute(
+        select(Permission).where(
+            and_(
+                Permission.user_id == user_id,
+                Permission.evidence_seeker_id == evidence_seeker_id,
+            )
         )
-        .first()
     )
+    permission = result.scalar_one_or_none()
 
     if not permission:
         return False
@@ -54,8 +57,9 @@ def check_evidence_seeker_permission(
         UserRole.EVSE_READER: 1,
     }
 
-    user_level = role_hierarchy.get(permission.role, 0)
-    required_level = role_hierarchy.get(required_role, 0)
+    permission_role: UserRole = UserRole(permission.role.value)
+    user_level: int = role_hierarchy.get(permission_role, 0)
+    required_level: int = role_hierarchy.get(required_role, 0)
 
     return user_level >= required_level
 
@@ -71,7 +75,9 @@ def get_user_permissions(user_id: int, db: Session) -> list[Permission]:
     Returns:
         List[Permission]: List of user's permissions
     """
-    return db.query(Permission).filter(Permission.user_id == user_id).all()
+    result = db.execute(select(Permission).where(Permission.user_id == user_id))
+    permissions = list(result.scalars().all())
+    return permissions
 
 
 class RequireEvidenceSeekerAdmin:
@@ -99,7 +105,7 @@ class RequireEvidenceSeekerAdmin:
             HTTPException: If user doesn't have admin access
         """
         if not check_evidence_seeker_permission(
-            current_user.id, self.evidence_seeker_id, UserRole.EVSE_ADMIN, db
+            int(current_user.id), self.evidence_seeker_id, UserRole.EVSE_ADMIN, db
         ):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -143,7 +149,7 @@ def require_evidence_seeker_reader(
         HTTPException: If user doesn't have read access
     """
     if not check_evidence_seeker_permission(
-        current_user.id, evidence_seeker_id, UserRole.EVSE_READER, db
+        int(current_user.id), evidence_seeker_id, UserRole.EVSE_READER, db
     ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -169,7 +175,7 @@ def require_platform_admin(
         HTTPException: If user is not a platform admin
     """
     if not check_evidence_seeker_permission(
-        current_user.id,
+        int(current_user.id),
         0,
         UserRole.PLATFORM_ADMIN,
         db,  # evidence_seeker_id not needed for platform admin
@@ -215,18 +221,20 @@ class RequireEvidenceSeekerAdminByIdentifier:
         try:
             # Try as UUID first
             uuid_obj = UUID(evidence_seeker_identifier)
-            evidence_seeker = (
-                db.query(EvidenceSeeker).filter(EvidenceSeeker.uuid == uuid_obj).first()
+            result = db.execute(
+                select(EvidenceSeeker).where(EvidenceSeeker.uuid == uuid_obj)
             )
+            evidence_seeker = result.scalar_one_or_none()
         except (ValueError, TypeError):
             # Try as integer ID
             try:
                 evidence_seeker_id = int(evidence_seeker_identifier)
-                evidence_seeker = (
-                    db.query(EvidenceSeeker)
-                    .filter(EvidenceSeeker.id == evidence_seeker_id)
-                    .first()
+                result = db.execute(
+                    select(EvidenceSeeker).where(
+                        EvidenceSeeker.id == evidence_seeker_id
+                    )
                 )
+                evidence_seeker = result.scalar_one_or_none()
             except (ValueError, TypeError):
                 evidence_seeker = None
 
@@ -238,12 +246,12 @@ class RequireEvidenceSeekerAdminByIdentifier:
 
         # Check if user is a platform admin (has global access)
         platform_admin_check = check_evidence_seeker_permission(
-            current_user.id, 0, UserRole.PLATFORM_ADMIN, db
+            int(current_user.id), 0, UserRole.PLATFORM_ADMIN, db
         )
         if not platform_admin_check:
             # If not a platform admin, check for evidence seeker specific admin access
             if not check_evidence_seeker_permission(
-                current_user.id, evidence_seeker.id, UserRole.EVSE_ADMIN, db
+                int(current_user.id), int(evidence_seeker.id), UserRole.EVSE_ADMIN, db
             ):
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
