@@ -5,25 +5,21 @@ Creates a test user for development purposes.
 """
 import asyncio
 import logging
-from sqlalchemy.ext.asyncio import AsyncSession
+
 from passlib.context import CryptContext
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.database import async_engine
+from app.models.permission import Permission, UserRole
+from app.models.user import User
 
 # Suppress the bcrypt version warning from passlib
 logging.getLogger("passlib").setLevel(logging.ERROR)
 
-from app.core.database import async_engine, Base
-from app.models.user import User
-from app.models.permission import Permission, UserRole
-from app.core.config import settings
-
-
-# Tables are now created by Alembic migrations
-# This function is no longer needed
-
 
 async def create_test_user():
     """Create a test user for development"""
-    from sqlalchemy import text, select
+    from sqlalchemy import select
 
     pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
     hashed_password = pwd_context.hash("evidence123")
@@ -92,12 +88,12 @@ async def create_test_user():
         session.add(platform_admin_permission)
         await session.commit()
 
-        print(f"✅ Test user created:")
-        print(f"   Email: test@example.com")
-        print(f"   Username: testuser")
-        print(f"   Password: evidence123")
+        print("✅ Test user created:")
+        print("   Email: test@example.com")
+        print("   Username: testuser")
+        print("   Password: evidence123")
         print(f"   User ID: {user_id}")
-        print(f"   Role: PLATFORM_ADMIN")
+        print("   Role: PLATFORM_ADMIN")
 
 
 async def main():

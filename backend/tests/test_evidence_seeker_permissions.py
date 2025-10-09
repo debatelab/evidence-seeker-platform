@@ -1,10 +1,9 @@
-import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
-from app.models.user import User
+
 from app.models.evidence_seeker import EvidenceSeeker
 from app.models.permission import Permission, UserRole
-from app.core.database import get_db
+from app.models.user import User
 
 
 def test_create_evidence_seeker_requires_auth(client: TestClient):

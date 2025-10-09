@@ -1,8 +1,5 @@
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.models.user import User
 
 
 class TestAuthEndpoints:

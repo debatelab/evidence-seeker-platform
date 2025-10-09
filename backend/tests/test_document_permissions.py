@@ -1,11 +1,12 @@
-import pytest
+from io import BytesIO
+
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
-from io import BytesIO
-from app.models.user import User
-from app.models.evidence_seeker import EvidenceSeeker
+
 from app.models.document import Document
+from app.models.evidence_seeker import EvidenceSeeker
 from app.models.permission import Permission, UserRole
+from app.models.user import User
 
 
 def test_upload_document_requires_auth(client: TestClient):

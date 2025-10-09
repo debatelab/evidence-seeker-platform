@@ -1,10 +1,8 @@
 import pytest
-import pytest_asyncio
+from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
-from fastapi.testclient import TestClient
 
-from app.core.config import settings
 from app.core.database import Base
 from app.main import create_application
 from app.models.user import User
@@ -80,8 +78,8 @@ async def test_user(test_db: AsyncSession):
 @pytest.fixture(scope="function")
 def auth_headers(test_user):
     """Create authorization headers for test user"""
+
     from app.core.auth import get_jwt_strategy
-    from datetime import timedelta
 
     strategy = get_jwt_strategy()
     token = strategy.write_token(

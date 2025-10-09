@@ -1,5 +1,7 @@
 import pytest
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
+
 from app.core.permissions import (
     check_evidence_seeker_permission,
     get_user_permissions,
@@ -7,11 +9,9 @@ from app.core.permissions import (
     require_evidence_seeker_reader,
     require_platform_admin,
 )
+from app.models.evidence_seeker import EvidenceSeeker
 from app.models.permission import Permission, UserRole
 from app.models.user import User
-from app.models.evidence_seeker import EvidenceSeeker
-from app.core.database import get_db
-from fastapi import HTTPException
 
 
 def test_check_evidence_seeker_permission_platform_admin(db: Session, test_user: User):

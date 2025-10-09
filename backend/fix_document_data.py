@@ -5,18 +5,17 @@ This script can be run to populate missing file_size, mime_type, and other field
 for documents that were created before these fields were properly implemented.
 """
 
+import logging
 import os
 import sys
 from pathlib import Path
 
+from app.core.database import SessionLocal
+from app.models.document import Document
+
 # Add the backend directory to Python path
 backend_dir = Path(__file__).parent
 sys.path.insert(0, str(backend_dir))
-
-from app.core.database import SessionLocal
-from app.models.document import Document
-from app.core.config import settings
-import logging
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)

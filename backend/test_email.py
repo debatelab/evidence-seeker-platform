@@ -5,14 +5,14 @@ Run this script to test email sending without starting the full application.
 """
 
 import asyncio
-import sys
 import os
+import sys
 
 # Add the app directory to the Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "app"))
 
-from app.core.email_service import EmailService
 from app.core.config import settings
+from app.core.email_service import EmailService
 
 
 async def test_email_service():
