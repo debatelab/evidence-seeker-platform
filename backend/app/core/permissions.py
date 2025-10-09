@@ -1,3 +1,5 @@
+from typing import overload
+
 from fastapi import Depends, HTTPException, status
 from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
@@ -114,19 +116,38 @@ class RequireEvidenceSeekerAdmin:
         return current_user
 
 
+@overload
 def require_evidence_seeker_admin(
     evidence_seeker_id: int,
-) -> RequireEvidenceSeekerAdmin:
-    """
-    Factory function for evidence seeker admin dependency.
+) -> RequireEvidenceSeekerAdmin: ...
 
-    Args:
-        evidence_seeker_id: The evidence seeker ID to check access for
 
-    Returns:
-        RequireEvidenceSeekerAdmin: Dependency instance
+@overload
+def require_evidence_seeker_admin(
+    evidence_seeker_id: int, current_user: User, db: Session
+) -> User: ...
+
+
+def require_evidence_seeker_admin(
+    evidence_seeker_id: int, current_user: User | None = None, db: Session | None = None
+) -> RequireEvidenceSeekerAdmin | User:
     """
-    return RequireEvidenceSeekerAdmin(evidence_seeker_id)
+    Evidence seeker admin dependency.
+
+    - When called with only evidence_seeker_id, returns a FastAPI dependency object.
+    - When called with (evidence_seeker_id, current_user, db), performs the check and returns the user.
+    """
+    if current_user is None or db is None:
+        return RequireEvidenceSeekerAdmin(evidence_seeker_id)
+
+    if not check_evidence_seeker_permission(
+        int(current_user.id), evidence_seeker_id, UserRole.EVSE_ADMIN, db
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions: admin access required",
+        )
+    return current_user
 
 
 def require_evidence_seeker_reader(

@@ -36,7 +36,7 @@ async def create_test_user() -> None:
     async with AsyncSession(async_engine) as session:
         # Check if user already exists using proper ORM query
         existing_user = await session.execute(
-            select(User).where(User.email == "test@example.com")  # type: ignore[arg-type]
+            select(User).where(User.email == "test@example.com")
         )
         user_exists = existing_user.scalar_one_or_none()
 
@@ -49,7 +49,7 @@ async def create_test_user() -> None:
 
             # Check if user already has platform admin permission
             existing_permission = await session.execute(
-                select(Permission).where(  # type: ignore[arg-type]
+                select(Permission).where(
                     Permission.user_id == user_exists.id,
                     Permission.role == UserRole.PLATFORM_ADMIN,
                 )

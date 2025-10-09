@@ -15,7 +15,7 @@ from app.core.config import settings
 from app.core.email_service import EmailService
 
 
-async def test_email_service():
+async def test_email_service() -> None:
     """Test the email service functionality"""
     print("Testing Email Service...")
     print(f"SMTP Server: {settings.smtp_server}")

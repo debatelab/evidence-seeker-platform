@@ -119,6 +119,9 @@ warn_unused_ignores = true
 show_error_codes = true
 namespace_packages = true
 explicit_package_bases = true
+## Ensure mypy can resolve imports like `app.*` when run from the repo root
+## (treat the backend folder as a search root for modules)
+mypy_path = "backend"
 
 [[tool.mypy.overrides]]
 module = [
@@ -126,6 +129,14 @@ module = [
     "loguru",
 ]
 ignore_missing_imports = true
+
+## Tests: relax strict function typing to avoid noise in test code
+[[tool.mypy.overrides]]
+module = [
+    "tests.*",
+]
+disallow_untyped_defs = false
+check_untyped_defs = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
