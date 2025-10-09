@@ -1,4 +1,3 @@
-
 from fastapi import Depends, HTTPException, Request, status
 from fastapi_users import BaseUserManager, FastAPIUsers, IntegerIDMixin, schemas
 from fastapi_users.authentication import (
