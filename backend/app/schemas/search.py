@@ -2,20 +2,21 @@
 Pydantic schemas for vector search and analysis operations.
 """
 
-from pydantic import BaseModel, Field
-from typing import List, Optional, Dict, Any
 from datetime import datetime
+from typing import Any
+
+from pydantic import BaseModel, Field
 
 
 class SearchQuery(BaseModel):
     """Schema for search query input."""
 
     query: str = Field(..., description="The search query text")
-    limit: Optional[int] = Field(10, description="Maximum number of results to return")
-    similarity_threshold: Optional[float] = Field(
+    limit: int | None = Field(10, description="Maximum number of results to return")
+    similarity_threshold: float | None = Field(
         0.1, description="Minimum similarity score (0.0 to 1.0)"
     )
-    document_ids: Optional[List[int]] = Field(
+    document_ids: list[int] | None = Field(
         None, description="Optional list of document IDs to search within"
     )
 
@@ -35,19 +36,19 @@ class SearchResponse(BaseModel):
     """Schema for search operation response."""
 
     query: str = Field(..., description="The original search query")
-    results: List[SearchResult] = Field(..., description="List of search results")
+    results: list[SearchResult] = Field(..., description="List of search results")
     total_results: int = Field(..., description="Total number of results returned")
 
 
 class EmbeddingSearchQuery(BaseModel):
     """Schema for embedding-based search query."""
 
-    embedding: List[float] = Field(..., description="Pre-computed embedding vector")
-    limit: Optional[int] = Field(10, description="Maximum number of results to return")
-    similarity_threshold: Optional[float] = Field(
+    embedding: list[float] = Field(..., description="Pre-computed embedding vector")
+    limit: int | None = Field(10, description="Maximum number of results to return")
+    similarity_threshold: float | None = Field(
         0.1, description="Minimum similarity score (0.0 to 1.0)"
     )
-    document_ids: Optional[List[int]] = Field(
+    document_ids: list[int] | None = Field(
         None, description="Optional list of document IDs to search within"
     )
 
@@ -58,7 +59,7 @@ class EmbeddingSearchResponse(BaseModel):
     query_embedding_dimensions: int = Field(
         ..., description="Dimensions of the query embedding"
     )
-    results: List[SearchResult] = Field(..., description="List of search results")
+    results: list[SearchResult] = Field(..., description="List of search results")
     total_results: int = Field(..., description="Total number of results returned")
 
 
@@ -69,7 +70,7 @@ class DocumentChunk(BaseModel):
     chunk_index: int = Field(..., description="Index of the chunk within the document")
     chunk_text: str = Field(..., description="Text content of the chunk")
     total_chunks: int = Field(..., description="Total number of chunks in the document")
-    processing_time_ms: Optional[int] = Field(
+    processing_time_ms: int | None = Field(
         None, description="Time taken to process this chunk"
     )
     created_at: datetime = Field(..., description="When the embedding was created")
@@ -79,7 +80,7 @@ class DocumentChunksResponse(BaseModel):
     """Schema for document chunks response."""
 
     document_id: int = Field(..., description="ID of the document")
-    chunks: List[DocumentChunk] = Field(..., description="List of document chunks")
+    chunks: list[DocumentChunk] = Field(..., description="List of document chunks")
 
 
 class SearchStatistics(BaseModel):
@@ -91,7 +92,7 @@ class SearchStatistics(BaseModel):
     documents_with_embeddings: int = Field(
         ..., description="Number of documents that have embeddings"
     )
-    embedding_models: List[Dict[str, Any]] = Field(
+    embedding_models: list[dict[str, Any]] = Field(
         ..., description="List of embedding models and their usage counts"
     )
     vector_dimensions: int = Field(
@@ -102,7 +103,7 @@ class SearchStatistics(BaseModel):
 class SimilarDocumentsQuery(BaseModel):
     """Schema for similar documents query."""
 
-    limit: Optional[int] = Field(
+    limit: int | None = Field(
         5, description="Maximum number of similar documents to return"
     )
 
@@ -112,7 +113,7 @@ class SimilarDocumentsResponse(BaseModel):
 
     document_id: int = Field(..., description="ID of the original document")
     query_chunk: str = Field(..., description="Text chunk used for similarity search")
-    similar_documents: List[SearchResult] = Field(
+    similar_documents: list[SearchResult] = Field(
         ..., description="List of similar documents"
     )
 
@@ -121,10 +122,10 @@ class AnalysisQuery(BaseModel):
     """Schema for statement analysis query."""
 
     statement: str = Field(..., description="The statement to analyze")
-    context_document_ids: Optional[List[int]] = Field(
+    context_document_ids: list[int] | None = Field(
         None, description="Optional list of document IDs to use as context"
     )
-    max_context_chunks: Optional[int] = Field(
+    max_context_chunks: int | None = Field(
         10, description="Maximum number of context chunks to consider"
     )
 
@@ -135,7 +136,7 @@ class AnalysisResult(BaseModel):
     statement: str = Field(..., description="The original statement")
     analysis: str = Field(..., description="Analysis result (placeholder for now)")
     confidence_score: float = Field(..., description="Confidence score of the analysis")
-    supporting_evidence: List[SearchResult] = Field(
+    supporting_evidence: list[SearchResult] = Field(
         ..., description="Supporting evidence from documents"
     )
     context_used: int = Field(..., description="Number of context chunks used")
@@ -147,9 +148,9 @@ class ProgressUpdate(BaseModel):
     operation_id: str = Field(..., description="Unique identifier for the operation")
     progress: float = Field(..., description="Progress percentage (0.0 to 100.0)")
     status: str = Field(..., description="Current status message")
-    current_step: Optional[int] = Field(None, description="Current step number")
-    total_steps: Optional[int] = Field(None, description="Total number of steps")
-    estimated_time_remaining: Optional[int] = Field(
+    current_step: int | None = Field(None, description="Current step number")
+    total_steps: int | None = Field(None, description="Total number of steps")
+    estimated_time_remaining: int | None = Field(
         None, description="Estimated time remaining in seconds"
     )
 

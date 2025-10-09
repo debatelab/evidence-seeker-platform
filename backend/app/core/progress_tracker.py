@@ -3,13 +3,13 @@ Progress tracking service for long-running AI operations.
 """
 
 import asyncio
-import time
-import uuid
-from typing import Dict, Any, Optional, List, Callable
-from datetime import datetime
 import logging
+import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -32,11 +32,11 @@ class ProgressUpdate:
     progress: float  # 0.0 to 100.0
     status: str
     message: str
-    current_step: Optional[int] = None
-    total_steps: Optional[int] = None
-    estimated_time_remaining: Optional[int] = None  # seconds
+    current_step: int | None = None
+    total_steps: int | None = None
+    estimated_time_remaining: int | None = None  # seconds
     timestamp: datetime = field(default_factory=datetime.utcnow)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -51,29 +51,29 @@ class OperationInfo:
     created_at: datetime
     updated_at: datetime
     user_id: int
-    evidence_seeker_id: Optional[int] = None
-    current_step: Optional[int] = None
-    total_steps: Optional[int] = None
-    estimated_time_remaining: Optional[int] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    callbacks: List[Callable] = field(default_factory=list)
+    evidence_seeker_id: int | None = None
+    current_step: int | None = None
+    total_steps: int | None = None
+    estimated_time_remaining: int | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
+    callbacks: list[Callable] = field(default_factory=list)
 
 
 class ProgressTracker:
     """Service for tracking progress of long-running operations."""
 
     def __init__(self):
-        self.operations: Dict[str, OperationInfo] = {}
-        self.subscribers: Dict[str, List[Callable]] = {}
-        self._cleanup_task: Optional[asyncio.Task] = None
+        self.operations: dict[str, OperationInfo] = {}
+        self.subscribers: dict[str, list[Callable]] = {}
+        self._cleanup_task: asyncio.Task | None = None
 
     def start_operation(
         self,
         operation_type: str,
         user_id: int,
-        evidence_seeker_id: Optional[int] = None,
-        total_steps: Optional[int] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        evidence_seeker_id: int | None = None,
+        total_steps: int | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> str:
         """Start tracking a new operation."""
         operation_id = str(uuid.uuid4())
@@ -104,9 +104,9 @@ class ProgressTracker:
         operation_id: str,
         progress: float,
         message: str,
-        current_step: Optional[int] = None,
-        estimated_time_remaining: Optional[int] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        current_step: int | None = None,
+        estimated_time_remaining: int | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> bool:
         """Update progress for an operation."""
         if operation_id not in self.operations:
@@ -158,7 +158,7 @@ class ProgressTracker:
         self,
         operation_id: str,
         message: str = "Operation completed successfully",
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> bool:
         """Mark an operation as completed."""
         if operation_id not in self.operations:
@@ -191,7 +191,7 @@ class ProgressTracker:
         self,
         operation_id: str,
         error_message: str,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> bool:
         """Mark an operation as failed."""
         if operation_id not in self.operations:
@@ -223,7 +223,7 @@ class ProgressTracker:
         self,
         operation_id: str,
         message: str = "Operation cancelled",
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> bool:
         """Mark an operation as cancelled."""
         if operation_id not in self.operations:
@@ -251,7 +251,7 @@ class ProgressTracker:
         logger.info(f"Cancelled operation {operation_id}: {message}")
         return True
 
-    def get_operation_status(self, operation_id: str) -> Optional[Dict[str, Any]]:
+    def get_operation_status(self, operation_id: str) -> dict[str, Any] | None:
         """Get the current status of an operation."""
         if operation_id not in self.operations:
             return None
@@ -276,9 +276,9 @@ class ProgressTracker:
     def get_user_operations(
         self,
         user_id: int,
-        evidence_seeker_id: Optional[int] = None,
-        status_filter: Optional[List[str]] = None,
-    ) -> List[Dict[str, Any]]:
+        evidence_seeker_id: int | None = None,
+        status_filter: list[str] | None = None,
+    ) -> list[dict[str, Any]]:
         """Get all operations for a user, optionally filtered by evidence seeker and status."""
         operations = []
 

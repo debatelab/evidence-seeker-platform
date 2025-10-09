@@ -1,16 +1,16 @@
-from pydantic import BaseModel, Field
-from typing import Optional
 from datetime import datetime
 from uuid import UUID
+
+from pydantic import BaseModel, Field
 
 
 class DocumentBase(BaseModel):
     """Base schema for Document"""
 
     title: str = Field(..., min_length=1, max_length=200)
-    description: Optional[str] = Field(None, max_length=500)
+    description: str | None = Field(None, max_length=500)
     evidence_seeker_uuid: UUID  # External API uses UUID
-    evidence_seeker_id: Optional[int] = None  # Keep for internal use
+    evidence_seeker_id: int | None = None  # Keep for internal use
 
 
 class DocumentCreate(DocumentBase):
@@ -22,8 +22,8 @@ class DocumentCreate(DocumentBase):
 class DocumentUpdate(BaseModel):
     """Schema for updating Document"""
 
-    title: Optional[str] = Field(None, min_length=1, max_length=200)
-    description: Optional[str] = Field(None, max_length=500)
+    title: str | None = Field(None, min_length=1, max_length=200)
+    description: str | None = Field(None, max_length=500)
 
 
 class DocumentRead(DocumentBase):

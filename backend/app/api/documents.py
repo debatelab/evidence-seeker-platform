@@ -1,33 +1,29 @@
+import os
+
 from fastapi import (
     APIRouter,
+    BackgroundTasks,
     Depends,
-    HTTPException,
-    status,
-    UploadFile,
     File,
     Form,
-    BackgroundTasks,
+    HTTPException,
+    UploadFile,
+    status,
 )
 from fastapi.responses import FileResponse
-import os
-import asyncio
 from sqlalchemy.orm import Session
-from typing import List, Optional
-from ..core.database import get_db
-from ..schemas.document import DocumentCreate, DocumentRead, DocumentUpdate
-from ..models.document import Document
-from ..models.evidence_seeker import EvidenceSeeker
+
 from ..core.auth import get_current_user
+from ..core.database import get_db
+from ..core.embedding_service import embedding_service
+from ..core.file_utils import delete_file, save_upload_file, validate_file
 from ..core.permissions import (
-    require_evidence_seeker_admin,
-    require_evidence_seeker_reader,
     check_evidence_seeker_permission,
 )
+from ..models.document import Document
+from ..models.evidence_seeker import EvidenceSeeker
 from ..models.permission import UserRole
-from ..core.file_utils import validate_file, save_upload_file, delete_file
-from ..core.embedding_service import embedding_service
-from ..api.progress import track_embedding_generation
-
+from ..schemas.document import DocumentRead
 
 router = APIRouter()
 
@@ -58,7 +54,7 @@ def upload_document(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     title: str = Form(...),
-    description: Optional[str] = Form(None),
+    description: str | None = Form(None),
     evidence_seeker_uuid: str = Form(...),  # Use UUID for external API
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
@@ -77,7 +73,9 @@ def upload_document(
             db.query(EvidenceSeeker).filter(EvidenceSeeker.uuid == uuid_obj).first()
         )
     except (ValueError, TypeError):
-        raise HTTPException(status_code=404, detail="Invalid evidence seeker UUID")
+        raise HTTPException(
+            status_code=404, detail="Invalid evidence seeker UUID"
+        ) from None
 
     if seeker is None:
         raise HTTPException(status_code=404, detail="Evidence Seeker not found")
@@ -146,7 +144,7 @@ def upload_document(
     return db_document
 
 
-@router.get("/", response_model=List[DocumentRead])
+@router.get("/", response_model=list[DocumentRead])
 def get_documents(
     evidence_seeker_uuid: str,  # Use UUID for external API
     db: Session = Depends(get_db),
@@ -162,7 +160,9 @@ def get_documents(
             db.query(EvidenceSeeker).filter(EvidenceSeeker.uuid == uuid_obj).first()
         )
     except (ValueError, TypeError):
-        raise HTTPException(status_code=404, detail="Invalid evidence seeker UUID")
+        raise HTTPException(
+            status_code=404, detail="Invalid evidence seeker UUID"
+        ) from None
 
     if seeker is None:
         raise HTTPException(status_code=404, detail="Evidence Seeker not found")

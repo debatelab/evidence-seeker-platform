@@ -1,7 +1,7 @@
+from datetime import datetime
+
 from fastapi_users import schemas
 from pydantic import BaseModel, EmailStr, Field
-from typing import Optional
-from datetime import datetime
 
 
 class UserRead(schemas.BaseUser[int]):
@@ -13,8 +13,8 @@ class UserRead(schemas.BaseUser[int]):
     is_active: bool = Field(alias="isActive", default=True)
     is_superuser: bool = Field(alias="isSuperuser", default=False)
     is_verified: bool = Field(alias="isVerified", default=False)
-    created_at: Optional[datetime] = Field(alias="createdAt", default=None)
-    updated_at: Optional[datetime] = Field(alias="updatedAt", default=None)
+    created_at: datetime | None = Field(alias="createdAt", default=None)
+    updated_at: datetime | None = Field(alias="updatedAt", default=None)
 
     class Config:
         populate_by_name = True
@@ -28,22 +28,22 @@ class UserCreate(schemas.BaseUserCreate):
     email: EmailStr
     username: str = Field(..., min_length=3, max_length=50, pattern=r"^[a-zA-Z0-9_-]+$")
     password: str
-    is_active: Optional[bool] = True
-    is_superuser: Optional[bool] = False
-    is_verified: Optional[bool] = False
+    is_active: bool | None = True
+    is_superuser: bool | None = False
+    is_verified: bool | None = False
 
 
 class UserUpdate(schemas.BaseUserUpdate):
     """User schema for user updates"""
 
-    email: Optional[EmailStr] = None
-    username: Optional[str] = Field(
+    email: EmailStr | None = None
+    username: str | None = Field(
         None, min_length=3, max_length=50, pattern=r"^[a-zA-Z0-9_-]+$"
     )
-    password: Optional[str] = None
-    is_active: Optional[bool] = None
-    is_superuser: Optional[bool] = None
-    is_verified: Optional[bool] = None
+    password: str | None = None
+    is_active: bool | None = None
+    is_superuser: bool | None = None
+    is_verified: bool | None = None
 
 
 class UserInDB(UserRead):
@@ -62,8 +62,8 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     """JWT token data schema"""
 
-    email: Optional[str] = None
-    user_id: Optional[int] = None
+    email: str | None = None
+    user_id: int | None = None
 
 
 class LoginRequest(BaseModel):

@@ -3,20 +3,17 @@ Embedding Service for generating document embeddings using LlamaIndex and Huggin
 """
 
 import asyncio
+import logging
 import time
 from datetime import datetime
-from typing import List, Optional, Dict, Any
 from pathlib import Path
-import logging
+from typing import Any
 
-from llama_index.core import SimpleDirectoryReader, Document as LlamaDocument
+from llama_index.core import SimpleDirectoryReader
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
-from llama_index.vector_stores.postgres import PGVectorStore
 from sqlalchemy.orm import Session
 
-from app.core.database import get_db
 from app.models import Document, Embedding, EmbeddingStatus
-from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +69,6 @@ class EmbeddingService:
                 return False
 
             # Create a temporary directory with the single file
-            temp_dir = file_path.parent
             reader = SimpleDirectoryReader(
                 input_files=[str(file_path)], recursive=False
             )
@@ -148,13 +144,13 @@ class EmbeddingService:
             try:
                 document.embedding_status = EmbeddingStatus.FAILED
                 db.commit()
-            except:
+            except Exception:
                 pass
             return False
 
     def generate_embeddings_batch(
-        self, document_ids: List[int], db: Session
-    ) -> Dict[int, bool]:
+        self, document_ids: list[int], db: Session
+    ) -> dict[int, bool]:
         """
         Generate embeddings for multiple documents sequentially.
 
@@ -180,7 +176,7 @@ class EmbeddingService:
 
         return results
 
-    def get_embedding_model_info(self) -> Dict[str, Any]:
+    def get_embedding_model_info(self) -> dict[str, Any]:
         """Get information about the current embedding model."""
         return {
             "model_name": self.model_name,
@@ -192,7 +188,7 @@ class EmbeddingService:
 
     async def get_document_embedding_status(
         self, document_id: int, db: Session
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """
         Get the embedding status and statistics for a document.
 

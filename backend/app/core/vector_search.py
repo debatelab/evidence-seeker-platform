@@ -3,16 +3,15 @@ Vector Search Service for similarity search using PGVectorStore.
 """
 
 import logging
-from typing import List, Optional, Dict, Any, Tuple
-from sqlalchemy.orm import Session
-from sqlalchemy import text, make_url
+from typing import Any
 
 from llama_index.vector_stores.postgres import PGVectorStore
-from llama_index.core.vector_stores import VectorStoreQuery, VectorStoreQueryResult
+from sqlalchemy import make_url, text
+from sqlalchemy.orm import Session
 
 from app.core.database import get_db_connection_string
-from app.models import Document, Embedding
 from app.core.embedding_service import embedding_service
+from app.models import Document, Embedding
 
 logger = logging.getLogger(__name__)
 
@@ -51,8 +50,8 @@ class VectorSearchService:
         query: str,
         limit: int = 10,
         similarity_threshold: float = 0.1,
-        document_ids: Optional[List[int]] = None,
-    ) -> List[Dict[str, Any]]:
+        document_ids: list[int] | None = None,
+    ) -> list[dict[str, Any]]:
         """
         Search for similar documents using vector similarity.
 
@@ -123,11 +122,11 @@ class VectorSearchService:
 
     def search_by_embedding(
         self,
-        query_embedding: List[float],
+        query_embedding: list[float],
         limit: int = 10,
         similarity_threshold: float = 0.1,
-        document_ids: Optional[List[int]] = None,
-    ) -> List[Dict[str, Any]]:
+        document_ids: list[int] | None = None,
+    ) -> list[dict[str, Any]]:
         """
         Search using a pre-computed embedding vector.
 
@@ -196,7 +195,7 @@ class VectorSearchService:
 
     def get_document_chunks(
         self, document_id: int, db: Session
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Get all embedding chunks for a specific document.
 
@@ -236,7 +235,7 @@ class VectorSearchService:
             )
             return []
 
-    def get_search_statistics(self, db: Session) -> Dict[str, Any]:
+    def get_search_statistics(self, db: Session) -> dict[str, Any]:
         """
         Get statistics about the vector search index.
 
@@ -286,7 +285,7 @@ class VectorSearchService:
                 "vector_dimensions": 768,
             }
 
-    def _execute_raw_query(self, query: str) -> List[Dict[str, Any]]:
+    def _execute_raw_query(self, query: str) -> list[dict[str, Any]]:
         """
         Execute a raw SQL query and return results.
 

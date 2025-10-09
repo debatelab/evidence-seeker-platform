@@ -1,21 +1,19 @@
-from fastapi import Depends, Request, HTTPException, status
-from fastapi_users import BaseUserManager, IntegerIDMixin, schemas, FastAPIUsers
+
+from fastapi import Depends, HTTPException, Request, status
+from fastapi_users import BaseUserManager, FastAPIUsers, IntegerIDMixin, schemas
 from fastapi_users.authentication import (
     AuthenticationBackend,
     BearerTransport,
     JWTStrategy,
 )
 from fastapi_users_db_sqlalchemy import SQLAlchemyUserDatabase
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Session
 from sqlalchemy import select
-from typing import Optional
-import secrets
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.database import get_async_db, get_db
-from app.models.user import User
 from app.core.config import settings
+from app.core.database import get_async_db
 from app.core.email_service import EmailService
+from app.models.user import User
 
 
 class UserManager(IntegerIDMixin, BaseUserManager[User, int]):
@@ -44,7 +42,7 @@ class UserManager(IntegerIDMixin, BaseUserManager[User, int]):
         self,
         user_create: schemas.UC,
         safe: bool = False,
-        request: Optional[Request] = None,
+        request: Request | None = None,
     ) -> User:
         """Create a new user with username validation"""
         # Validate username uniqueness before creating user
@@ -54,12 +52,12 @@ class UserManager(IntegerIDMixin, BaseUserManager[User, int]):
         # Call parent create method
         return await super().create(user_create, safe, request)
 
-    async def on_after_register(self, user: User, request: Optional[Request] = None):
+    async def on_after_register(self, user: User, request: Request | None = None):
         """Hook called after user registration"""
         print(f"User {user.id} has registered.")
 
     async def on_after_forgot_password(
-        self, user: User, token: str, request: Optional[Request] = None
+        self, user: User, token: str, request: Request | None = None
     ):
         """Hook called after forgot password request - sends password reset email"""
         try:
@@ -69,7 +67,7 @@ class UserManager(IntegerIDMixin, BaseUserManager[User, int]):
             print(f"Failed to send password reset email to {user.email}: {e}")
 
     async def on_after_request_verify(
-        self, user: User, token: str, request: Optional[Request] = None
+        self, user: User, token: str, request: Request | None = None
     ):
         """Hook called after verification request - sends verification email"""
         try:

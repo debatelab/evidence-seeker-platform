@@ -3,15 +3,13 @@ API endpoints for embedding operations.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
-from typing import List, Optional, Dict, Any
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 
+from ..core.auth import get_current_user
 from ..core.database import get_db
 from ..core.embedding_service import embedding_service
-from ..core.auth import get_current_user
 from ..models import Document
-
 
 router = APIRouter()
 
@@ -22,9 +20,9 @@ class EmbeddingStatusResponse(BaseModel):
     document_id: int
     status: str
     embedding_count: int
-    model: Optional[str]
-    dimensions: Optional[int]
-    generated_at: Optional[str]
+    model: str | None
+    dimensions: int | None
+    generated_at: str | None
 
 
 class EmbeddingRegenerateRequest(BaseModel):
@@ -55,7 +53,7 @@ def get_embedding_status(
     except HTTPException:
         raise HTTPException(
             status_code=403, detail="Not authorized to access this document"
-        )
+        ) from None
 
     # Get embedding status
     status_info = embedding_service.get_document_embedding_status(document_id, db)
@@ -87,11 +85,10 @@ def regenerate_embeddings(
     except HTTPException:
         raise HTTPException(
             status_code=403, detail="Not authorized to access this document"
-        )
+        ) from None
 
     # Trigger embedding regeneration
     import asyncio
-    from fastapi import BackgroundTasks
 
     # Note: In a real implementation, you'd want to use BackgroundTasks here
     # For now, we'll run it synchronously for simplicity
@@ -108,7 +105,7 @@ def regenerate_embeddings(
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Error regenerating embeddings: {str(e)}"
-        )
+        ) from None
 
 
 @router.get("/model-info")
@@ -119,7 +116,7 @@ def get_embedding_model_info():
 
 @router.get("/batch-status")
 def get_batch_embedding_status(
-    document_ids: List[int] = Query(..., description="List of document IDs"),
+    document_ids: list[int] = Query(..., description="List of document IDs"),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):

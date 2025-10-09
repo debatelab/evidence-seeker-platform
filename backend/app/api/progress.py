@@ -2,6 +2,9 @@
 API endpoints for progress tracking of long-running operations.
 """
 
+import asyncio
+import logging
+
 from fastapi import (
     APIRouter,
     Depends,
@@ -11,13 +14,10 @@ from fastapi import (
     WebSocketDisconnect,
 )
 from sqlalchemy.orm import Session
-from typing import List, Optional, Dict, Any
-import json
-import logging
 
-from ..core.database import get_db
-from ..core.progress_tracker import progress_tracker, ProgressUpdate
 from ..core.auth import get_current_user
+from ..core.database import get_db
+from ..core.progress_tracker import ProgressUpdate, progress_tracker
 
 logger = logging.getLogger(__name__)
 
@@ -46,10 +46,10 @@ def get_operation_status(
 
 @router.get("/operations")
 def get_user_operations(
-    evidence_seeker_uuid: Optional[str] = Query(
+    evidence_seeker_uuid: str | None = Query(
         None, description="Filter by evidence seeker"
     ),
-    status: Optional[List[str]] = Query(None, description="Filter by status"),
+    status: list[str] | None = Query(None, description="Filter by status"),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
@@ -68,7 +68,7 @@ def get_user_operations(
             raise HTTPException(
                 status_code=403,
                 detail="Not authorized to access operations for this evidence seeker",
-            )
+            ) from None
 
     operations = progress_tracker.get_user_operations(
         user_id=current_user.id,
@@ -115,7 +115,7 @@ class ConnectionManager:
     """Manages WebSocket connections for progress updates."""
 
     def __init__(self):
-        self.active_connections: Dict[str, List[WebSocket]] = {}
+        self.active_connections: dict[str, list[WebSocket]] = {}
 
     async def connect(self, operation_id: str, websocket: WebSocket):
         """Connect a WebSocket to an operation."""
@@ -213,9 +213,9 @@ async def websocket_progress(
             # Keep the connection alive
             while True:
                 # Wait for any client messages (ping/pong, etc.)
-                data = await websocket.receive_text()
                 # For now, we don't handle client messages
                 # In the future, we could handle cancellation requests, etc.
+                await websocket.receive_text()
 
         except WebSocketDisconnect:
             logger.info(f"WebSocket disconnected for operation {operation_id}")
@@ -226,7 +226,7 @@ async def websocket_progress(
         logger.error(f"WebSocket error for operation {operation_id}: {str(e)}")
         try:
             await websocket.close(code=1011, reason="Internal server error")
-        except:
+        except Exception:
             pass
 
 
@@ -248,8 +248,8 @@ async def track_embedding_generation(
     document_id: int, user_id: int, evidence_seeker_id: int
 ):
     """Track the progress of embedding generation for a document."""
-    from ..core.embedding_service import embedding_service
     from ..core.database import SessionLocal
+    from ..core.embedding_service import embedding_service
 
     # Start progress tracking
     operation_id = progress_tracker.start_operation(

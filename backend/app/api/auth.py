@@ -1,13 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi_users import FastAPIUsers
-from fastapi_users.authentication import AuthenticationBackend
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.auth import auth_backend, get_user_manager, UserManager
-from app.core.database import get_db
-from app.schemas.user import UserRead, UserCreate
+from app.core.auth import UserManager, auth_backend, get_user_manager
 from app.models.user import User
+from app.schemas.user import UserCreate, UserRead
 
 # Create router
 router = APIRouter()
@@ -64,7 +61,7 @@ async def resend_verification(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to send verification email: {str(e)}",
-        )
+        ) from e
 
 
 @router.get("/auth/test")

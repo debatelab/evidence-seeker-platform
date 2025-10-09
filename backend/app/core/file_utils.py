@@ -1,8 +1,9 @@
 import os
 import shutil
 from pathlib import Path
-from typing import Optional
-from fastapi import UploadFile, HTTPException
+
+from fastapi import HTTPException, UploadFile
+
 from .config import settings
 
 
@@ -57,7 +58,9 @@ def save_upload_file(file: UploadFile, evidence_seeker_id: int) -> str:
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to save file: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to save file: {str(e)}"
+        ) from e
 
     return str(file_path)
 
@@ -75,7 +78,7 @@ def delete_file(file_path: str) -> bool:
         return False
 
 
-def get_file_info(file_path: str) -> Optional[dict]:
+def get_file_info(file_path: str) -> dict | None:
     """Get file information"""
     try:
         if os.path.exists(file_path):

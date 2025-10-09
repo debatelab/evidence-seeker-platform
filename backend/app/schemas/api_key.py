@@ -2,9 +2,9 @@
 Pydantic schemas for API key management.
 """
 
-from pydantic import BaseModel, Field
-from typing import Optional
 from datetime import datetime
+
+from pydantic import BaseModel, Field
 
 
 class APIKeyBase(BaseModel):
@@ -14,14 +14,14 @@ class APIKeyBase(BaseModel):
         ..., description="API provider (e.g., 'huggingface', 'openai')"
     )
     name: str = Field(..., description="User-friendly name for the API key")
-    description: Optional[str] = Field(None, description="Optional description")
+    description: str | None = Field(None, description="Optional description")
 
 
 class APIKeyCreate(APIKeyBase):
     """Schema for creating a new API key."""
 
     api_key: str = Field(..., description="The actual API key to encrypt and store")
-    expires_in_days: Optional[int] = Field(
+    expires_in_days: int | None = Field(
         None, description="Number of days until expiration"
     )
 
@@ -29,9 +29,9 @@ class APIKeyCreate(APIKeyBase):
 class APIKeyUpdate(BaseModel):
     """Schema for updating an API key."""
 
-    name: Optional[str] = Field(None, description="Updated name")
-    description: Optional[str] = Field(None, description="Updated description")
-    is_active: Optional[bool] = Field(None, description="Whether the key is active")
+    name: str | None = Field(None, description="Updated name")
+    description: str | None = Field(None, description="Updated description")
+    is_active: bool | None = Field(None, description="Whether the key is active")
 
 
 class APIKeyRead(APIKeyBase):
@@ -40,8 +40,8 @@ class APIKeyRead(APIKeyBase):
     id: int
     user_id: int
     is_active: bool
-    last_used_at: Optional[datetime]
-    expires_at: Optional[datetime]
+    last_used_at: datetime | None
+    expires_at: datetime | None
     created_at: datetime
     updated_at: datetime
 

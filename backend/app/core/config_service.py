@@ -2,18 +2,16 @@
 Configuration Service for managing encrypted API keys and AI settings.
 """
 
-import os
-import json
 import hashlib
+import logging
+import os
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Any, List
+from typing import Any
+
 from cryptography.fernet import Fernet
 from sqlalchemy.orm import Session
-import logging
 
-from app.core.database import get_db
-from app.models import APIKey, User
-from app.core.config import settings
+from app.models import APIKey
 
 logger = logging.getLogger(__name__)
 
@@ -67,8 +65,8 @@ class ConfigService:
         provider: str,
         name: str,
         api_key: str,
-        description: Optional[str] = None,
-        expires_in_days: Optional[int] = None,
+        description: str | None = None,
+        expires_in_days: int | None = None,
         db: Session = None,
     ) -> APIKey:
         """Create and store an encrypted API key."""
@@ -135,7 +133,7 @@ class ConfigService:
 
     def get_api_key(
         self, api_key_id: int, evidence_seeker_id: int, db: Session = None
-    ) -> Optional[APIKey]:
+    ) -> APIKey | None:
         """Get an API key record for an evidence seeker."""
         if db is None:
             from app.core.database import SessionLocal
@@ -151,7 +149,7 @@ class ConfigService:
                 .filter(
                     APIKey.id == api_key_id,
                     APIKey.evidence_seeker_id == evidence_seeker_id,
-                    APIKey.is_active == True,
+                    APIKey.is_active,
                 )
                 .first()
             )
@@ -164,9 +162,9 @@ class ConfigService:
     def get_api_keys_for_evidence_seeker(
         self,
         evidence_seeker_id: int,
-        provider: Optional[str] = None,
+        provider: str | None = None,
         db: Session = None,
-    ) -> List[APIKey]:
+    ) -> list[APIKey]:
         """Get all API keys for an evidence seeker, optionally filtered by provider."""
         if db is None:
             from app.core.database import SessionLocal
@@ -179,7 +177,7 @@ class ConfigService:
         try:
             query = db.query(APIKey).filter(
                 APIKey.evidence_seeker_id == evidence_seeker_id,
-                APIKey.is_active == True,
+                APIKey.is_active,
             )
 
             if provider:
@@ -192,7 +190,7 @@ class ConfigService:
 
     def get_decrypted_api_key(
         self, api_key_id: int, evidence_seeker_id: int, db: Session = None
-    ) -> Optional[str]:
+    ) -> str | None:
         """Get a decrypted API key for use."""
         api_key_record = self.get_api_key(api_key_id, evidence_seeker_id, db)
         if not api_key_record:
@@ -229,9 +227,9 @@ class ConfigService:
         self,
         api_key_id: int,
         evidence_seeker_id: int,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-        is_active: Optional[bool] = None,
+        name: str | None = None,
+        description: str | None = None,
+        is_active: bool | None = None,
         db: Session = None,
     ) -> bool:
         """Update an API key record."""
@@ -303,7 +301,7 @@ class ConfigService:
             # Generic validation - just check it's not empty and reasonable length
             return len(api_key) > 10
 
-    def get_ai_config(self) -> Dict[str, Any]:
+    def get_ai_config(self) -> dict[str, Any]:
         """Get AI-related configuration settings."""
         return {
             "embedding_model": "sentence-transformers/paraphrase-multilingual-mpnet-base-v2",
@@ -316,7 +314,7 @@ class ConfigService:
             "max_search_results": 50,
         }
 
-    def get_system_stats(self, db: Session = None) -> Dict[str, Any]:
+    def get_system_stats(self, db: Session = None) -> dict[str, Any]:
         """Get system statistics for AI components."""
         if db is None:
             from app.core.database import SessionLocal
@@ -336,7 +334,7 @@ class ConfigService:
                 .count()
             )
             total_embeddings = db.query(Embedding).count()
-            total_api_keys = db.query(APIKey).filter(APIKey.is_active == True).count()
+            total_api_keys = db.query(APIKey).filter(APIKey.is_active).count()
 
             return {
                 "total_documents": total_documents,

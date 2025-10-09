@@ -2,16 +2,16 @@
 API endpoints for vector search operations.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
-from typing import List, Optional, Dict, Any
-from pydantic import BaseModel
+from typing import Any
 
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+
+from ..core.auth import get_current_user
 from ..core.database import get_db
 from ..core.vector_search import vector_search_service
-from ..core.auth import get_current_user
 from ..models import Document
-
 
 router = APIRouter()
 
@@ -20,9 +20,9 @@ class SearchRequest(BaseModel):
     """Request model for vector search"""
 
     query: str
-    limit: Optional[int] = 10
-    similarity_threshold: Optional[float] = 0.1
-    document_ids: Optional[List[int]] = None
+    limit: int | None = 10
+    similarity_threshold: float | None = 0.1
+    document_ids: list[int] | None = None
 
 
 class SearchResult(BaseModel):
@@ -40,7 +40,7 @@ class SearchResponse(BaseModel):
     """Response model for search operation"""
 
     query: str
-    results: List[SearchResult]
+    results: list[SearchResult]
     total_results: int
 
 
@@ -49,7 +49,7 @@ class SearchStatistics(BaseModel):
 
     total_embeddings: int
     documents_with_embeddings: int
-    embedding_models: List[Dict[str, Any]]
+    embedding_models: list[dict[str, Any]]
     vector_dimensions: int
 
 
@@ -81,7 +81,7 @@ def search_documents(
                     raise HTTPException(
                         status_code=403,
                         detail=f"Not authorized to search document {doc_id}",
-                    )
+                    ) from None
 
         # Perform the search
         results = vector_search_service.search_similar(
@@ -101,7 +101,9 @@ def search_documents(
         )
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Search failed: {str(e)}"
+        ) from None
 
 
 @router.get("/statistics", response_model=SearchStatistics)
@@ -116,7 +118,7 @@ def get_search_statistics(
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to get statistics: {str(e)}"
-        )
+        ) from None
 
 
 @router.get("/document-chunks/{document_id}")
@@ -141,7 +143,7 @@ def get_document_chunks(
     except HTTPException:
         raise HTTPException(
             status_code=403, detail="Not authorized to access this document"
-        )
+        ) from None
 
     try:
         chunks = vector_search_service.get_document_chunks(document_id, db)
@@ -149,15 +151,15 @@ def get_document_chunks(
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to get document chunks: {str(e)}"
-        )
+        ) from None
 
 
 @router.post("/by-embedding")
 def search_by_embedding(
-    query_embedding: List[float],
-    limit: Optional[int] = 10,
-    similarity_threshold: Optional[float] = 0.1,
-    document_ids: Optional[List[int]] = None,
+    query_embedding: list[float],
+    limit: int | None = 10,
+    similarity_threshold: float | None = 0.1,
+    document_ids: list[int] | None = None,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
@@ -183,7 +185,7 @@ def search_by_embedding(
                     raise HTTPException(
                         status_code=403,
                         detail=f"Not authorized to search document {doc_id}",
-                    )
+                    ) from None
 
         # Perform the search
         results = vector_search_service.search_by_embedding(
@@ -202,13 +204,13 @@ def search_by_embedding(
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Embedding search failed: {str(e)}"
-        )
+        ) from None
 
 
 @router.get("/similar-documents/{document_id}")
 def find_similar_documents(
     document_id: int,
-    limit: Optional[int] = 5,
+    limit: int | None = 5,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
@@ -228,7 +230,7 @@ def find_similar_documents(
     except HTTPException:
         raise HTTPException(
             status_code=403, detail="Not authorized to access this document"
-        )
+        ) from None
 
     try:
         # Get embeddings for this document
@@ -280,4 +282,4 @@ def find_similar_documents(
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to find similar documents: {str(e)}"
-        )
+        ) from None

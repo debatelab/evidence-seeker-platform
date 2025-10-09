@@ -1,14 +1,14 @@
-from pydantic import BaseModel, Field
-from typing import Optional
 from datetime import datetime
 from uuid import UUID
+
+from pydantic import BaseModel, Field
 
 
 class EvidenceSeekerBase(BaseModel):
     """Base schema for EvidenceSeeker"""
 
     title: str = Field(..., min_length=1, max_length=100)
-    description: Optional[str] = Field(None, max_length=500)
+    description: str | None = Field(None, max_length=500)
     is_public: bool = Field(default=False)
 
 
@@ -21,9 +21,9 @@ class EvidenceSeekerCreate(EvidenceSeekerBase):
 class EvidenceSeekerUpdate(BaseModel):
     """Schema for updating EvidenceSeeker"""
 
-    title: Optional[str] = Field(None, min_length=1, max_length=100)
-    description: Optional[str] = Field(None, max_length=500)
-    is_public: Optional[bool] = None
+    title: str | None = Field(None, min_length=1, max_length=100)
+    description: str | None = Field(None, max_length=500)
+    is_public: bool | None = None
 
 
 class EvidenceSeekerRead(EvidenceSeekerBase):
@@ -31,7 +31,7 @@ class EvidenceSeekerRead(EvidenceSeekerBase):
 
     id: int
     uuid: UUID  # External API identifier
-    logo_url: Optional[str] = Field(alias="logoUrl")
+    logo_url: str | None = Field(alias="logoUrl")
     created_by: int = Field(alias="createdBy")
     created_at: datetime = Field(alias="createdAt")
     updated_at: datetime = Field(alias="updatedAt")

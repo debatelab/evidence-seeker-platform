@@ -1,34 +1,31 @@
+import shutil
+from pathlib import Path
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List, Union
-from uuid import UUID
-import shutil
-import os
-from pathlib import Path
+
+from ..core.auth import get_current_user
+from ..core.config import settings
 from ..core.database import get_db
+from ..core.file_utils import delete_file
+from ..core.permissions import (
+    check_evidence_seeker_permission,
+    get_user_permissions,
+)
+from ..models.evidence_seeker import EvidenceSeeker
+from ..models.permission import UserRole
 from ..schemas.evidence_seeker import (
     EvidenceSeekerCreate,
     EvidenceSeekerRead,
     EvidenceSeekerUpdate,
 )
-from ..models.evidence_seeker import EvidenceSeeker
-from ..core.auth import get_current_user
-from ..core.permissions import (
-    require_evidence_seeker_admin,
-    require_evidence_seeker_reader,
-    check_evidence_seeker_permission,
-    get_user_permissions,
-)
-from ..models.permission import UserRole
-from ..core.file_utils import delete_file
-from ..core.config import settings
-
 
 router = APIRouter()
 
 
 def get_evidence_seeker_by_identifier(
-    identifier: Union[int, str],
+    identifier: int | str,
     db: Session,
     current_user_id: int,
 ) -> EvidenceSeeker:
@@ -59,7 +56,7 @@ def get_evidence_seeker_by_identifier(
     return seeker
 
 
-def get_accessible_evidence_seekers(user_id: int, db: Session) -> List[EvidenceSeeker]:
+def get_accessible_evidence_seekers(user_id: int, db: Session) -> list[EvidenceSeeker]:
     """Get all evidence seekers accessible to a user based on permissions"""
     # Get user's permissions
     permissions = get_user_permissions(user_id, db)
@@ -72,9 +69,7 @@ def get_accessible_evidence_seekers(user_id: int, db: Session) -> List[EvidenceS
     # Also include evidence seekers created by the user or public ones
     created_or_public = (
         db.query(EvidenceSeeker)
-        .filter(
-            (EvidenceSeeker.created_by == user_id) | (EvidenceSeeker.is_public == True)
-        )
+        .filter((EvidenceSeeker.created_by == user_id) | EvidenceSeeker.is_public)
         .all()
     )
 
@@ -102,7 +97,7 @@ def create_evidence_seeker(
     return db_seeker
 
 
-@router.get("/", response_model=List[EvidenceSeekerRead])
+@router.get("/", response_model=list[EvidenceSeekerRead])
 def get_evidence_seekers(
     skip: int = 0,
     limit: int = 100,
@@ -116,7 +111,7 @@ def get_evidence_seekers(
 
 @router.get("/{seeker_id}", response_model=EvidenceSeekerRead)
 def get_evidence_seeker(
-    seeker_id: Union[int, str],
+    seeker_id: int | str,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
@@ -126,7 +121,7 @@ def get_evidence_seeker(
 
 @router.put("/{seeker_id}", response_model=EvidenceSeekerRead)
 def update_evidence_seeker(
-    seeker_id: Union[int, str],
+    seeker_id: int | str,
     seeker_update: EvidenceSeekerUpdate,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
@@ -166,7 +161,7 @@ def update_evidence_seeker(
 
 @router.delete("/{seeker_id}")
 def delete_evidence_seeker(
-    seeker_id: Union[int, str],
+    seeker_id: int | str,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):

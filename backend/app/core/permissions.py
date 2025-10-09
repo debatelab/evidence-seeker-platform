@@ -1,10 +1,11 @@
+
 from fastapi import Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List, Optional
-from app.core.database import get_db
-from app.models.user import User
-from app.models.permission import Permission, UserRole
+
 from app.core.auth import get_current_user
+from app.core.database import get_db
+from app.models.permission import Permission, UserRole
+from app.models.user import User
 
 
 def check_evidence_seeker_permission(
@@ -60,7 +61,7 @@ def check_evidence_seeker_permission(
     return user_level >= required_level
 
 
-def get_user_permissions(user_id: int, db: Session) -> List[Permission]:
+def get_user_permissions(user_id: int, db: Session) -> list[Permission]:
     """
     Retrieve all permissions for a user.
 
@@ -208,6 +209,7 @@ class RequireEvidenceSeekerAdminByIdentifier:
             HTTPException: If user doesn't have admin access or evidence seeker not found
         """
         from uuid import UUID
+
         from app.models.evidence_seeker import EvidenceSeeker
 
         # Convert identifier to evidence seeker

@@ -1,7 +1,7 @@
-from pydantic import BaseModel, Field
-from typing import Optional, List
 from datetime import datetime
 from enum import Enum
+
+from pydantic import BaseModel, Field
 
 
 class PermissionRole(str, Enum):
@@ -14,7 +14,7 @@ class PermissionBase(BaseModel):
     """Base schema for Permission"""
 
     user_id: int = Field(alias="userId")
-    evidence_seeker_id: Optional[int] = Field(alias="evidenceSeekerId", default=None)
+    evidence_seeker_id: int | None = Field(alias="evidenceSeekerId", default=None)
     role: PermissionRole
 
 
@@ -39,14 +39,14 @@ class PermissionRead(PermissionBase):
 class PermissionUpdate(BaseModel):
     """Schema for updating existing permissions"""
 
-    role: Optional[PermissionRole] = None
+    role: PermissionRole | None = None
 
 
 class UserPermissions(BaseModel):
     """Schema aggregating all permissions for a user across evidence seekers"""
 
     user_id: int = Field(alias="userId")
-    permissions: List[PermissionRead] = Field(default_factory=list)
+    permissions: list[PermissionRead] = Field(default_factory=list)
 
     class Config:
         populate_by_name = True

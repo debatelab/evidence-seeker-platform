@@ -1,26 +1,24 @@
+
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
-from typing import List
+
+from app.core.auth import fastapi_users
 from app.core.database import get_db
 from app.core.permissions import (
-    require_platform_admin,
     get_user_permissions,
-    require_evidence_seeker_admin,
     require_evidence_seeker_admin_by_identifier,
+    require_platform_admin,
 )
-from app.core.auth import fastapi_users
+from app.models.evidence_seeker import EvidenceSeeker
 from app.models.permission import Permission, UserRole
 from app.models.user import User
-from app.models.evidence_seeker import EvidenceSeeker
 from app.schemas.permission import (
     PermissionCreate,
     PermissionRead,
     PermissionUpdate,
     UserPermissions,
 )
-from app.schemas.user import UserRead
-from pydantic import BaseModel
 
 
 class UserSearchResult(BaseModel):
@@ -226,13 +224,13 @@ async def get_user_permissions_endpoint(
     return UserPermissions(user_id=user_id, permissions=permission_reads)
 
 
-@router.get("/", response_model=List[PermissionRead])
+@router.get("/", response_model=list[PermissionRead])
 async def list_permissions(
     skip: int = 0,
     limit: int = 100,
     current_user: User = Depends(require_platform_admin),
     db: Session = Depends(get_db),
-) -> List[PermissionRead]:
+) -> list[PermissionRead]:
     """
     List all permissions with pagination.
     Only platform admins can list permissions.
@@ -246,13 +244,13 @@ async def list_permissions(
 
 @router.get(
     "/evidence-seeker/{evidence_seeker_identifier}/users",
-    response_model=List[EvidenceSeekerUser],
+    response_model=list[EvidenceSeekerUser],
 )
 async def get_evidence_seeker_users(
     evidence_seeker_identifier: str,
     current_user: User = Depends(require_evidence_seeker_admin_by_identifier()),
     db: Session = Depends(get_db),
-) -> List[EvidenceSeekerUser]:
+) -> list[EvidenceSeekerUser]:
     """
     Get all users with permissions on a specific evidence seeker.
     Only evse_admins of the evidence seeker can view users.

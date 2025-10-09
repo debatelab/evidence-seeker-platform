@@ -4,20 +4,18 @@ API endpoints for configuration management and API key operations.
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from typing import List, Optional, Dict, Any
 
-from ..core.database import get_db
-from ..core.config_service import config_service
 from ..core.auth import get_current_user
+from ..core.config_service import config_service
+from ..core.database import get_db
 from ..schemas.api_key import (
     APIKeyCreate,
-    APIKeyUpdate,
     APIKeyRead,
+    APIKeyUpdate,
     APIKeyValidation,
     APIKeyValidationResponse,
 )
 from ..schemas.search import SearchStatistics
-
 
 router = APIRouter()
 
@@ -61,17 +59,17 @@ def create_api_key(
         return APIKeyRead.from_orm(api_key)
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to create API key: {str(e)}"
-        )
+        ) from e
 
 
-@router.get("/{evidence_seeker_uuid}/api-keys", response_model=List[APIKeyRead])
+@router.get("/{evidence_seeker_uuid}/api-keys", response_model=list[APIKeyRead])
 def get_api_keys(
     evidence_seeker_uuid: str,
-    provider: Optional[str] = Query(None, description="Filter by provider"),
+    provider: str | None = Query(None, description="Filter by provider"),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
@@ -91,7 +89,9 @@ def get_api_keys(
         return [APIKeyRead.from_orm(key) for key in api_keys]
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get API keys: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get API keys: {str(e)}"
+        ) from e
 
 
 @router.get("/{evidence_seeker_uuid}/api-keys/{api_key_id}", response_model=APIKeyRead)
@@ -122,7 +122,9 @@ def get_api_key(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get API key: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get API key: {str(e)}"
+        ) from e
 
 
 @router.put("/{evidence_seeker_uuid}/api-keys/{api_key_id}", response_model=APIKeyRead)
@@ -166,7 +168,7 @@ def update_api_key(
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to update API key: {str(e)}"
-        )
+        ) from e
 
 
 @router.delete("/{evidence_seeker_uuid}/api-keys/{api_key_id}")
@@ -199,7 +201,7 @@ def delete_api_key(
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to delete API key: {str(e)}"
-        )
+        ) from e
 
 
 @router.post("/api-keys/validate", response_model=APIKeyValidationResponse)
@@ -226,7 +228,7 @@ def validate_api_key_format(
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to validate API key: {str(e)}"
-        )
+        ) from e
 
 
 @router.get("/ai-config")
@@ -237,7 +239,7 @@ def get_ai_config():
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to get AI config: {str(e)}"
-        )
+        ) from e
 
 
 @router.get("/system-stats", response_model=SearchStatistics)
@@ -252,7 +254,7 @@ def get_system_stats(
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to get system stats: {str(e)}"
-        )
+        ) from e
 
 
 @router.get("/providers")
@@ -268,7 +270,7 @@ def get_supported_providers():
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to get providers: {str(e)}"
-        )
+        ) from e
 
 
 @router.post("/{evidence_seeker_uuid}/api-keys/{api_key_id}/decrypt")
@@ -307,4 +309,4 @@ def get_decrypted_api_key(
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to decrypt API key: {str(e)}"
-        )
+        ) from e

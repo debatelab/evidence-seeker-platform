@@ -1,15 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi_users import FastAPIUsers
-from sqlalchemy.ext.asyncio import AsyncSession
 from loguru import logger
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.auth import get_user_manager, auth_backend
+from app.core.auth import auth_backend, get_user_manager
 from app.core.database import get_async_db
 from app.core.permissions import require_platform_admin
-from app.schemas.user import UserRead, UserUpdate, UserSearchResult
-from app.models.user import User
 from app.models.permission import UserRole
-from typing import List
+from app.models.user import User
+from app.schemas.user import UserRead, UserSearchResult, UserUpdate
 
 # Create router
 router = APIRouter()
@@ -88,10 +87,10 @@ async def delete_user(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to delete user: {str(e)}",
-        )
+        ) from None
 
 
-@router.get("/search-for-assignment", response_model=List[UserSearchResult])
+@router.get("/search-for-assignment", response_model=list[UserSearchResult])
 async def search_users_for_assignment(
     q: str,
     current_user: User = Depends(fastapi_users.current_user()),
@@ -113,7 +112,8 @@ async def search_users_for_assignment(
         search_term = f"%{q.strip()}%"
 
         # Search by username only (GDPR compliance - no email exposure)
-        from sqlalchemy import text, select
+        from sqlalchemy import select
+
         from app.models.user import User
 
         logger.info(f"Executing search query with term: '{search_term}'")
@@ -121,7 +121,7 @@ async def search_users_for_assignment(
         # Use ORM query instead of raw SQL for better async handling
         stmt = (
             select(User.id, User.username)
-            .where(User.username.ilike(f"%{search_term}%"), User.is_active == True)
+            .where(User.username.ilike(f"%{search_term}%"), User.is_active)
             .order_by(User.username)
             .limit(20)
         )
@@ -143,7 +143,7 @@ async def search_users_for_assignment(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Search failed: {str(e)}",
-        )
+        ) from None
 
 
 @router.get("/")
@@ -157,7 +157,8 @@ async def get_all_users(
     """
     try:
         # Get all users with full info for platform admins
-        from sqlalchemy import select, func
+        from sqlalchemy import func, select
+
         from app.models.permission import Permission
 
         # Get all users
@@ -217,7 +218,7 @@ async def get_all_users(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch users: {str(e)}",
-        )
+        ) from None
 
 
 @router.get("/test")

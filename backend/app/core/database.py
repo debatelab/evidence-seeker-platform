@@ -1,8 +1,10 @@
+from collections.abc import AsyncGenerator, Generator
+
 from sqlalchemy import create_engine
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from typing import Generator, AsyncGenerator
+from sqlalchemy.orm import Session, sessionmaker
+
 from .config import settings
 
 # Create database engines for both sync and async

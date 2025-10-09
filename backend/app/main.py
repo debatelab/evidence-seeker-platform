@@ -1,27 +1,28 @@
+import logging
+import sys
+
+import uvicorn
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 from loguru import logger
-import sys
-import uvicorn
-import logging
+
+from app.api.auth import router as auth_router
+from app.api.config import router as config_router
+from app.api.documents import router as documents_router
+from app.api.embeddings import router as embeddings_router
+from app.api.evidence_seekers import router as evidence_seekers_router
+from app.api.permissions import router as permissions_router
+from app.api.progress import router as progress_router
+from app.api.search import router as search_router
+from app.api.users import router as users_router
+from app.core.config import settings
+from app.core.database import create_tables
 
 # Suppress the bcrypt version warning from passlib
 logging.getLogger("passlib").setLevel(logging.ERROR)
-
-from app.core.config import settings
-from app.core.database import create_tables
-from app.api.auth import router as auth_router
-from app.api.users import router as users_router
-from app.api.evidence_seekers import router as evidence_seekers_router
-from app.api.documents import router as documents_router
-from app.api.permissions import router as permissions_router
-from app.api.embeddings import router as embeddings_router
-from app.api.search import router as search_router
-from app.api.config import router as config_router
-from app.api.progress import router as progress_router
 
 
 def create_application() -> FastAPI:
