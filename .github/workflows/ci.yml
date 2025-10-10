@@ -63,19 +63,20 @@ jobs:
 
       - name: Run mypy
         env:
-          # Ensure mypy resolves the package root reliably on the runner
+          # Ensure mypy and Python module resolution see the backend package root
           MYPYPATH: ${{ github.workspace }}/backend
+          PYTHONPATH: ${{ github.workspace }}/backend
         run: |
-          . backend/.venv/bin/activate
           echo "ROOT PWD=$(pwd)"
+          ls -la backend/app | head -n 20 || true
+          . backend/.venv/bin/activate
+          cd backend
+          echo "BACKEND PWD=$(pwd)"
           echo "MYPYPATH=${MYPYPATH}"
+          echo "PYTHONPATH=${PYTHONPATH}"
+          python -c "import app, app.models.user as u; print('python import ok:', app.__file__)"
           mypy --version
-          # Run mypy from repository root with explicit config and targets under backend/
-          mypy --config-file backend/pyproject.toml \
-            backend/app \
-            backend/tests \
-            backend/fix_document_data.py \
-            backend/init_db.py
+          mypy .
 
       - name: Run tests
         env:
