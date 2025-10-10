@@ -8,6 +8,14 @@ from app.core.config import settings
 
 class EmailService:
     def __init__(self) -> None:
+        # Resolve template folder and ensure it exists in tests
+        configured_path = Path(settings.email_templates_dir)
+        template_folder = configured_path
+        if not configured_path.exists():
+            # Try resolving relative to this file when running tests
+            fallback = Path(__file__).resolve().parent.parent / "templates" / "email"
+            template_folder = fallback
+
         self.config = ConnectionConfig(
             MAIL_USERNAME=settings.smtp_username,
             MAIL_PASSWORD=settings.smtp_password,
@@ -18,7 +26,7 @@ class EmailService:
             MAIL_SSL_TLS=False,  # Added missing parameter
             MAIL_STARTTLS=True,
             USE_CREDENTIALS=True,
-            TEMPLATE_FOLDER=Path(settings.email_templates_dir),
+            TEMPLATE_FOLDER=template_folder,
         )
         self.fast_mail = FastMail(self.config)
 

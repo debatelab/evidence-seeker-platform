@@ -49,8 +49,8 @@ class Settings(BaseSettings):
     email_from: str = "noreply@evidence-seeker.com"
     email_from_name: str = "Evidence Seeker Platform"
 
-    # Email templates
-    email_templates_dir: str = "backend/app/templates/email"
+    # Email templates (relative to backend working dir)
+    email_templates_dir: str = "app/templates/email"
 
     model_config = {
         "env_file": ".env",

@@ -1,34 +1,143 @@
-from collections.abc import AsyncGenerator
+import os
+from collections.abc import AsyncGenerator, Generator
+from typing import TYPE_CHECKING
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy import create_engine
+from sqlalchemy.ext.asyncio import (
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
+from sqlalchemy.orm import Session, sessionmaker
 
-from app.core.database import Base
-from app.main import create_application
-from app.models.user import User
+if TYPE_CHECKING:  # for type checkers only; avoids runtime import side effects
+    from app.models.user import User
 
-# Test database URL
-TEST_DATABASE_URL = "postgresql://test_user:test_password@localhost:5432/test_db"
+"""
+Unified Test DB strategy (Postgres-only):
+- Always use PostgreSQL for tests, locally and in CI.
+- If DATABASE_URL isn't set, default to the docker-compose test DB on port 5433.
+- Async engine uses asyncpg driver; sync engine uses standard psycopg driver.
+"""
 
-# Create test engine
+# Default to local docker-compose test_db service if env var is not provided
+DEFAULT_TEST_DB = (
+    "postgresql://evidence_user:evidence_password@localhost:5433/evidence_seeker_test"
+)
+
+RAW_DATABASE_URL = os.getenv("DATABASE_URL") or DEFAULT_TEST_DB
+
+if not RAW_DATABASE_URL.startswith("postgresql://"):
+    raise RuntimeError(
+        "DATABASE_URL must be a PostgreSQL URL (postgresql://). SQLite is no longer supported in tests."
+    )
+
+# Ensure the application picks up the same DB URL (affects engines created at import time)
+os.environ["DATABASE_URL"] = RAW_DATABASE_URL
+
+from app.core.database import Base  # noqa: E402  now safe to import
+
+# Build async URL matching RAW_DATABASE_URL
+ASYNC_DATABASE_URL = RAW_DATABASE_URL.replace(
+    "postgresql://", "postgresql+asyncpg://"
+)
+
+# Create test engine (async)
 test_engine = create_async_engine(
-    TEST_DATABASE_URL,
+    ASYNC_DATABASE_URL,
     echo=False,
     future=True,
 )
 
 # Create test session factory
-TestSessionLocal = async_sessionmaker(
-    bind=test_engine,
-    expire_on_commit=False,
+TestSessionLocal = async_sessionmaker(bind=test_engine, expire_on_commit=False)
+
+# Create synchronous engine/session for tests that expect sync Session
+SYNC_DATABASE_URL = RAW_DATABASE_URL
+sync_engine = create_engine(
+    SYNC_DATABASE_URL,
+    echo=False,
+    future=True,
 )
+SyncSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=sync_engine)
+
+
+def _import_all_models() -> None:
+    """Import all model modules so SQLAlchemy registers tables on Base.metadata."""
+    # Local imports avoid side effects at module import time
+    import importlib
+
+    modules = [
+        "app.models.user",
+        "app.models.permission",
+        "app.models.evidence_seeker",
+        "app.models.document",
+        "app.models.embedding",
+        "app.models.api_key",
+        "app.models.game",
+    ]
+    for m in modules:
+        importlib.import_module(m)
+
+
+def _truncate_all_sync() -> None:
+    """Truncate all tables and reset identities (sync)."""
+    with sync_engine.begin() as conn:
+        # Disable triggers for faster truncation if necessary; here we just run TRUNCATE
+        table_names = [t.name for t in Base.metadata.sorted_tables]
+        if table_names:
+            conn.exec_driver_sql(
+                "TRUNCATE TABLE "
+                + ", ".join(f'"{name}"' for name in table_names)
+                + " RESTART IDENTITY CASCADE"
+            )
+
+
+async def _truncate_all_async() -> None:
+    """Truncate all tables and reset identities (async)."""
+    async with test_engine.begin() as conn:
+        table_names = [t.name for t in Base.metadata.sorted_tables]
+        if table_names:
+            await conn.exec_driver_sql(
+                "TRUNCATE TABLE "
+                + ", ".join(f'"{name}"' for name in table_names)
+                + " RESTART IDENTITY CASCADE"
+            )
 
 
 @pytest.fixture(scope="session")
 def test_app():
-    """Create test application"""
+    """Create test application with DB dependency overrides bound to test engines."""
+    # Defer heavy import until the fixture is actually used
+    from sqlalchemy import text
+
+    # Ensure pgvector extension is enabled before app startup creates tables
+    with sync_engine.begin() as conn:
+        conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+
+    # Import models so Base.metadata is populated for create_tables()
+    _import_all_models()
+
+    from app.core.database import get_async_db, get_db
+    from app.main import create_application
+
     app = create_application()
+
+    async def override_get_async_db() -> AsyncGenerator[AsyncSession, None]:
+        async with TestSessionLocal() as session:
+            yield session
+
+    def override_get_db() -> Generator[Session, None, None]:
+        session = SyncSessionLocal()
+        try:
+            yield session
+        finally:
+            session.close()
+
+    app.dependency_overrides[get_async_db] = override_get_async_db
+    app.dependency_overrides[get_db] = override_get_db
     return app
 
 
@@ -39,40 +148,84 @@ def test_client(test_app):
         yield client
 
 
+@pytest.fixture(scope="session")
+def client(test_app):
+    """Alias fixture for tests expecting 'client' name."""
+    with TestClient(test_app) as client:
+        yield client
+
+
 @pytest.fixture(scope="function")
 async def test_db() -> AsyncGenerator[AsyncSession, None]:
-    """Create test database session"""
+    """Async DB session with per-test cleanup (truncate)."""
+    # Ensure schema exists (idempotent)
+    _import_all_models()
     async with test_engine.begin() as conn:
+        await conn.exec_driver_sql("CREATE EXTENSION IF NOT EXISTS vector")
         await conn.run_sync(Base.metadata.create_all)
+    # Truncate data for isolation
+    await _truncate_all_async()
 
     async with TestSessionLocal() as session:
         yield session
 
-    async with test_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+
+@pytest.fixture(scope="function")
+def db() -> Generator[Session, None, None]:
+    """Sync DB session with per-test cleanup (truncate)."""
+    # Ensure tables exist (idempotent)
+    _import_all_models()
+    with sync_engine.begin() as conn:
+        conn.exec_driver_sql("CREATE EXTENSION IF NOT EXISTS vector")
+        Base.metadata.create_all(bind=conn)
+    # Truncate data for isolation
+    _truncate_all_sync()
+    session = SyncSessionLocal()
+    try:
+        yield session
+        session.commit()
+    finally:
+        session.close()
+        # No drop_all — keep schema for the app across tests
 
 
 @pytest.fixture(scope="function")
-async def test_user(test_db: AsyncSession):
-    """Create test user"""
+def test_user(db: Session):
+    """Create test user (sync)"""
     from passlib.context import CryptContext  # type: ignore[import-untyped]
 
-    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-    hashed_password = pwd_context.hash("testpassword123")
+    from app.models.user import User as UserModel
 
-    user = User(
+    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    # Match the password used across tests when logging in
+    hashed_password = pwd_context.hash("testpassword")
+
+    user = UserModel(
         email="test@example.com",
+        username="testuser",
         hashed_password=hashed_password,
         is_active=True,
         is_superuser=False,
         is_verified=True,
     )
 
-    test_db.add(user)
-    await test_db.commit()
-    await test_db.refresh(user)
+    db.add(user)
+    db.commit()
+    db.refresh(user)
 
     return user
+
+
+@pytest.fixture(scope="function")
+def test_evidence_seeker(db: Session, test_user: User):
+    """Create a basic evidence seeker owned by test_user."""
+    from app.models.evidence_seeker import EvidenceSeeker
+
+    seeker = EvidenceSeeker(title="Test Seeker", created_by=test_user.id)
+    db.add(seeker)
+    db.commit()
+    db.refresh(seeker)
+    return seeker
 
 
 @pytest.fixture(scope="function")

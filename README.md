@@ -411,6 +411,28 @@ cd backend
 pytest -v -m integration
 ```
 
+#### Unified Postgres-only testing
+
+All backend tests run against PostgreSQL (no SQLite fallback). This matches production and avoids driver/type mismatches (e.g., UUID, pgvector).
+
+- Local default (if DATABASE_URL is not set):
+   postgresql://evidence_user:evidence_password@localhost:5433/evidence_seeker_test
+- Start the local test database:
+
+```bash
+docker-compose -f docker-compose.dev.yml --profile testing up -d test_db
+```
+
+- Or set a custom DATABASE_URL for tests before running pytest:
+
+```bash
+export DATABASE_URL=postgresql://user:pass@localhost:5432/your_test_db
+cd backend
+pytest -v
+```
+
+CI uses a Postgres service container; no external costs are incurred. Alembic is configured to read DATABASE_URL, and tests create/drop tables per test to keep isolation.
+
 ### **Deployment**
 
 1. **Build and deploy**
