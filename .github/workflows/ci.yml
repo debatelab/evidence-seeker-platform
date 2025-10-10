@@ -62,10 +62,17 @@ jobs:
           ruff check .
 
       - name: Run mypy
+        env:
+          # Ensure mypy resolves the package root reliably on the runner
+          MYPYPATH: ${{ github.workspace }}/backend
         run: |
           cd backend
           . .venv/bin/activate
-          mypy .
+          echo "PWD=$(pwd)"
+          echo "MYPYPATH=${MYPYPATH}"
+          mypy --version
+          # Check explicit targets to avoid accidental path drift
+          mypy app tests fix_document_data.py init_db.py
 
       - name: Run tests
         env:
