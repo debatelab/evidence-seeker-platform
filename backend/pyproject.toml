@@ -125,7 +125,7 @@ show_error_codes = true
 ## explicit_package_bases = true
 ## Ensure mypy can resolve imports like `app.*` when run from the repo root
 ## (treat the backend folder as a search root for modules)
-mypy_path = ".:app"
+mypy_path = "."
 
 [[tool.mypy.overrides]]
 module = [
