@@ -117,13 +117,15 @@ check_untyped_defs = true
 warn_redundant_casts = true
 warn_unused_ignores = true
 show_error_codes = true
-namespace_packages = true
-# explicit_package_bases can cause package discovery issues in simple monorepos;
-# rely on mypy_path and default discovery.
-# explicit_package_bases = true
+# Avoid namespace package mode; treat 'app' as a regular package with __init__.py
+# (CI had trouble resolving modules when namespace_packages was enabled.)
+# namespace_packages = true
+## explicit_package_bases can cause package discovery issues in simple monorepos;
+## rely on mypy_path and default discovery.
+## explicit_package_bases = true
 ## Ensure mypy can resolve imports like `app.*` when run from the repo root
 ## (treat the backend folder as a search root for modules)
-mypy_path = "."
+mypy_path = ".:app"
 
 [[tool.mypy.overrides]]
 module = [

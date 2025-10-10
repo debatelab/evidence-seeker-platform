@@ -204,7 +204,11 @@ class ConfigService:
             return None
 
         try:
-            decrypted_key = self.decrypt_api_key(api_key_record.encrypted_key)  # type: ignore
+            from typing import Any, cast
+
+            decrypted_key = self.decrypt_api_key(
+                cast(Any, api_key_record).encrypted_key
+            )
             # Update last used timestamp
             if db is None:
                 from app.core.database import SessionLocal
@@ -215,7 +219,7 @@ class ConfigService:
                 should_close = False
 
             try:
-                api_key_record.last_used_at = datetime.utcnow()  # type: ignore
+                cast(Any, api_key_record).last_used_at = datetime.utcnow()
                 db.commit()
             finally:
                 if should_close:
@@ -258,14 +262,16 @@ class ConfigService:
             if not api_key:
                 return False
 
-            if name is not None:
-                api_key.name = name  # type: ignore[assignment]
-            if description is not None:
-                api_key.description = description  # type: ignore[assignment]
-            if is_active is not None:
-                api_key.is_active = is_active  # type: ignore
+            from typing import Any, cast
 
-            api_key.updated_at = datetime.utcnow()  # type: ignore
+            if name is not None:
+                cast(Any, api_key).name = name
+            if description is not None:
+                cast(Any, api_key).description = description
+            if is_active is not None:
+                cast(Any, api_key).is_active = is_active
+
+            cast(Any, api_key).updated_at = datetime.utcnow()
             db.commit()
 
             logger.info(f"Updated API key {api_key_id}")
