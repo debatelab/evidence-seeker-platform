@@ -1,17 +1,19 @@
+from uuid import uuid4
+
 from sqlalchemy import (
+    Boolean,
     Column,
+    DateTime,
+    ForeignKey,
     Integer,
     String,
-    Boolean,
-    DateTime,
     Text,
-    ForeignKey,
     func,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
+
 from app.core.database import Base
-from uuid import uuid4
 
 
 class EvidenceSeeker(Base):

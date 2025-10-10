@@ -1,18 +1,20 @@
+from uuid import uuid4
+
+from pgvector.sqlalchemy import Vector  # type: ignore[import-untyped]
 from sqlalchemy import (
     Column,
+    DateTime,
+    ForeignKey,
+    Index,
     Integer,
     String,
     Text,
-    DateTime,
-    ForeignKey,
     func,
-    Index,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-from pgvector.sqlalchemy import Vector  # type: ignore[import-untyped]
+
 from app.core.database import Base
-from uuid import uuid4
 
 
 class Embedding(Base):

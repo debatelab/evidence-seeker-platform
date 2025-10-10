@@ -1,19 +1,21 @@
+import enum
+from uuid import uuid4
+
 from sqlalchemy import (
+    BigInteger,
     Column,
+    DateTime,
+    Enum,
+    ForeignKey,
     Integer,
     String,
     Text,
-    DateTime,
-    ForeignKey,
     func,
-    BigInteger,
-    Enum,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
+
 from app.core.database import Base
-from uuid import uuid4
-import enum
 
 
 class EmbeddingStatus(enum.Enum):
