@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from fastapi_users import schemas
-from pydantic import BaseModel, EmailStr, Field, ConfigDict
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 def to_camel(string: str) -> str:

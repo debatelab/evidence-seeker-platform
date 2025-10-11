@@ -1,5 +1,4 @@
 from collections.abc import AsyncGenerator
-from typing import Optional, Union
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi_users import BaseUserManager, FastAPIUsers, IntegerIDMixin, schemas
@@ -96,7 +95,7 @@ class UserManager(IntegerIDMixin, BaseUserManager[User, int]):
             print(f"Failed to send verification email to {user.email}: {e}")
 
     async def validate_password(
-        self, password: str, user: Optional[Union[schemas.UC, User]] = None
+        self, password: str, user: schemas.UC | User | None = None
     ) -> None:
         """Enforce a minimal password policy for registrations and updates.
 
