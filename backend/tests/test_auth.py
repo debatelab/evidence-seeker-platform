@@ -7,20 +7,29 @@ class TestAuthEndpoints:
 
     def test_register_user_success(self, test_client: TestClient):
         """Test successful user registration"""
-        user_data = {"email": "newuser@example.com", "password": "testpassword123"}
+        user_data = {
+            "email": "newuser@example.com",
+            "username": "newuser",
+            "password": "testpassword123",
+        }
 
         response = test_client.post("/api/v1/auth/register", json=user_data)
 
         assert response.status_code == 201
         data = response.json()
-        assert "user" in data
-        assert data["user"]["email"] == user_data["email"]
-        assert data["user"]["is_active"] is True
-        assert data["user"]["is_verified"] is False
+        # Default router returns the created user directly (not wrapped)
+        assert data["email"] == user_data["email"]
+        # camelCase serialization on fields
+        assert data["isActive"] is True
+        assert data["isVerified"] is False
 
     def test_register_user_invalid_email(self, test_client: TestClient):
         """Test registration with invalid email"""
-        user_data = {"email": "invalid-email", "password": "testpassword123"}
+        user_data = {
+            "email": "invalid-email",
+            "username": "invaliduser",
+            "password": "testpassword123",
+        }
 
         response = test_client.post("/api/v1/auth/register", json=user_data)
 
@@ -28,7 +37,11 @@ class TestAuthEndpoints:
 
     def test_register_user_weak_password(self, test_client: TestClient):
         """Test registration with weak password"""
-        user_data = {"email": "test@example.com", "password": "123"}
+        user_data = {
+            "email": "test@example.com",
+            "username": "testuser",
+            "password": "123",
+        }
 
         response = test_client.post("/api/v1/auth/register", json=user_data)
 
@@ -37,7 +50,11 @@ class TestAuthEndpoints:
     def test_login_user_success(self, test_client: TestClient):
         """Test successful user login"""
         # First register a user
-        user_data = {"email": "loginuser@example.com", "password": "testpassword123"}
+        user_data = {
+            "email": "loginuser@example.com",
+            "username": "loginuser",
+            "password": "testpassword123",
+        }
         test_client.post("/api/v1/auth/register", json=user_data)
 
         # Now try to login
@@ -75,7 +92,7 @@ class TestAuthEndpoints:
         data = response.json()
         assert "id" in data
         assert "email" in data
-        assert data["is_active"] is True
+        assert data["isActive"] is True
 
     def test_get_current_user_unauthenticated(self, test_client: TestClient):
         """Test getting current user when not authenticated"""
@@ -126,7 +143,11 @@ class TestAuthIntegration:
     def test_full_auth_flow(self, test_client: TestClient):
         """Test complete authentication flow"""
         # Register user
-        user_data = {"email": "integration@example.com", "password": "integration123"}
+        user_data = {
+            "email": "integration@example.com",
+            "username": "integration",
+            "password": "integration123",
+        }
         register_response = test_client.post("/api/v1/auth/register", json=user_data)
         assert register_response.status_code == 201
 
@@ -154,7 +175,11 @@ class TestAuthIntegration:
     @pytest.mark.integration
     def test_duplicate_user_registration(self, test_client: TestClient):
         """Test registering user with existing email"""
-        user_data = {"email": "duplicate@example.com", "password": "password123"}
+        user_data = {
+            "email": "duplicate@example.com",
+            "username": "duplicate",
+            "password": "password123",
+        }
 
         # First registration should succeed
         response1 = test_client.post("/api/v1/auth/register", json=user_data)

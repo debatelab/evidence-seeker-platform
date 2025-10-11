@@ -1,14 +1,19 @@
 """
-Vector Search Service for similarity search using PGVectorStore.
+Vector Search Service for similarity search using PostgreSQL + pgvector.
+
+Important: Avoid importing heavy libraries (llama-index) at module import time.
+This module uses raw SQL with pgvector operators and relies on the embedding
+service to generate query embeddings. When embeddings are disabled (e.g., tests),
+the search methods short-circuit to fast, empty responses to prevent hangs.
 """
 
 import logging
 from typing import Any
 
-from llama_index.vector_stores.postgres import PGVectorStore
-from sqlalchemy import make_url, text
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.database import get_db_connection_string
 from app.core.embedding_service import embedding_service
 from app.models import Document, Embedding
@@ -22,30 +27,7 @@ class VectorSearchService:
     def __init__(self) -> None:
         self.connection_string = get_db_connection_string()
         self.table_name = "embeddings"
-
-        # Parse connection string to extract database parameters
-        url = make_url(self.connection_string)
-
-        # Initialize PGVectorStore using from_params method
-        # PGVectorStore expects strings for some params; convert port to str if present
-        port_str: str | None = str(url.port) if url.port is not None else None
-        self.vector_store = PGVectorStore.from_params(
-            database=url.database,
-            host=url.host,
-            password=url.password,
-            port=port_str,
-            user=url.username,
-            table_name=self.table_name,
-            embed_dim=768,  # Dimensions for paraphrase-multilingual-mpnet-base-v2
-            hnsw_kwargs={
-                "hnsw_m": 16,
-                "hnsw_ef_construction": 64,
-                "hnsw_ef_search": 40,
-                "hnsw_dist_method": "vector_cosine_ops",
-            },
-        )
-
-        logger.info("Initialized VectorSearchService with PGVectorStore")
+        logger.info("Initialized VectorSearchService (no heavy imports)")
 
     def search_similar(
         self,
@@ -67,10 +49,13 @@ class VectorSearchService:
             List of search results with similarity scores
         """
         try:
+            # Short-circuit when embeddings are disabled (tests/CI)
+            if settings.disable_embeddings:
+                logger.info("Vector search skipped (disable_embeddings=True)")
+                return []
+
             # Generate embedding for the query
-            query_embedding = embedding_service.embedding_model.get_text_embedding(
-                query
-            )
+            query_embedding = embedding_service.get_text_embedding(query)
 
             # Build the search query
             search_query = f"""
@@ -142,6 +127,11 @@ class VectorSearchService:
             List of search results with similarity scores
         """
         try:
+            if settings.disable_embeddings:
+                logger.info(
+                    "Vector search by embedding skipped (disable_embeddings=True)"
+                )
+                return []
             # Convert embedding to PostgreSQL vector format
             embedding_str = "[" + ",".join(map(str, query_embedding)) + "]"
 

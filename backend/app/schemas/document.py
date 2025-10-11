@@ -4,6 +4,11 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 
+def to_camel(string: str) -> str:
+    parts = string.split("_")
+    return parts[0] + "".join(word.capitalize() for word in parts[1:])
+
+
 class DocumentBase(BaseModel):
     """Base schema for Document"""
 
@@ -11,6 +16,11 @@ class DocumentBase(BaseModel):
     description: str | None = Field(None, max_length=500)
     evidence_seeker_uuid: UUID  # External API uses UUID
     evidence_seeker_id: int | None = None  # Keep for internal use
+
+    class Config:
+        from_attributes = True
+        populate_by_name = True
+        alias_generator = to_camel
 
 
 class DocumentCreate(DocumentBase):
@@ -42,3 +52,4 @@ class DocumentRead(DocumentBase):
         populate_by_name = True
         from_attributes = True
         by_alias = True
+        alias_generator = to_camel

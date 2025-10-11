@@ -26,6 +26,16 @@ class User(SQLAlchemyBaseUserTable[int], Base):
     permissions = relationship(
         "Permission", back_populates="user", cascade="all, delete-orphan"
     )
+    # Relationships for game models (to satisfy back_populates)
+    game_sessions = relationship(
+        "GameSession", back_populates="user", cascade="all, delete-orphan"
+    )
+    high_scores = relationship(
+        "HighScore", back_populates="user", cascade="all, delete-orphan"
+    )
+    achievements = relationship(
+        "UserAchievement", back_populates="user", cascade="all, delete-orphan"
+    )
 
     def __repr__(self) -> str:
         return f"<User(id={self.id}, email={self.email})>"

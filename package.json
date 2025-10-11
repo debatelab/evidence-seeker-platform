@@ -7,6 +7,11 @@
         "frontend"
     ],
     "scripts": {
+        "test:db:up": "docker-compose -f docker-compose.dev.yml --profile testing up -d test_db",
+        "test:db:down": "docker-compose -f docker-compose.dev.yml --profile testing down -v",
+        "backend:test:ci": "cd backend && source .venv/bin/activate && pytest -v --cov=app --cov-report=term-missing",
+        "backend:test:local": "export DATABASE_URL=postgresql://evidence_user:evidence_password@localhost:5433/evidence_seeker_test && cd backend && source .venv/bin/activate && pytest -v --cov=app --cov-report=term-missing",
+        "test:backend": "npm-run-all test:db:up backend:test:local",
         "dev": "npm-run-all --parallel dev:db dev:backend dev:frontend",
         "dev:db": "docker-compose -f docker-compose.dev.yml up db",
         "dev:backend": "cd backend && source .venv/bin/activate && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000",
@@ -25,7 +30,7 @@
         "backend:test": "cd backend && source .venv/bin/activate && pytest -v",
         "frontend:install": "cd frontend && npm install",
         "frontend:test": "cd frontend && npm run test",
-        "test": "npm-run-all --parallel backend:test frontend:test",
+        "test": "npm-run-all --parallel test:backend frontend:test",
         "lint": "cd backend && source .venv/bin/activate && black --check . && ruff check . && mypy .",
         "format": "cd backend && source .venv/bin/activate && black .",
         "clean": "docker-compose down -v && rm -rf backend/.venv frontend/node_modules frontend/dist",

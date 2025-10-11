@@ -1,31 +1,21 @@
 #!/usr/bin/env python3
 """
-Simple test script to verify email service functionality.
+Simple script to verify email service functionality.
 Run this script to test email sending without starting the full application.
-
-Note: This is a utility script, not a unit test. Pytest should skip it.
 """
-
-import pytest
-import asyncio
-import os
-import sys
-
-# Skip collection/execution by pytest
-pytestmark = pytest.mark.skip("Utility script; not part of the test suite")
 
 import asyncio
 import os
 import sys
 
 # Add the app directory to the Python path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "app"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "app"))
 
 from app.core.config import settings
 from app.core.email_service import EmailService
 
 
-async def test_email_service() -> None:
+async def main() -> None:
     """Test the email service functionality"""
     print("Testing Email Service...")
     print(f"SMTP Server: {settings.smtp_server}")
@@ -62,4 +52,4 @@ async def test_email_service() -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(test_email_service())
+    asyncio.run(main())

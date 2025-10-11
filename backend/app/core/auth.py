@@ -94,6 +94,29 @@ class UserManager(IntegerIDMixin, BaseUserManager[User, int]):
         except Exception as e:
             print(f"Failed to send verification email to {user.email}: {e}")
 
+    async def validate_password(self, password: str, user: schemas.UC | None = None) -> None:  # type: ignore[override]
+        """Enforce a minimal password policy for registrations and updates.
+
+        Returns HTTP 400 for weak passwords to align with test expectations.
+        """
+        # Basic checks: length >= 8
+        if len(password) < 8:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Password too short. Must be at least 8 characters.",
+            )
+        # Require at least one letter and one number
+        has_letter = any(ch.isalpha() for ch in password)
+        has_digit = any(ch.isdigit() for ch in password)
+        if not (has_letter and has_digit):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Password must include at least one letter and one number.",
+            )
+        # You could add more checks here (e.g., special characters) in the future
+        # Call parent (currently no-op, but future-safe)
+        await super().validate_password(password, user)  # type: ignore[misc]
+
 
 async def get_user_db(
     session: AsyncSession = Depends(get_async_db),

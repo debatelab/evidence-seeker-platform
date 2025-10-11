@@ -52,6 +52,10 @@ class Settings(BaseSettings):
     # Email templates (relative to backend working dir)
     email_templates_dir: str = "app/templates/email"
 
+    # Feature flags
+    # When true, the embedding model and heavy libraries are not loaded. Used in tests/CI.
+    disable_embeddings: bool = False
+
     model_config = {
         "env_file": ".env",
         "case_sensitive": False,

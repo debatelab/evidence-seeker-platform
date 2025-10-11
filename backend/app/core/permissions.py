@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.auth import get_current_user
 from app.core.database import get_db
+from app.models.evidence_seeker import EvidenceSeeker
 from app.models.permission import Permission, UserRole
 from app.models.user import User
 
@@ -25,6 +26,18 @@ def check_evidence_seeker_permission(
     Returns:
         bool: True if user has permission, False otherwise
     """
+    # If PLATFORM_ADMIN is required, only a platform admin role satisfies it
+    if required_role == UserRole.PLATFORM_ADMIN:
+        result = db.execute(
+            select(Permission).where(
+                and_(
+                    Permission.user_id == user_id,
+                    Permission.role == UserRole.PLATFORM_ADMIN,
+                )
+            )
+        )
+        return result.scalar_one_or_none() is not None
+
     # First check if user is a platform admin - they have global access to everything
     result = db.execute(
         select(Permission).where(
@@ -37,6 +50,17 @@ def check_evidence_seeker_permission(
     platform_admin_permission = result.scalar_one_or_none()
     if platform_admin_permission:
         return True
+
+    # Treat the creator/owner of the evidence seeker as having EVSE_ADMIN access
+    # Only applicable when a concrete evidence_seeker_id is provided (> 0)
+    if evidence_seeker_id and evidence_seeker_id > 0:
+        es_result = db.execute(
+            select(EvidenceSeeker).where(EvidenceSeeker.id == evidence_seeker_id)
+        )
+        seeker = es_result.scalar_one_or_none()
+        if seeker and int(seeker.created_by) == int(user_id):
+            # Owner can perform admin or reader actions on their seeker
+            return required_role in (UserRole.EVSE_ADMIN, UserRole.EVSE_READER)
 
     # Check specific evidence seeker permissions
     result = db.execute(

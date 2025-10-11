@@ -431,7 +431,32 @@ cd backend
 pytest -v
 ```
 
-CI uses a Postgres service container; no external costs are incurred. Alembic is configured to read DATABASE_URL, and tests create/drop tables per test to keep isolation.
+CI uses a Postgres service container; no external costs are incurred. Alembic is configured to read DATABASE_URL, and tests truncate tables per test to keep isolation.
+
+#### One-command local tests
+
+Fastest way (from repo root):
+
+```bash
+npm run test:backend
+```
+
+This will:
+- Start the local `test_db` Postgres (on port 5433) if not already running
+- Set `DATABASE_URL` automatically for the test run
+- Run `pytest` in the backend with coverage
+
+Alternative (backend-only helper script):
+
+```bash
+./backend/scripts/test-local.sh
+```
+
+Tip: The DB will stay up for reuse between runs. Stop it with:
+
+```bash
+docker-compose -f docker-compose.dev.yml --profile testing down -v
+```
 
 ### **Deployment**
 

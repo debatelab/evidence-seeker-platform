@@ -29,11 +29,11 @@ def test_upload_document_requires_auth(client: TestClient):
 
 
 def test_upload_document_requires_admin_permission(
-    client: TestClient, test_user: User, db: Session
+    client: TestClient, test_user: User, db: Session, other_user: User
 ):
     """Test that uploading documents requires admin permission"""
     # Create an evidence seeker owned by someone else
-    other_seeker = EvidenceSeeker(title="Other Seeker", created_by=999)
+    other_seeker = EvidenceSeeker(title="Other Seeker", created_by=other_user.id)
     db.add(other_seeker)
     db.commit()
 
@@ -111,11 +111,11 @@ def test_get_documents_requires_auth(client: TestClient):
 
 
 def test_get_documents_requires_reader_permission(
-    client: TestClient, test_user: User, db: Session
+    client: TestClient, test_user: User, db: Session, other_user: User
 ):
     """Test that getting documents requires reader permission"""
     # Create an evidence seeker owned by someone else
-    other_seeker = EvidenceSeeker(title="Other Seeker", created_by=999)
+    other_seeker = EvidenceSeeker(title="Other Seeker", created_by=other_user.id)
     db.add(other_seeker)
     db.commit()
 
@@ -135,12 +135,13 @@ def test_get_documents_requires_reader_permission(
 
 
 def test_get_documents_success_with_permission(
-    client: TestClient, test_user: User, db: Session
+    client: TestClient, test_user: User, db: Session, other_user: User
 ):
     """Test successful document retrieval with reader permission"""
     # Create an evidence seeker and give user reader permission
-    seeker = EvidenceSeeker(title="Test Seeker", created_by=999)
+    seeker = EvidenceSeeker(title="Test Seeker", created_by=other_user.id)
     db.add(seeker)
+    db.commit()
 
     permission = Permission(
         user_id=test_user.id,
@@ -189,11 +190,11 @@ def test_download_document_requires_auth(client: TestClient):
 
 
 def test_download_document_requires_reader_permission(
-    client: TestClient, test_user: User, db: Session
+    client: TestClient, test_user: User, db: Session, other_user: User
 ):
     """Test that downloading documents requires reader permission"""
     # Create an evidence seeker and document owned by someone else
-    seeker = EvidenceSeeker(title="Other Seeker", created_by=999)
+    seeker = EvidenceSeeker(title="Other Seeker", created_by=other_user.id)
     db.add(seeker)
     db.commit()
 
@@ -226,12 +227,13 @@ def test_download_document_requires_reader_permission(
 
 
 def test_download_document_success_with_permission(
-    client: TestClient, test_user: User, db: Session, tmp_path
+    client: TestClient, test_user: User, db: Session, tmp_path, other_user: User
 ):
     """Test successful document download with reader permission"""
     # Create an evidence seeker and give user reader permission
-    seeker = EvidenceSeeker(title="Test Seeker", created_by=999)
+    seeker = EvidenceSeeker(title="Test Seeker", created_by=other_user.id)
     db.add(seeker)
+    db.commit()
 
     permission = Permission(
         user_id=test_user.id,
@@ -272,7 +274,8 @@ def test_download_document_success_with_permission(
         f"/api/v1/documents/{document.uuid}/download", headers=headers
     )
     assert response.status_code == 200
-    assert response.headers["content-type"] == "text/plain"
+    # Some servers include a charset in the content-type for text files
+    assert response.headers["content-type"].startswith("text/plain")
     assert response.headers["content-disposition"] == 'attachment; filename="test.txt"'
     assert b"Test content" in response.content
 
@@ -284,11 +287,11 @@ def test_delete_document_requires_auth(client: TestClient):
 
 
 def test_delete_document_requires_admin_permission(
-    client: TestClient, test_user: User, db: Session
+    client: TestClient, test_user: User, db: Session, other_user: User
 ):
     """Test that deleting documents requires admin permission"""
     # Create an evidence seeker and document owned by someone else
-    seeker = EvidenceSeeker(title="Other Seeker", created_by=999)
+    seeker = EvidenceSeeker(title="Other Seeker", created_by=other_user.id)
     db.add(seeker)
     db.commit()
 
@@ -319,12 +322,13 @@ def test_delete_document_requires_admin_permission(
 
 
 def test_delete_document_success_with_permission(
-    client: TestClient, test_user: User, db: Session, tmp_path
+    client: TestClient, test_user: User, db: Session, tmp_path, other_user: User
 ):
     """Test successful document deletion with admin permission"""
     # Create an evidence seeker and give user admin permission
-    seeker = EvidenceSeeker(title="Test Seeker", created_by=999)
+    seeker = EvidenceSeeker(title="Test Seeker", created_by=other_user.id)
     db.add(seeker)
+    db.commit()
 
     permission = Permission(
         user_id=test_user.id,
@@ -375,11 +379,11 @@ def test_delete_document_success_with_permission(
 
 
 def test_platform_admin_has_full_document_access(
-    client: TestClient, test_user: User, db: Session, tmp_path
+    client: TestClient, test_user: User, db: Session, tmp_path, other_user: User
 ):
     """Test that platform admins have full access to all documents"""
     # Create evidence seeker and document owned by someone else
-    seeker = EvidenceSeeker(title="Other Seeker", created_by=999)
+    seeker = EvidenceSeeker(title="Other Seeker", created_by=other_user.id)
     db.add(seeker)
     db.commit()
 

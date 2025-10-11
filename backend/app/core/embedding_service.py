@@ -1,5 +1,9 @@
 """
 Embedding Service for generating document embeddings using LlamaIndex and HuggingFace.
+
+Key change: Avoid heavy model initialization at import time. The embedding model is
+now lazily instantiated on first use, preventing test runs (and simple imports) from
+attempting to download or load large models which can cause hangs.
 """
 
 import asyncio
@@ -8,10 +12,8 @@ import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any
-
-from llama_index.core import SimpleDirectoryReader
-from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from sqlalchemy.orm import Session
+from app.core.config import settings
 
 from app.models import Document, Embedding, EmbeddingStatus
 
@@ -26,13 +28,32 @@ class EmbeddingService:
         self.embedding_dimension = 768
         self.chunk_size = 512
         self.chunk_overlap = 50
+        # Delay creation of the heavy embedding model until first use to avoid
+        # import-time hangs during tests or simple app imports.
+        self._embedding_model: Any | None = None
 
-        # Initialize embedding model
-        self.embedding_model = HuggingFaceEmbedding(
+        logger.info("Initialized EmbeddingService (lazy model: %s)", self.model_name)
+
+    def _ensure_model(self) -> None:
+        """Lazily initialize the embedding model when first needed.
+
+        Heavy imports are kept inside this method to avoid import-time side effects.
+        """
+        if settings.disable_embeddings:
+            # In disabled mode, do not load any heavy dependency.
+            logger.info("Embedding model loading skipped (disable_embeddings=True)")
+            return
+
+        if self._embedding_model is not None:
+            return
+
+        # Import heavy deps only when needed
+        from llama_index.embeddings.huggingface import HuggingFaceEmbedding  # type: ignore[import-untyped]
+
+        self._embedding_model = HuggingFaceEmbedding(
             model_name=self.model_name, embed_batch_size=10, trust_remote_code=True
         )
-
-        logger.info(f"Initialized EmbeddingService with model: {self.model_name}")
+        logger.info("Embedding model loaded: %s", self.model_name)
 
     async def generate_embeddings_for_document(
         self, document_id: int, db: Session
@@ -60,6 +81,19 @@ class EmbeddingService:
 
             start_time = time.time()
 
+            # If embeddings are disabled (tests/CI), short-circuit with SUCCESS
+            if settings.disable_embeddings:
+                logger.info(
+                    "Embeddings disabled via settings. Marking document %s as COMPLETED (stub).",
+                    document_id,
+                )
+                document.embedding_status = EmbeddingStatus.COMPLETED  # type: ignore[assignment]
+                document.embedding_generated_at = datetime.utcnow()  # type: ignore[assignment]
+                document.embedding_model = "disabled"
+                document.embedding_dimensions = 0  # type: ignore[assignment]
+                db.commit()
+                return True
+
             # Load document using LlamaIndex SimpleDirectoryReader
             file_path = Path(document.file_path)
             if not file_path.exists():
@@ -69,6 +103,9 @@ class EmbeddingService:
                 return False
 
             # Create a temporary directory with the single file
+            # Import here to avoid heavy module import on service import
+            from llama_index.core import SimpleDirectoryReader  # type: ignore[import-untyped]
+
             reader = SimpleDirectoryReader(
                 input_files=[str(file_path)], recursive=False
             )
@@ -93,10 +130,13 @@ class EmbeddingService:
                     if not chunk_text.strip():
                         continue
 
-                    # Get embedding vector
-                    embedding_vector = self.embedding_model.get_text_embedding(
-                        chunk_text
-                    )
+                    # Ensure model is available and get embedding vector
+                    self._ensure_model()
+                    if settings.disable_embeddings:
+                        # Provide a tiny deterministic stub embedding to satisfy DB types
+                        embedding_vector = [0.0] * 3  # minimal placeholder
+                    else:
+                        embedding_vector = self._embedding_model.get_text_embedding(chunk_text)  # type: ignore[union-attr]
 
                     # Create embedding record
                     embedding = Embedding(
@@ -177,14 +217,35 @@ class EmbeddingService:
 
         return results
 
+    def get_text_embedding(self, text: str) -> list[float]:
+        """Return an embedding for the given text or a stub when disabled.
+
+        This avoids accessing internal model attributes from other modules and
+        centralizes the disable_embeddings logic.
+        """
+        if settings.disable_embeddings:
+            # Return small deterministic stub to keep downstream code simple
+            return [0.0, 0.0, 0.0]
+        self._ensure_model()
+        # type: ignore[union-attr]
+        return self._embedding_model.get_text_embedding(text)
+
     def get_embedding_model_info(self) -> dict[str, Any]:
         """Get information about the current embedding model."""
+        batch_size: int | None = None
+        if self._embedding_model is not None:
+            try:
+                # type: ignore[attr-defined]
+                batch_size = int(self._embedding_model.embed_batch_size)  # type: ignore[assignment]
+            except Exception:
+                batch_size = None
+
         return {
             "model_name": self.model_name,
             "dimensions": self.embedding_dimension,
             "chunk_size": self.chunk_size,
             "chunk_overlap": self.chunk_overlap,
-            "embed_batch_size": self.embedding_model.embed_batch_size,
+            "embed_batch_size": batch_size,
         }
 
     async def get_document_embedding_status(

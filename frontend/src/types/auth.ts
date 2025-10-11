@@ -6,28 +6,28 @@ export interface User {
   id: number;
   email: string;
   username: string;
-  is_active: boolean;
-  is_superuser: boolean;
-  is_verified: boolean;
-  created_at?: string;
-  updated_at?: string;
+  isActive: boolean;
+  isSuperuser: boolean;
+  isVerified: boolean;
+  createdAt?: string;
+  updatedAt?: string;
   permissions?: Permission[];
 }
 
 export interface UserCreate {
   email: string;
   password: string;
-  is_active?: boolean;
-  is_superuser?: boolean;
-  is_verified?: boolean;
+  isActive?: boolean;
+  isSuperuser?: boolean;
+  isVerified?: boolean;
 }
 
 export interface UserUpdate {
   email?: string;
   password?: string;
-  is_active?: boolean;
-  is_superuser?: boolean;
-  is_verified?: boolean;
+  isActive?: boolean;
+  isSuperuser?: boolean;
+  isVerified?: boolean;
 }
 
 export interface LoginRequest {

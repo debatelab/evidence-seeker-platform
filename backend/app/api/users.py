@@ -124,9 +124,15 @@ async def search_users_for_assignment(
         logger.info(f"Executing search query with term: '{search_term}'")
 
         # Use ORM query instead of raw SQL for better async handling
+        # Match by username OR email, but return only id and username to avoid email exposure
+        from sqlalchemy import or_
+
         stmt = (
             select(User.id, User.username)
-            .where(User.username.ilike(search_term), User.is_active)
+            .where(
+                or_(User.username.ilike(search_term), User.email.ilike(search_term)),
+                User.is_active,
+            )
             .order_by(User.username)
             .limit(20)
         )

@@ -3,6 +3,18 @@ from datetime import datetime
 from fastapi_users import schemas
 from pydantic import BaseModel, EmailStr, Field
 
+try:
+    # Pydantic v2
+    from pydantic import ConfigDict  # type: ignore[attr-defined]
+except Exception:  # pragma: no cover - fallback for older versions
+    ConfigDict = dict  # type: ignore[misc,assignment]
+
+
+def to_camel(string: str) -> str:
+    """Convert snake_case to camelCase for JSON aliases."""
+    parts = string.split("_")
+    return parts[0] + "".join(word.capitalize() for word in parts[1:])
+
 
 class UserRead(schemas.BaseUser[int]):
     """User schema for reading user data"""
@@ -10,16 +22,18 @@ class UserRead(schemas.BaseUser[int]):
     id: int
     email: EmailStr
     username: str
-    is_active: bool = Field(alias="isActive", default=True)
-    is_superuser: bool = Field(alias="isSuperuser", default=False)
-    is_verified: bool = Field(alias="isVerified", default=False)
-    created_at: datetime | None = Field(alias="createdAt", default=None)
-    updated_at: datetime | None = Field(alias="updatedAt", default=None)
+    is_active: bool = True
+    is_superuser: bool = False
+    is_verified: bool = False
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
-    class Config:
-        populate_by_name = True
-        from_attributes = True
-        by_alias = True
+    # Pydantic v2 style config to allow ORM objects and camelCase JSON
+    model_config = ConfigDict(  # type: ignore[call-arg]
+        populate_by_name=True,
+        from_attributes=True,
+        alias_generator=to_camel,
+    )
 
 
 class UserCreate(schemas.BaseUserCreate):
@@ -77,7 +91,9 @@ class RegisterRequest(BaseModel):
     """Registration request schema"""
 
     email: EmailStr
-    username: str = Field(..., min_length=3, max_length=50, pattern=r"^[a-zA-Z0-9_-]+$")
+    username: str | None = Field(
+        default=None, min_length=3, max_length=50, pattern=r"^[a-zA-Z0-9_-]+$"
+    )
     password: str
 
 
@@ -103,5 +119,8 @@ class UserSearchResult(BaseModel):
     id: int
     username: str
 
-    class Config:
-        from_attributes = True
+    # Allow ORM conversion and camelCase JSON
+    model_config = ConfigDict(  # type: ignore[call-arg]
+        from_attributes=True,
+        alias_generator=to_camel,
+    )

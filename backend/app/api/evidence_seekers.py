@@ -60,6 +60,11 @@ def get_evidence_seeker_by_identifier(
 
 def get_accessible_evidence_seekers(user_id: int, db: Session) -> list[EvidenceSeeker]:
     """Get all evidence seekers accessible to a user based on permissions"""
+    # Platform admins have access to all evidence seekers
+    if check_evidence_seeker_permission(user_id, 0, UserRole.PLATFORM_ADMIN, db):
+        result = db.execute(select(EvidenceSeeker))
+        return list(result.scalars().all())
+
     # Get user's permissions
     permissions = get_user_permissions(user_id, db)
 

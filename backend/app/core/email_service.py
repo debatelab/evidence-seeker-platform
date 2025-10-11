@@ -32,6 +32,9 @@ class EmailService:
 
     async def send_verification_email(self, email: EmailStr, token: str) -> None:
         """Send email verification link"""
+        if not settings.smtp_server:
+            return  # Skip sending in test environments without SMTP config
+
         message = MessageSchema(
             subject="Verify your Evidence Seeker Platform account",
             recipients=[email],
@@ -46,6 +49,9 @@ class EmailService:
 
     async def send_password_reset_email(self, email: EmailStr, token: str) -> None:
         """Send password reset email"""
+        if not settings.smtp_server:
+            return  # Skip sending in test environments without SMTP config
+
         message = MessageSchema(
             subject="Reset your Evidence Seeker Platform password",
             recipients=[email],

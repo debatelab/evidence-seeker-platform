@@ -49,13 +49,17 @@ def test_get_evidence_seekers_requires_auth(client: TestClient) -> None:
 
 
 def test_get_evidence_seekers_shows_owned_and_public(
-    client: TestClient, test_user: User, db: Session
+    client: TestClient, test_user: User, db: Session, other_user: User
 ) -> None:
     """Test that users can see evidence seekers they own or have access to"""
     # Create some evidence seekers
     seeker1 = EvidenceSeeker(title="Owned Seeker", created_by=test_user.id)
-    seeker2 = EvidenceSeeker(title="Public Seeker", is_public=True, created_by=999)
-    seeker3 = EvidenceSeeker(title="Private Seeker", is_public=False, created_by=999)
+    seeker2 = EvidenceSeeker(
+        title="Public Seeker", is_public=True, created_by=other_user.id
+    )
+    seeker3 = EvidenceSeeker(
+        title="Private Seeker", is_public=False, created_by=other_user.id
+    )
 
     db.add(seeker1)
     db.add(seeker2)
@@ -83,12 +87,12 @@ def test_get_evidence_seekers_shows_owned_and_public(
 
 
 def test_get_evidence_seekers_with_permissions(
-    client: TestClient, test_user: User, db: Session
+    client: TestClient, test_user: User, db: Session, other_user: User
 ) -> None:
     """Test that users can see evidence seekers they have permissions for"""
     # Create a private evidence seeker
     private_seeker = EvidenceSeeker(
-        title="Private Seeker", is_public=False, created_by=999
+        title="Private Seeker", is_public=False, created_by=other_user.id
     )
     db.add(private_seeker)
     db.commit()
@@ -121,12 +125,12 @@ def test_get_evidence_seekers_with_permissions(
 
 
 def test_get_specific_evidence_seeker_requires_access(
-    client: TestClient, test_user: User, db: Session
+    client: TestClient, test_user: User, db: Session, other_user: User
 ) -> None:
     """Test that getting specific evidence seeker requires proper access"""
     # Create a private evidence seeker
     private_seeker = EvidenceSeeker(
-        title="Private Seeker", is_public=False, created_by=999
+        title="Private Seeker", is_public=False, created_by=other_user.id
     )
     db.add(private_seeker)
     db.commit()
@@ -153,12 +157,12 @@ def test_get_specific_evidence_seeker_requires_access(
 
 
 def test_get_specific_evidence_seeker_with_permission(
-    client: TestClient, test_user: User, db: Session
+    client: TestClient, test_user: User, db: Session, other_user: User
 ):
     """Test that users can access evidence seekers they have permission for"""
     # Create a private evidence seeker
     private_seeker = EvidenceSeeker(
-        title="Private Seeker", is_public=False, created_by=999
+        title="Private Seeker", is_public=False, created_by=other_user.id
     )
     db.add(private_seeker)
     db.commit()
@@ -198,11 +202,11 @@ def test_get_specific_evidence_seeker_with_permission(
 
 
 def test_update_evidence_seeker_requires_admin_permission(
-    client: TestClient, test_user: User, db: Session
+    client: TestClient, test_user: User, db: Session, other_user: User
 ):
     """Test that updating evidence seeker requires admin permission"""
     # Create an evidence seeker owned by someone else
-    other_seeker = EvidenceSeeker(title="Other Seeker", created_by=999)
+    other_seeker = EvidenceSeeker(title="Other Seeker", created_by=other_user.id)
     db.add(other_seeker)
     db.commit()
 
@@ -243,11 +247,11 @@ def test_update_evidence_seeker_requires_admin_permission(
 
 
 def test_delete_evidence_seeker_requires_admin_permission(
-    client: TestClient, test_user: User, db: Session
+    client: TestClient, test_user: User, db: Session, other_user: User
 ) -> None:
     """Test that deleting evidence seeker requires admin permission"""
     # Create an evidence seeker owned by someone else
-    other_seeker = EvidenceSeeker(title="Other Seeker", created_by=999)
+    other_seeker = EvidenceSeeker(title="Other Seeker", created_by=other_user.id)
     db.add(other_seeker)
     db.commit()
 
@@ -283,12 +287,12 @@ def test_delete_evidence_seeker_requires_admin_permission(
 
 
 def test_platform_admin_has_full_access(
-    client: TestClient, test_user: User, db: Session
+    client: TestClient, test_user: User, db: Session, other_user: User
 ) -> None:
     """Test that platform admins have access to all evidence seekers"""
     # Create evidence seekers owned by others
-    seeker1 = EvidenceSeeker(title="Seeker 1", created_by=999)
-    seeker2 = EvidenceSeeker(title="Seeker 2", created_by=999)
+    seeker1 = EvidenceSeeker(title="Seeker 1", created_by=other_user.id)
+    seeker2 = EvidenceSeeker(title="Seeker 2", created_by=other_user.id)
     db.add(seeker1)
     db.add(seeker2)
     db.commit()
@@ -296,7 +300,7 @@ def test_platform_admin_has_full_access(
     # Make user a platform admin
     platform_perm = Permission(
         user_id=test_user.id,
-        evidence_seeker_id=1,  # Any ID works for platform admin
+        evidence_seeker_id=seeker1.id,  # associate with an existing seeker to satisfy FK
         role=UserRole.PLATFORM_ADMIN,
     )
     db.add(platform_perm)
@@ -335,11 +339,11 @@ def test_platform_admin_has_full_access(
 
 
 def test_get_evidence_seeker_users_requires_admin_permission(
-    client: TestClient, test_user: User, db: Session
+    client: TestClient, test_user: User, db: Session, other_user: User
 ) -> None:
     """Test that getting evidence seeker users requires admin permission"""
     # Create an evidence seeker owned by someone else
-    other_seeker = EvidenceSeeker(title="Other Seeker", created_by=999)
+    other_seeker = EvidenceSeeker(title="Other Seeker", created_by=other_user.id)
     db.add(other_seeker)
     db.commit()
 
@@ -413,11 +417,11 @@ def test_get_evidence_seeker_users_success(
 
 
 def test_assign_evidence_seeker_role_requires_admin_permission(
-    client: TestClient, test_user: User, db: Session
+    client: TestClient, test_user: User, db: Session, other_user: User
 ) -> None:
     """Test that assigning roles requires admin permission"""
     # Create an evidence seeker owned by someone else
-    other_seeker = EvidenceSeeker(title="Other Seeker", created_by=999)
+    other_seeker = EvidenceSeeker(title="Other Seeker", created_by=other_user.id)
     db.add(other_seeker)
     db.commit()
 
@@ -546,11 +550,11 @@ def test_assign_evidence_seeker_role_update_existing(
 
 
 def test_remove_evidence_seeker_user_requires_admin_permission(
-    client: TestClient, test_user: User, db: Session
+    client: TestClient, test_user: User, db: Session, other_user: User
 ) -> None:
     """Test that removing users requires admin permission"""
     # Create an evidence seeker owned by someone else
-    other_seeker = EvidenceSeeker(title="Other Seeker", created_by=999)
+    other_seeker = EvidenceSeeker(title="Other Seeker", created_by=other_user.id)
     db.add(other_seeker)
     db.commit()
 
