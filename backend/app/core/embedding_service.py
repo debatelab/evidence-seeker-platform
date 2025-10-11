@@ -12,9 +12,10 @@ import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any
-from sqlalchemy.orm import Session
-from app.core.config import settings
 
+from sqlalchemy.orm import Session
+
+from app.core.config import settings
 from app.models import Document, Embedding, EmbeddingStatus
 
 logger = logging.getLogger(__name__)
@@ -48,7 +49,9 @@ class EmbeddingService:
             return
 
         # Import heavy deps only when needed
-        from llama_index.embeddings.huggingface import HuggingFaceEmbedding  # type: ignore[import-untyped]
+        from llama_index.embeddings.huggingface import (
+            HuggingFaceEmbedding,  # type: ignore[import-untyped]
+        )
 
         self._embedding_model = HuggingFaceEmbedding(
             model_name=self.model_name, embed_batch_size=10, trust_remote_code=True
@@ -104,7 +107,9 @@ class EmbeddingService:
 
             # Create a temporary directory with the single file
             # Import here to avoid heavy module import on service import
-            from llama_index.core import SimpleDirectoryReader  # type: ignore[import-untyped]
+            from llama_index.core import (
+                SimpleDirectoryReader,  # type: ignore[import-untyped]
+            )
 
             reader = SimpleDirectoryReader(
                 input_files=[str(file_path)], recursive=False

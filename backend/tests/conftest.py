@@ -344,6 +344,7 @@ def auth_headers(test_user, test_client: TestClient) -> dict[str, str]:
 def other_user(db: Session):
     """Create a second user to represent a different owner (for FK correctness)."""
     from passlib.context import CryptContext  # type: ignore[import-untyped]
+
     from app.models.user import User as UserModel
 
     pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")

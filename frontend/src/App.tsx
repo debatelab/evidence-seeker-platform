@@ -140,13 +140,13 @@ const App: React.FC = () => {
                 <strong>User ID:</strong> {user?.id}
               </li>
               <li>
-                <strong>Active:</strong> {user?.is_active ? "Yes" : "No"}
+                <strong>Active:</strong> {user?.isActive ? "Yes" : "No"}
               </li>
               <li>
-                <strong>Verified:</strong> {user?.is_verified ? "Yes" : "No"}
+                <strong>Verified:</strong> {user?.isVerified ? "Yes" : "No"}
               </li>
               <li>
-                <strong>Superuser:</strong> {user?.is_superuser ? "Yes" : "No"}
+                <strong>Superuser:</strong> {user?.isSuperuser ? "Yes" : "No"}
               </li>
             </ul>
           </div>
