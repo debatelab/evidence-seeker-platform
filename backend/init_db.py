@@ -7,7 +7,7 @@ import asyncio
 import logging
 from typing import Any, cast
 
-from passlib.context import CryptContext  # type: ignore[import-untyped]
+from passlib.context import CryptContext
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import async_engine

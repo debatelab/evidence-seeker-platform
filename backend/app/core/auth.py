@@ -1,4 +1,5 @@
 from collections.abc import AsyncGenerator
+from typing import Optional, Union
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi_users import BaseUserManager, FastAPIUsers, IntegerIDMixin, schemas
@@ -94,7 +95,9 @@ class UserManager(IntegerIDMixin, BaseUserManager[User, int]):
         except Exception as e:
             print(f"Failed to send verification email to {user.email}: {e}")
 
-    async def validate_password(self, password: str, user: schemas.UC | None = None) -> None:  # type: ignore[override]
+    async def validate_password(
+        self, password: str, user: Optional[Union[schemas.UC, User]] = None
+    ) -> None:
         """Enforce a minimal password policy for registrations and updates.
 
         Returns HTTP 400 for weak passwords to align with test expectations.
@@ -115,7 +118,8 @@ class UserManager(IntegerIDMixin, BaseUserManager[User, int]):
             )
         # You could add more checks here (e.g., special characters) in the future
         # Call parent (currently no-op, but future-safe)
-        await super().validate_password(password, user)  # type: ignore[misc]
+        if user is not None:
+            await super().validate_password(password, user)
 
 
 async def get_user_db(

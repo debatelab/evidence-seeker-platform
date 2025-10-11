@@ -1,13 +1,7 @@
 from datetime import datetime
 
 from fastapi_users import schemas
-from pydantic import BaseModel, EmailStr, Field
-
-try:
-    # Pydantic v2
-    from pydantic import ConfigDict  # type: ignore[attr-defined]
-except Exception:  # pragma: no cover - fallback for older versions
-    ConfigDict = dict  # type: ignore[misc,assignment]
+from pydantic import BaseModel, EmailStr, Field, ConfigDict
 
 
 def to_camel(string: str) -> str:
@@ -29,7 +23,7 @@ class UserRead(schemas.BaseUser[int]):
     updated_at: datetime | None = None
 
     # Pydantic v2 style config to allow ORM objects and camelCase JSON
-    model_config = ConfigDict(  # type: ignore[call-arg]
+    model_config = ConfigDict(
         populate_by_name=True,
         from_attributes=True,
         alias_generator=to_camel,
@@ -120,7 +114,7 @@ class UserSearchResult(BaseModel):
     username: str
 
     # Allow ORM conversion and camelCase JSON
-    model_config = ConfigDict(  # type: ignore[call-arg]
+    model_config = ConfigDict(
         from_attributes=True,
         alias_generator=to_camel,
     )

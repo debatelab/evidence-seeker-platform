@@ -50,7 +50,7 @@ class EmbeddingService:
 
         # Import heavy deps only when needed
         from llama_index.embeddings.huggingface import (
-            HuggingFaceEmbedding,  # type: ignore[import-untyped]
+            HuggingFaceEmbedding,
         )
 
         self._embedding_model = HuggingFaceEmbedding(
@@ -92,7 +92,7 @@ class EmbeddingService:
                 )
                 document.embedding_status = EmbeddingStatus.COMPLETED  # type: ignore[assignment]
                 document.embedding_generated_at = datetime.utcnow()  # type: ignore[assignment]
-                document.embedding_model = "disabled"
+                document.embedding_model = "disabled"  # type: ignore[assignment]
                 document.embedding_dimensions = 0  # type: ignore[assignment]
                 db.commit()
                 return True
@@ -108,7 +108,7 @@ class EmbeddingService:
             # Create a temporary directory with the single file
             # Import here to avoid heavy module import on service import
             from llama_index.core import (
-                SimpleDirectoryReader,  # type: ignore[import-untyped]
+                SimpleDirectoryReader,
             )
 
             reader = SimpleDirectoryReader(
@@ -141,7 +141,12 @@ class EmbeddingService:
                         # Provide a tiny deterministic stub embedding to satisfy DB types
                         embedding_vector = [0.0] * 3  # minimal placeholder
                     else:
-                        embedding_vector = self._embedding_model.get_text_embedding(chunk_text)  # type: ignore[union-attr]
+                        if self._embedding_model is not None:
+                            embedding_vector = self._embedding_model.get_text_embedding(
+                                chunk_text
+                            )
+                        else:
+                            embedding_vector = [0.0] * self.embedding_dimension
 
                     # Create embedding record
                     embedding = Embedding(
@@ -232,16 +237,23 @@ class EmbeddingService:
             # Return small deterministic stub to keep downstream code simple
             return [0.0, 0.0, 0.0]
         self._ensure_model()
-        # type: ignore[union-attr]
-        return self._embedding_model.get_text_embedding(text)
+        if self._embedding_model is not None:
+            embedding = self._embedding_model.get_text_embedding(text)
+            # Cast to list[float] to satisfy mypy
+            return (
+                list(embedding)
+                if embedding is not None
+                else [0.0] * self.embedding_dimension
+            )
+        else:
+            return [0.0] * self.embedding_dimension
 
     def get_embedding_model_info(self) -> dict[str, Any]:
         """Get information about the current embedding model."""
         batch_size: int | None = None
         if self._embedding_model is not None:
             try:
-                # type: ignore[attr-defined]
-                batch_size = int(self._embedding_model.embed_batch_size)  # type: ignore[assignment]
+                batch_size = int(getattr(self._embedding_model, "embed_batch_size", 10))
             except Exception:
                 batch_size = None
 

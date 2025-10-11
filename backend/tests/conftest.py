@@ -292,7 +292,7 @@ def db() -> Generator[Session, None, None]:
 @pytest.fixture(scope="function")
 def test_user(db: Session):
     """Create test user (sync)"""
-    from passlib.context import CryptContext  # type: ignore[import-untyped]
+    from passlib.context import CryptContext
 
     from app.models.user import User as UserModel
 
@@ -343,7 +343,7 @@ def auth_headers(test_user, test_client: TestClient) -> dict[str, str]:
 @pytest.fixture(scope="function")
 def other_user(db: Session):
     """Create a second user to represent a different owner (for FK correctness)."""
-    from passlib.context import CryptContext  # type: ignore[import-untyped]
+    from passlib.context import CryptContext
 
     from app.models.user import User as UserModel
 
