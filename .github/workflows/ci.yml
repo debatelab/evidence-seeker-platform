@@ -63,7 +63,6 @@ jobs:
 
       - name: Run mypy
         env:
-          # Ensure mypy and Python module resolution see the backend package root
           MYPYPATH: ${{ github.workspace }}/backend
           PYTHONPATH: ${{ github.workspace }}/backend
         run: |
@@ -86,7 +85,7 @@ jobs:
           . .venv/bin/activate
           pytest -v --cov=app --cov-report=term-missing
 
-  # Frontend linting, type checking and tests (merged)
+  # Frontend linting, type checking and tests
   frontend:
     runs-on: ubuntu-latest
 
@@ -107,27 +106,30 @@ jobs:
         run: |
           cd frontend
           npm run lint
+
       - name: Run TypeScript type check
         run: |
           cd frontend
           npm run typecheck
+
       - name: Run frontend tests
         run: |
           cd frontend
           npm run test:ci
 
-  # Security scanning (conditionally runs Trivy heavy scan only on main branch to save disk)
+  # Security scanning
   security:
     runs-on: ubuntu-latest
     env:
       ADV_SECURITY_ENABLED: ${{ vars.ADV_SECURITY_ENABLED || 'false' }}
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
       - name: Disk usage before security scan
         run: |
           echo "Disk usage before Trivy:" && df -h
-          echo "Docker disk usage:" || true
           docker system df || true
+
       - name: Run Trivy vulnerability scanner (main branches only, only if Advanced Security enabled)
         if: github.ref == 'refs/heads/main' && env.ADV_SECURITY_ENABLED == 'true'
         uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # 0.33.1
@@ -136,6 +138,7 @@ jobs:
           scan-ref: '.'
           format: 'sarif'
           output: 'trivy-results.sarif'
+
       - name: Run Trivy secret scan (always, lightweight)
         uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # 0.33.1
         with:
@@ -145,11 +148,13 @@ jobs:
           exit-code: '0'
           format: 'table'
           ignore-unfixed: true
+
       - name: Upload Trivy scan results to GitHub Security tab
         if: github.ref == 'refs/heads/main' && env.ADV_SECURITY_ENABLED == 'true'
         uses: github/codeql-action/upload-sarif@ffc75c6ceb2db9503b506980b540a260124f1137 # v4
         with:
           sarif_file: 'trivy-results.sarif'
+
       - name: Upload Trivy SARIF artifact (Advanced Security disabled)
         if: github.ref == 'refs/heads/main' && env.ADV_SECURITY_ENABLED != 'true'
         uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4.4.0
@@ -157,13 +162,14 @@ jobs:
           name: trivy-scan-sarif-disabled
           path: trivy-results.sarif
           if-no-files-found: ignore
+
       - name: Disk usage after security scan
         run: |
           echo "Disk usage after Trivy:" && df -h
           docker system df || true
 
-  # Build and push container images to GHCR (only on main branch or tags)
-  build-and-push:
+  # Build and push backend container image
+  build-backend:
     if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
     needs: [backend, frontend]
     runs-on: ubuntu-latest
@@ -176,18 +182,18 @@ jobs:
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
 
-      - name: Disk usage before build
+      - name: Free disk space
         run: |
-          echo "Disk usage before build:" && df -h
-          docker system df || true
+          echo "Before cleanup:" && df -h
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android /usr/local/share/boost
+          docker system prune -af --volumes || true
+          docker builder prune -af || true
+          echo "After cleanup:" && df -h
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
         with:
           install: true
-      - name: Pre-build prune
-        run: |
-          docker image prune -af || true
-          docker builder prune -af || true
 
       - name: Login to GHCR
         uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
@@ -196,7 +202,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Backend image build & push
+      - name: Build & push backend image
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
           context: ./backend
@@ -210,7 +216,48 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=min
 
-      - name: Frontend image build & push
+      - name: Post-build cleanup
+        run: |
+          docker image prune -af || true
+          docker builder prune -af || true
+          echo "Disk usage after build:" && df -h
+          docker system df || true
+
+  # Build and push frontend container image
+  build-frontend:
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    env:
+      REGISTRY: ghcr.io
+      IMAGE_OWNER: debatelab
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - name: Free disk space
+        run: |
+          echo "Before cleanup:" && df -h
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android /usr/local/share/boost
+          docker system prune -af --volumes || true
+          docker builder prune -af || true
+          echo "After cleanup:" && df -h
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+        with:
+          install: true
+
+      - name: Login to GHCR
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push frontend image
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
           context: ./frontend
@@ -223,13 +270,10 @@ jobs:
             ${{ (startsWith(github.ref, 'refs/tags/') && format('{0}/{1}/evidence-frontend:{2}', env.REGISTRY, env.IMAGE_OWNER, github.ref_name)) || '' }}
           cache-from: type=gha
           cache-to: type=gha,mode=min
-      - name: Post-build prune
+
+      - name: Post-build cleanup
         run: |
           docker image prune -af || true
           docker builder prune -af || true
           echo "Disk usage after build:" && df -h
           docker system df || true
-
-      - name: Summary
-        run: |
-          echo "Published backend & frontend images for $GITHUB_SHA"

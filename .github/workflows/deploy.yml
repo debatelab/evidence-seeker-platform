@@ -13,22 +13,55 @@ on:
     types: ["completed"]
 
 jobs:
+  # Ensure deployment only proceeds if both image builds succeeded
+  wait-for-builds:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - name: Confirm CI succeeded
+        run: echo "CI pipeline succeeded; proceeding to deploy."
+
+  # Database backup before deployment
+  backup:
+    runs-on: ubuntu-latest
+    environment: production
+    needs: [wait-for-builds]
+    steps:
+      - name: Create database backup
+        uses: appleboy/ssh-action@55dabf81b49d4120609345970c91507e2d734799 # v1.0.0
+        with:
+          host: ${{ secrets.PRODUCTION_HOST }}
+          username: ${{ secrets.PRODUCTION_USER }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          script: |
+            set -euo pipefail
+            cd /opt/evidence-seeker-platform
+            BACKUP_FILE="backup_$(date +%Y%m%d_%H%M%S).sql"
+            docker compose exec -T db pg_dump -U evidence_user evidence_seeker > $BACKUP_FILE
+            gzip $BACKUP_FILE
+            ls -t backup_*.sql.gz | tail -n +8 | xargs -r rm || true
+            echo "Database backup created: $BACKUP_FILE.gz"
+
   deploy:
     runs-on: ubuntu-latest
     environment: production
+    needs: [wait-for-builds, backup]
     permissions:
       contents: read
       packages: read
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-      - name: Set up Docker Buildx (for potential compose build/pull caching)
+
+      - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+
       - name: Login to GHCR
         uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Resolve backend image digest
         id: digest-backend
         run: |
@@ -39,7 +72,8 @@ jobs:
           if [ -z "$DIGEST" ]; then
             DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' ghcr.io/debatelab/evidence-backend:latest)
           fi
-            echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+          echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+
       - name: Resolve frontend image digest
         id: digest-frontend
         run: |
@@ -51,6 +85,7 @@ jobs:
             DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' ghcr.io/debatelab/evidence-frontend:latest)
           fi
           echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+
       - name: Deploy over SSH
         uses: appleboy/ssh-action@55dabf81b49d4120609345970c91507e2d734799 # v1.0.0
         env:
@@ -85,6 +120,7 @@ jobs:
 
             docker image prune -f > /dev/null || true
             echo "Deployment complete"
+
       - name: Post-deployment smoke tests
         uses: appleboy/ssh-action@55dabf81b49d4120609345970c91507e2d734799 # v1.0.0
         with:
@@ -96,36 +132,17 @@ jobs:
             curl -fsS http://localhost:8000/health > /dev/null
             curl -fsS http://localhost:3000 | grep -q "Evidence Seeker Platform"
             echo "Smoke tests OK"
+
       - name: Slack notify success
         if: success() && secrets.SLACK_WEBHOOK_URL
         run: |
           curl -X POST -H 'Content-type: application/json' --data "{\"text\":\"✅ Deploy succeeded for ${GITHUB_SHA}\"}" ${{ secrets.SLACK_WEBHOOK_URL }} || true
+
       - name: Slack notify failure
         if: failure() && secrets.SLACK_WEBHOOK_URL
         run: |
           curl -X POST -H 'Content-type: application/json' --data "{\"text\":\"❌ Deploy failed for ${GITHUB_SHA}\"}" ${{ secrets.SLACK_WEBHOOK_URL }} || true
 
-  # Database backup before deployment
-  backup:
-    runs-on: ubuntu-latest
-    environment: production
-    steps:
-      - name: Create database backup
-        uses: appleboy/ssh-action@55dabf81b49d4120609345970c91507e2d734799 # v1.0.0
-        with:
-          host: ${{ secrets.PRODUCTION_HOST }}
-          username: ${{ secrets.PRODUCTION_USER }}
-          key: ${{ secrets.PRODUCTION_SSH_KEY }}
-          script: |
-            set -euo pipefail
-            cd /opt/evidence-seeker-platform
-            BACKUP_FILE="backup_$(date +%Y%m%d_%H%M%S).sql"
-            docker compose exec -T db pg_dump -U evidence_user evidence_seeker > $BACKUP_FILE
-            gzip $BACKUP_FILE
-            ls -t backup_*.sql.gz | tail -n +8 | xargs -r rm || true
-            echo "Database backup created: $BACKUP_FILE.gz"
-
-  # Rollback on failure
   rollback:
     runs-on: ubuntu-latest
     environment: production
