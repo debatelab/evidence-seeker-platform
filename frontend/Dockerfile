@@ -3,14 +3,18 @@ FROM node:20-alpine AS build
 
 WORKDIR /app
 
-# Copy frontend-specific package manifests first for better caching
+# Copy root package manifests first for better caching
 COPY package.json package-lock.json ./
-COPY . ./
+# Copy frontend package.json
+COPY frontend/package.json ./frontend/
 
-# Install dependencies (with caching)
+# Install dependencies (with caching) using workspace lock file
 RUN npm ci --legacy-peer-deps
 
-# Build production assets
+# Copy frontend source code
+COPY frontend/ ./frontend/
+
+# Build production assets using workspace
 RUN npm run build --workspace=frontend
 
 ########## Runtime Stage ##########
@@ -20,7 +24,7 @@ FROM nginx:alpine AS runtime
 COPY --from=build /app/frontend/dist /usr/share/nginx/html
 
 # Copy nginx configuration (correct relative path for CI context)
-COPY nginx.conf /etc/nginx/nginx.conf
+COPY frontend/nginx.conf /etc/nginx/nginx.conf
 
 # Expose port 3000
 EXPOSE 3000
