@@ -37,8 +37,8 @@ jobs:
             set -euo pipefail
             cd /opt/evidence-seeker-platform
             BACKUP_FILE="backup_$(date +%Y%m%d_%H%M%S).sql"
-            docker compose exec -T db pg_dump -U evidence_user evidence_seeker > $BACKUP_FILE
-            gzip $BACKUP_FILE
+            docker compose exec -T db pg_dump -U evidence_user evidence_seeker > "$BACKUP_FILE"
+            gzip "$BACKUP_FILE"
             ls -t backup_*.sql.gz | tail -n +8 | xargs -r rm || true
             echo "Database backup created: $BACKUP_FILE.gz"
 
@@ -134,14 +134,26 @@ jobs:
             echo "Smoke tests OK"
 
       - name: Slack notify success
-        if: success() && secrets.SLACK_WEBHOOK_URL
+        if: success()
         run: |
-          curl -X POST -H 'Content-type: application/json' --data "{\"text\":\"✅ Deploy succeeded for ${GITHUB_SHA}\"}" ${{ secrets.SLACK_WEBHOOK_URL }} || true
+          if [ -n "${{ secrets.SLACK_WEBHOOK_URL }}" ]; then
+            curl -X POST -H 'Content-type: application/json' \
+              --data "{\"text\":\"✅ Deploy succeeded for ${GITHUB_SHA}\"}" \
+              "${{ secrets.SLACK_WEBHOOK_URL }}" || true
+          else
+            echo "No Slack webhook URL configured; skipping notification."
+          fi
 
       - name: Slack notify failure
-        if: failure() && secrets.SLACK_WEBHOOK_URL
+        if: failure()
         run: |
-          curl -X POST -H 'Content-type: application/json' --data "{\"text\":\"❌ Deploy failed for ${GITHUB_SHA}\"}" ${{ secrets.SLACK_WEBHOOK_URL }} || true
+          if [ -n "${{ secrets.SLACK_WEBHOOK_URL }}" ]; then
+            curl -X POST -H 'Content-type: application/json' \
+              --data "{\"text\":\"❌ Deploy failed for ${GITHUB_SHA}\"}" \
+              "${{ secrets.SLACK_WEBHOOK_URL }}" || true
+          else
+            echo "No Slack webhook URL configured; skipping notification."
+          fi
 
   rollback:
     runs-on: ubuntu-latest
