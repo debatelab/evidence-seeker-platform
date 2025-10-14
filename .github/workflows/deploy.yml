@@ -22,16 +22,16 @@ jobs:
     steps:
       - name: Confirm CI succeeded or manual trigger
         run: |
-          echo "Proceeding to deploy (event: ${{ github.event_name }})"
+          echo "Proceeding to deploy (event: ${{ github.event_name }})."
 
-  # Database backup before deployment
+  # Database backup before deployment (skip if DB not running)
   backup:
     runs-on: ubuntu-latest
     environment: production
     needs: [wait-for-builds]
     steps:
-      - name: Create database backup
-        uses: appleboy/ssh-action@55dabf81b49d4120609345970c91507e2d734799 # v1.0.0
+      - name: Create database backup (if DB is running)
+        uses: appleboy/ssh-action@55dabf81b49d4120609345970c91507e2d734799
         with:
           host: ${{ secrets.PRODUCTION_HOST }}
           username: ${{ secrets.PRODUCTION_USER }}
@@ -39,11 +39,15 @@ jobs:
           script: |
             set -euo pipefail
             cd /opt/evidence-seeker-platform
-            BACKUP_FILE="backup_$(date +%Y%m%d_%H%M%S).sql"
-            docker compose exec -T db pg_dump -U evidence_user evidence_seeker > "$BACKUP_FILE"
-            gzip "$BACKUP_FILE"
-            ls -t backup_*.sql.gz | tail -n +8 | xargs -r rm || true
-            echo "Database backup created: $BACKUP_FILE.gz"
+            if docker compose ps db | grep -q 'Up'; then
+              BACKUP_FILE="backup_$(date +%Y%m%d_%H%M%S).sql"
+              docker compose exec -T db pg_dump -U evidence_user evidence_seeker > "$BACKUP_FILE"
+              gzip "$BACKUP_FILE"
+              ls -t backup_*.sql.gz | tail -n +8 | xargs -r rm || true
+              echo "Database backup created: $BACKUP_FILE.gz"
+            else
+              echo "Database container not running, skipping backup"
+            fi
 
   deploy:
     runs-on: ubuntu-latest
@@ -53,13 +57,13 @@ jobs:
       contents: read
       packages: read
     steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435
 
       - name: Login to GHCR
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -90,7 +94,7 @@ jobs:
           echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
 
       - name: Deploy over SSH
-        uses: appleboy/ssh-action@55dabf81b49d4120609345970c91507e2d734799 # v1.0.0
+        uses: appleboy/ssh-action@55dabf81b49d4120609345970c91507e2d734799
         env:
           IMAGE_REGISTRY: ghcr.io/debatelab
           BACKEND_DIGEST: ${{ steps.digest-backend.outputs.digest }}
@@ -125,7 +129,7 @@ jobs:
             echo "Deployment complete"
 
       - name: Post-deployment smoke tests
-        uses: appleboy/ssh-action@55dabf81b49d4120609345970c91507e2d734799 # v1.0.0
+        uses: appleboy/ssh-action@55dabf81b49d4120609345970c91507e2d734799
         with:
           host: ${{ secrets.PRODUCTION_HOST }}
           username: ${{ secrets.PRODUCTION_USER }}
@@ -165,7 +169,7 @@ jobs:
     if: failure()
     steps:
       - name: Rollback to previous version
-        uses: appleboy/ssh-action@55dabf81b49d4120609345970c91507e2d734799 # v1.0.0
+        uses: appleboy/ssh-action@55dabf81b49d4120609345970c91507e2d734799
         with:
           host: ${{ secrets.PRODUCTION_HOST }}
           username: ${{ secrets.PRODUCTION_USER }}
