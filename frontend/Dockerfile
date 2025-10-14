@@ -1,5 +1,5 @@
 ########## Base Builder (with cache) ##########
-FROM node:20-bullseye AS base
+FROM --platform=linux/amd64 node:20-bullseye AS base
 WORKDIR /app
 
 # Copy root and frontend manifests (for dependency layer cache)
