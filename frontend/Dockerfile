@@ -1,39 +1,36 @@
-########## Build Stage ##########
-FROM node:20-bullseye AS build
-
+########## Base Builder (with cache) ##########
+FROM node:20-bullseye AS base
 WORKDIR /app
 
-# Disable npm optional deps (rollup's platform binaries cause issues)
-ENV npm_config_optional=false
+# Copy root and frontend manifests (for dependency layer cache)
+COPY package*.json ./
+COPY frontend/package*.json ./frontend/
 
-# Copy manifests first for caching
-COPY package.json package-lock.json ./
-COPY frontend/package.json ./frontend/
+# Install dependencies *only once per package.json change*
+RUN npm ci --legacy-peer-deps
 
-# Force-clean and reinstall dependencies fresh (no alpine-locked modules)
-RUN rm -rf node_modules package-lock.json && \
-    npm install --legacy-peer-deps
+########## Build Stage ##########
+FROM base AS build
+WORKDIR /app/frontend
 
-# Copy source AFTER installing deps
-COPY frontend/ ./frontend/
+# Copy frontend source only (does not break cache unless code changes)
+COPY frontend/ ./
 
 # Build production assets
-RUN npm run build --workspace=frontend
+RUN npm run build
 
 ########## Runtime Stage ##########
-FROM nginx:1.27-bullseye AS runtime
-
-WORKDIR /usr/share/nginx/html
+FROM nginx:1.27-bookworm AS runtime
 
 # Copy built frontend assets
-COPY --from=build /app/frontend/dist ./
+COPY --from=build /app/frontend/dist /usr/share/nginx/html
 
-# Copy nginx configuration
+# Copy nginx config
 COPY frontend/nginx.conf /etc/nginx/nginx.conf
 
+# Expose and start
 EXPOSE 3000
-
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3000 || exit 1
 
 CMD ["nginx", "-g", "daemon off;"]
