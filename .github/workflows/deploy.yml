@@ -13,13 +13,15 @@ on:
     types: ["completed"]
 
 jobs:
-  # Ensure deployment only proceeds if both image builds succeeded
   wait-for-builds:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
     steps:
-      - name: Confirm CI succeeded
-        run: echo "CI pipeline succeeded; proceeding to deploy."
+      - name: Confirm CI succeeded or manual trigger
+        run: echo "Proceeding to deploy (event: ${{ github.event_name }})."
 
   # Database backup before deployment
   backup:
