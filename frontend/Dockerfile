@@ -3,35 +3,37 @@ FROM node:20-bullseye AS build
 
 WORKDIR /app
 
-# Copy root package manifests first for better caching
+# Disable npm optional deps (rollup's platform binaries cause issues)
+ENV npm_config_optional=false
+
+# Copy manifests first for caching
 COPY package.json package-lock.json ./
-# Copy frontend package.json
 COPY frontend/package.json ./frontend/
 
-# Install dependencies (with caching) using workspace lock file
-RUN npm ci --legacy-peer-deps
+# Force-clean and reinstall dependencies fresh (no alpine-locked modules)
+RUN rm -rf node_modules package-lock.json && \
+    npm install --legacy-peer-deps
 
-# Copy frontend source code
+# Copy source AFTER installing deps
 COPY frontend/ ./frontend/
 
-# Build production assets using workspace
+# Build production assets
 RUN npm run build --workspace=frontend
 
 ########## Runtime Stage ##########
-FROM nginx:alpine AS runtime
+FROM nginx:1.27-bullseye AS runtime
+
+WORKDIR /usr/share/nginx/html
 
 # Copy built frontend assets
-COPY --from=build /app/frontend/dist /usr/share/nginx/html
+COPY --from=build /app/frontend/dist ./
 
-# Copy nginx configuration (correct relative path for CI context)
+# Copy nginx configuration
 COPY frontend/nginx.conf /etc/nginx/nginx.conf
 
-# Expose port 3000
 EXPOSE 3000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:3000 || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000 || exit 1
 
-# Start nginx
 CMD ["nginx", "-g", "daemon off;"]
