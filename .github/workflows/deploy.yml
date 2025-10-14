@@ -92,10 +92,6 @@ jobs:
 
       - name: Deploy over SSH
         uses: appleboy/ssh-action@55dabf81b49d4120609345970c91507e2d734799
-        env:
-          IMAGE_REGISTRY: ghcr.io/debatelab
-          BACKEND_DIGEST: ${{ steps.digest-backend.outputs.digest }}
-          FRONTEND_DIGEST: ${{ steps.digest-frontend.outputs.digest }}
         with:
           host: ${{ secrets.PRODUCTION_HOST }}
           username: ${{ secrets.PRODUCTION_USER }}
@@ -103,10 +99,13 @@ jobs:
           script: |
             set -euo pipefail
             cd /opt/evidence-seeker-platform
-            echo "Using backend image digest: ${BACKEND_DIGEST}"
-            echo "Using frontend image digest: ${FRONTEND_DIGEST}"
-            export BACKEND_IMAGE="${BACKEND_DIGEST}"
-            export FRONTEND_IMAGE="${FRONTEND_DIGEST}"
+
+            # Inject digests directly as shell variables (embed the values)
+            BACKEND_IMAGE="${{ steps.digest-backend.outputs.digest }}"
+            FRONTEND_IMAGE="${{ steps.digest-frontend.outputs.digest }}"
+
+            echo "Using backend image digest: ${BACKEND_IMAGE}"
+            echo "Using frontend image digest: ${FRONTEND_IMAGE}"
 
             echo "Stopping existing stack" && docker compose down || true
             echo "Starting updated stack" && docker compose up -d
@@ -124,7 +123,6 @@ jobs:
 
             docker image prune -f > /dev/null || true
             echo "Deployment complete"
-
       - name: Post-deployment smoke tests
         uses: appleboy/ssh-action@55dabf81b49d4120609345970c91507e2d734799
         with:
