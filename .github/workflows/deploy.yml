@@ -111,6 +111,9 @@ jobs:
             echo "Using backend image digest: ${BACKEND_IMAGE}"
             echo "Using frontend image digest: ${FRONTEND_IMAGE}"
 
+            # Login to GHCR on production server
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
             echo "Stopping existing stack" && docker compose -f docker-compose.prod.yml down || true
             echo "Starting updated stack" && docker compose -f docker-compose.prod.yml up -d
 
