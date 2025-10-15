@@ -104,18 +104,22 @@ jobs:
             BACKEND_IMAGE="${{ steps.digest-backend.outputs.digest }}"
             FRONTEND_IMAGE="${{ steps.digest-frontend.outputs.digest }}"
 
+            # Export environment variables for Docker Compose
+            export BACKEND_IMAGE="${BACKEND_IMAGE}"
+            export FRONTEND_IMAGE="${FRONTEND_IMAGE}"
+
             echo "Using backend image digest: ${BACKEND_IMAGE}"
             echo "Using frontend image digest: ${FRONTEND_IMAGE}"
 
-            echo "Stopping existing stack" && docker compose down || true
-            echo "Starting updated stack" && docker compose up -d
+            echo "Stopping existing stack" && docker compose -f docker-compose.prod.yml down || true
+            echo "Starting updated stack" && docker compose -f docker-compose.prod.yml up -d
 
             echo "Waiting for services" && sleep 20
             curl -fsS http://localhost:8000/health
             curl -fsS http://localhost:3000 > /dev/null
 
             echo "Running migrations"
-            docker compose exec -T backend alembic upgrade head
+            docker compose -f docker-compose.prod.yml exec -T backend alembic upgrade head
 
             echo "Final health verification"
             curl -fsS http://localhost:8000/health > /dev/null
@@ -172,8 +176,8 @@ jobs:
           script: |
             set -euo pipefail
             cd /opt/evidence-seeker-platform
-            docker compose down || true
+            docker compose -f docker-compose.prod.yml down || true
             # Pull latest known good images (fallback to latest tag)
-            docker compose pull
-            docker compose up -d --no-build
+            docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml up -d --no-build
             echo "Rollback completed successfully"
