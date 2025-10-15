@@ -58,5 +58,10 @@
     },
     "optionalDependencies": {
         "@rollup/rollup-linux-x64-musl": "4.46.4"
+    },
+    "overrides": {
+        "vite": {
+            "rollup": "npm:@rollup/wasm-node"
+        }
     }
 }

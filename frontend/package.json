@@ -44,10 +44,11 @@
         "vitest": "^0.34.6"
     },
     "optionalDependencies": {
-        "@rollup/rollup-linux-x64-gnu": "*"
+        "@rollup/rollup-linux-x64-musl": "4.46.4"
     },
-    "engines": {
-        "node": ">=24.0.2",
-        "npm": ">=11.3.0"
+    "overrides": {
+        "vite": {
+            "rollup": "npm:@rollup/wasm-node"
+        }
     }
 }
