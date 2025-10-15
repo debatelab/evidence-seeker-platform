@@ -117,9 +117,36 @@ jobs:
             echo "Stopping existing stack" && docker compose -f docker-compose.prod.yml down || true
             echo "Starting updated stack" && docker compose -f docker-compose.prod.yml up -d
 
-            echo "Waiting for services" && sleep 20
-            curl -fsS http://localhost:8000/health
-            curl -fsS http://localhost:3000 > /dev/null
+            echo "Waiting for services to start up..."
+            sleep 30
+            
+            echo "Checking container status..."
+            docker compose -f docker-compose.prod.yml ps
+            
+            echo "Checking backend logs..."
+            docker compose -f docker-compose.prod.yml logs backend --tail=20
+            
+            echo "Testing backend health..."
+            for i in {1..10}; do
+                if curl -fsS http://localhost:8000/health; then
+                    echo "Backend health check passed"
+                    break
+                else
+                    echo "Backend not ready, waiting 10s... (attempt $i/10)"
+                    sleep 10
+                fi
+            done
+            
+            echo "Testing frontend..."
+            for i in {1..10}; do
+                if curl -fsS http://localhost:3000 > /dev/null; then
+                    echo "Frontend health check passed"
+                    break
+                else
+                    echo "Frontend not ready, waiting 10s... (attempt $i/10)"
+                    sleep 10
+                fi
+            done
 
             echo "Running migrations"
             docker compose -f docker-compose.prod.yml exec -T backend alembic upgrade head
