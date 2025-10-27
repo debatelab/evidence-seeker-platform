@@ -135,7 +135,7 @@ JWT_SECRET_KEY=$(openssl rand -hex 32)
 
 # Application
 DEBUG=false
-CORS_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
+CORS_ORIGINS=["https://b7233fdd-ac70-4e21-ae82-54a2e6c682e4.ka.bw-cloud-instance.org","https://www.b7233fdd-ac70-4e21-ae82-54a2e6c682e4.ka.bw-cloud-instance.org"]
 LOG_LEVEL=WARNING
 
 # Email Configuration (configure in Step 4)
