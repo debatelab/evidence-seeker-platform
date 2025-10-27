@@ -149,7 +149,7 @@ EMAIL_FROM_NAME=Evidence Seeker Platform
 # File Upload
 UPLOAD_DIR=/app/uploads
 MAX_FILE_SIZE=10485760
-ALLOWED_EXTENSIONS=.pdf,.txt
+ALLOWED_EXTENSIONS=[".pdf",".txt"]
 EOF
 
 # Frontend production environment
