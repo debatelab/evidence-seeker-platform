@@ -56,6 +56,11 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
+# Install runtime dependencies required by psycopg2
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends libpq5 curl && \
+    rm -rf /var/lib/apt/lists/*
+
 # Copy only the runtime essentials
 COPY --from=builder /app/.venv /app/.venv
 COPY --from=builder /app/app /app/app
