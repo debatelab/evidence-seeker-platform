@@ -55,6 +55,8 @@ class Settings(BaseSettings):
     # Feature flags
     # When true, the embedding model and heavy libraries are not loaded. Used in tests/CI.
     disable_embeddings: bool = False
+    # When false, skip Base.metadata.create_all on startup and rely on migrations.
+    auto_create_schema: bool = True
 
     model_config = {
         "env_file": ".env",

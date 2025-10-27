@@ -56,6 +56,8 @@ def create_tables() -> None:
     with engine.begin() as connection:
         if connection.dialect.name == "postgresql":
             connection.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+        if not settings.auto_create_schema:
+            return
         Base.metadata.create_all(bind=connection)
 
 
