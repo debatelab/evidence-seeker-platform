@@ -184,9 +184,7 @@ def upgrade() -> None:
     op.execute(
         "CREATE INDEX IF NOT EXISTS ix_api_keys_evidence_seeker_id ON api_keys (evidence_seeker_id)"
     )
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_api_keys_provider ON api_keys (provider)"
-    )
+    op.execute("CREATE INDEX IF NOT EXISTS ix_api_keys_provider ON api_keys (provider)")
 
 
 def downgrade() -> None:
