@@ -81,7 +81,6 @@ def _import_all_models() -> None:
         "app.models.document",
         "app.models.embedding",
         "app.models.api_key",
-        "app.models.game",
     ]
     for m in modules:
         importlib.import_module(m)
