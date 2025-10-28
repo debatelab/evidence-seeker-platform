@@ -304,10 +304,13 @@ sudo systemctl stop nginx
 # Obtain certificate
 sudo certbot certonly --standalone -d yourdomain.com -d www.yourdomain.com
 
-# Create symbolic links for nginx
+# Copy certificates into project directory (needed for Docker)
 sudo mkdir -p /opt/evidence-seeker-platform/ssl
-sudo ln -s /etc/letsencrypt/live/yourdomain.com/fullchain.pem /opt/evidence-seeker-platform/ssl/
-sudo ln -s /etc/letsencrypt/live/yourdomain.com/privkey.pem /opt/evidence-seeker-platform/ssl/
+sudo cp /etc/letsencrypt/live/yourdomain.com/fullchain.pem /opt/evidence-seeker-platform/ssl/fullchain.pem
+sudo cp /etc/letsencrypt/live/yourdomain.com/privkey.pem /opt/evidence-seeker-platform/ssl/privkey.pem
+sudo chmod 644 /opt/evidence-seeker-platform/ssl/fullchain.pem
+sudo chmod 600 /opt/evidence-seeker-platform/ssl/privkey.pem
+sudo chown root:root /opt/evidence-seeker-platform/ssl/fullchain.pem /opt/evidence-seeker-platform/ssl/privkey.pem
 ```
 
 ### 5.3 Set Up Auto-Renewal
@@ -315,15 +318,13 @@ sudo ln -s /etc/letsencrypt/live/yourdomain.com/privkey.pem /opt/evidence-seeker
 # Test renewal
 sudo certbot renew --dry-run
 
-# Add renewal hook to update symlinks
+# Add renewal hook to refresh copies and reload nginx
 sudo mkdir -p /etc/letsencrypt/renewal-hooks/deploy
-sudo tee /etc/letsencrypt/renewal-hooks/deploy/update_ssl_links.sh > /dev/null << 'EOF'
-#!/bin/bash
-ln -sf /etc/letsencrypt/live/b7233fdd-ac70-4e21-ae82-54a2e6c682e4.ka.bw-cloud-instance.org/fullchain.pem /opt/evidence-seeker-platform/ssl/
-ln -sf /etc/letsencrypt/live/b7233fdd-ac70-4e21-ae82-54a2e6c682e4.ka.bw-cloud-instance.org/privkey.pem /opt/evidence-seeker-platform/ssl/
-systemctl reload nginx
-EOF
-sudo chmod +x /etc/letsencrypt/renewal-hooks/deploy/update_ssl_links.sh
+sudo cp /opt/evidence-seeker-platform/scripts/certbot-post-renew.sh /etc/letsencrypt/renewal-hooks/deploy/evidence-seeker-cert-refresh.sh
+sudo chmod +x /etc/letsencrypt/renewal-hooks/deploy/evidence-seeker-cert-refresh.sh
+
+# Optional: run hook once to confirm it works
+sudo /etc/letsencrypt/renewal-hooks/deploy/evidence-seeker-cert-refresh.sh
 ```
 
 ## Step 6: Initial User Creation

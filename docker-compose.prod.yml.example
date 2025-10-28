@@ -1,6 +1,6 @@
 services:
   backend:
-    image: ${BACKEND_IMAGE:?BACKEND_IMAGE not set}
+    image: ${BACKEND_IMAGE:-ghcr.io/debatelab/evidence-backend:latest}
     restart: unless-stopped
     env_file: .env.prod
     environment:
@@ -12,7 +12,7 @@ services:
       - "127.0.0.1:8000:8000"
 
   frontend:
-    image: ${FRONTEND_IMAGE:?FRONTEND_IMAGE not set}
+    image: ${FRONTEND_IMAGE:-ghcr.io/debatelab/evidence-frontend:latest}
     restart: unless-stopped
     depends_on:
       - backend
@@ -61,9 +61,10 @@ volumes:
 
 # Usage notes:
 # 1. Copy to docker-compose.prod.yml and tailor as needed.
-# 2. Set BACKEND_IMAGE / FRONTEND_IMAGE to full immutable refs (including @sha256 digest) before running:
+# 2. Optionally pin BACKEND_IMAGE / FRONTEND_IMAGE to immutable refs (including @sha256 digest):
 #      export BACKEND_IMAGE="ghcr.io/debatelab/evidence-backend@sha256:<digest>"
 #      export FRONTEND_IMAGE="ghcr.io/debatelab/evidence-frontend@sha256:<digest>"
+#    (defaults fall back to the :latest tags if not provided)
 # 3. Provide secrets via an .env.prod file NOT committed to git.
 # 4. Start stack: docker compose -f docker-compose.prod.yml up -d
 # 5. To update: adjust image env vars (or pull), then docker compose up -d
