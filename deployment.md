@@ -253,117 +253,12 @@ EOF
 ```
 
 ### 3.2 Create Production Nginx Configuration
-```bash
-mkdir -p nginx
-cat > nginx/prod.conf << 'EOF'
-events {
-    worker_connections 1024;
-}
 
-http {
-    include       /etc/nginx/mime.types;
-    default_type  application/octet-stream;
+The repository now ships with `nginx/prod.conf`, configured for `b7233fdd-ac70-4e21-ae82-54a2e6c682e4.ka.bw-cloud-instance.org` and ready to terminate TLS, proxying traffic to the frontend and backend services. Review the file and adjust the `server_name` entries if you deploy to a different domain.
 
-    # Logging
-    log_format main '$remote_addr - $remote_user [$time_local] "$request" '
-                    '$status $body_bytes_sent "$http_referer" '
-                    '"$http_user_agent" "$http_x_forwarded_for"';
+The configuration expects your certificates to be available inside the project folder at `./ssl/fullchain.pem` and `./ssl/privkey.pem` (see the SSL section below for how to create symlinks). It also mounts `./backend/uploads` into the Nginx container to make uploaded files downloadable.
 
-    access_log /var/log/nginx/access.log main;
-    error_log /var/log/nginx/error.log;
-
-    # Performance
-    sendfile        on;
-    tcp_nopush      on;
-    tcp_nodelay     on;
-    keepalive_timeout 65;
-    types_hash_max_size 2048;
-    client_max_body_size 10M;
-
-    # Gzip compression
-    gzip on;
-    gzip_vary on;
-    gzip_min_length 1024;
-    gzip_types
-        text/plain
-        text/css
-        text/xml
-        text/javascript
-        application/javascript
-        application/xml+rss
-        application/json;
-
-    # Upstream backend
-    upstream backend {
-        server backend:8000;
-    }
-
-    # SSL configuration
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384;
-    ssl_prefer_server_ciphers off;
-
-    # Server block
-    server {
-        listen 80;
-        server_name yourdomain.com www.yourdomain.com;
-        return 301 https://$server_name$request_uri;
-    }
-
-    server {
-        listen 443 ssl http2;
-        server_name yourdomain.com www.yourdomain.com;
-
-        ssl_certificate /etc/ssl/certs/fullchain.pem;
-        ssl_certificate_key /etc/ssl/certs/privkey.pem;
-
-        # Security headers
-        add_header X-Frame-Options "SAMEORIGIN" always;
-        add_header X-XSS-Protection "1; mode=block" always;
-        add_header X-Content-Type-Options "nosniff" always;
-        add_header Referrer-Policy "no-referrer-when-downgrade" always;
-        add_header Content-Security-Policy "default-src 'self' http: https: data: blob: 'unsafe-inline'" always;
-
-        # Frontend
-        location / {
-            proxy_pass http://frontend:3000;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-        }
-
-        # Backend API
-        location /api/ {
-            proxy_pass http://backend/;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-
-            # API specific settings
-            proxy_connect_timeout 60s;
-            proxy_send_timeout 60s;
-            proxy_read_timeout 60s;
-        }
-
-        # Static files (uploads)
-        location /uploads/ {
-            alias /var/www/uploads/;
-            expires 30d;
-            add_header Cache-Control "public, immutable";
-        }
-
-        # Health check endpoint
-        location /health {
-            access_log off;
-            return 200 "healthy\n";
-            add_header Content-Type text/plain;
-        }
-    }
-}
-EOF
-```
+If you make any edits, remember to reload the stack with `docker compose -f docker-compose.prod.yml up -d --remove-orphans` so the new configuration is picked up.
 
 ## Step 4: Email Service Configuration
 

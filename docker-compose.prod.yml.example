@@ -16,8 +16,8 @@ services:
     restart: unless-stopped
     depends_on:
       - backend
-    ports:
-      - "127.0.0.1:3000:3000"
+    expose:
+      - "3000"
 
   db:
     image: postgres:16
@@ -40,6 +40,20 @@ services:
       POSTGRES_DB: ${VECTOR_DB:-vectordb}
     volumes:
       - vector_data:/var/lib/postgresql/data
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on:
+      - backend
+      - frontend
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/prod.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/ssl/certs:ro
+      - ./backend/uploads:/var/www/uploads:ro
 
 volumes:
   evidence_data:

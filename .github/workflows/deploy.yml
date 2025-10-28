@@ -146,9 +146,11 @@ jobs:
                 fi
             done
             
-            echo "Testing frontend..."
+            PROD_DOMAIN="b7233fdd-ac70-4e21-ae82-54a2e6c682e4.ka.bw-cloud-instance.org"
+
+            echo "Testing frontend HTTPS endpoint..."
             for i in {1..10}; do
-                if curl -fsS http://localhost:3000 > /dev/null; then
+                if curl -fsS --resolve "${PROD_DOMAIN}:443:127.0.0.1" "https://${PROD_DOMAIN}/health" > /dev/null; then
                     echo "Frontend health check passed"
                     break
                 else
@@ -162,7 +164,7 @@ jobs:
 
             echo "Final health verification"
             curl -fsS http://localhost:8000/health > /dev/null
-            curl -fsS http://localhost:3000 > /dev/null
+            curl -fsS --resolve "${PROD_DOMAIN}:443:127.0.0.1" "https://${PROD_DOMAIN}/health" > /dev/null
 
             docker image prune -f > /dev/null || true
             echo "Deployment complete"
@@ -175,7 +177,8 @@ jobs:
           script: |
             set -euo pipefail
             curl -fsS http://localhost:8000/health > /dev/null
-            curl -fsS http://localhost:3000 | grep -q "Evidence Seeker Platform"
+            PROD_DOMAIN="b7233fdd-ac70-4e21-ae82-54a2e6c682e4.ka.bw-cloud-instance.org"
+            curl -fsS --resolve "${PROD_DOMAIN}:443:127.0.0.1" "https://${PROD_DOMAIN}" | grep -q "Evidence Seeker Platform"
             echo "Smoke tests OK"
 
       - name: Slack notify success
