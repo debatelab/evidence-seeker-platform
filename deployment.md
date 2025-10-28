@@ -323,7 +323,7 @@ sudo mkdir -p /etc/letsencrypt/renewal-hooks/deploy
 sudo cp /opt/evidence-seeker-platform/scripts/certbot-post-renew.sh /etc/letsencrypt/renewal-hooks/deploy/evidence-seeker-cert-refresh.sh
 sudo chmod +x /etc/letsencrypt/renewal-hooks/deploy/evidence-seeker-cert-refresh.sh
 
-# Optional: run hook once to confirm it works
+# Optional: run hook once to confirm it works (restarts nginx only, no image pull)
 sudo /etc/letsencrypt/renewal-hooks/deploy/evidence-seeker-cert-refresh.sh
 ```
 
