@@ -59,6 +59,17 @@ class OperationInfo:
     callbacks: list[Callable] = field(default_factory=list)
 
 
+@dataclass
+class TrackerEvent:
+    """Simple analytics event captured during onboarding."""
+
+    name: str
+    user_id: int | None
+    evidence_seeker_id: int | None
+    metadata: dict[str, Any]
+    timestamp: datetime = field(default_factory=datetime.utcnow)
+
+
 class ProgressTracker:
     """Service for tracking progress of long-running operations."""
 
@@ -66,6 +77,7 @@ class ProgressTracker:
         self.operations: dict[str, OperationInfo] = {}
         self.subscribers: dict[str, list[Callable]] = {}
         self._cleanup_task: asyncio.Task | None = None
+        self.events: list[TrackerEvent] = []
 
     def start_operation(
         self,
@@ -361,6 +373,35 @@ class ProgressTracker:
 
         if operations_to_remove:
             logger.info(f"Cleaned up {len(operations_to_remove)} old operations")
+
+        # Limit stored events to a recent window for memory safety
+        max_events = 500
+        if len(self.events) > max_events:
+            self.events = self.events[-max_events:]
+
+    def record_event(
+        self,
+        name: str,
+        user_id: int | None = None,
+        evidence_seeker_id: int | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        """Store a lightweight analytics event for onboarding funnel metrics."""
+        event = TrackerEvent(
+            name=name,
+            user_id=user_id,
+            evidence_seeker_id=evidence_seeker_id,
+            metadata=metadata or {},
+        )
+        self.events.append(event)
+        if len(self.events) > 500:
+            self.events = self.events[-500:]
+        logger.info(
+            "Recorded event %s (user_id=%s, seeker_id=%s)",
+            name,
+            user_id,
+            evidence_seeker_id,
+        )
 
     async def start_cleanup_task(self, interval_hours: int = 1) -> None:
         """Start the periodic cleanup task."""

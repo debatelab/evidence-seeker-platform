@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router";
 import { useEvidenceSeekers } from "../../hooks/useEvidenceSeeker";
 import PageLayout from "../PageLayout";
+import { ConfigurationStatusBadge } from "../Configuration/ConfigurationStatusBadge";
 
 const EvidenceSeekerList: React.FC = () => {
   const { evidenceSeekers, loading, error, deleteEvidenceSeeker } =
@@ -60,7 +61,7 @@ const EvidenceSeekerList: React.FC = () => {
             Get started by creating your first evidence seeker.
           </p>
           <Link
-            to="/evidence-seekers/new"
+            to="/app/evidence-seekers/new"
             className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 inline-block"
           >
             Create Evidence Seeker
@@ -98,7 +99,7 @@ const EvidenceSeekerList: React.FC = () => {
             Evidence Seekers
           </h2>
           <Link
-            to="/evidence-seekers/new"
+            to="/app/evidence-seekers/new"
             className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
           >
             Create New
@@ -115,15 +116,18 @@ const EvidenceSeekerList: React.FC = () => {
                 <h3 className="text-lg font-medium text-gray-900 truncate">
                   {seeker.title}
                 </h3>
-                <span
-                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    seeker.isPublic
-                      ? "bg-green-100 text-green-800"
-                      : "bg-yellow-100 text-yellow-800"
-                  }`}
-                >
-                  {seeker.isPublic ? "Public" : "Private"}
-                </span>
+                <div className="flex flex-col items-end gap-2">
+                  <span
+                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      seeker.isPublic
+                        ? "bg-green-100 text-green-800"
+                        : "bg-yellow-100 text-yellow-800"
+                    }`}
+                  >
+                    {seeker.isPublic ? "Public" : "Private"}
+                  </span>
+                  <ConfigurationStatusBadge state={seeker.configurationState} />
+                </div>
               </div>
 
               <p className="text-gray-600 text-sm mb-4 line-clamp-3">
@@ -134,11 +138,16 @@ const EvidenceSeekerList: React.FC = () => {
                 <span>
                   Created {new Date(seeker.createdAt).toLocaleDateString()}
                 </span>
+                {seeker.configurationState !== "READY" && (
+                  <span className="text-amber-600 font-medium">
+                    Needs configuration
+                  </span>
+                )}
               </div>
 
               <div className="flex space-x-2">
                 <Link
-                  to={`/evidence-seekers/${seeker.uuid}/manage`}
+                  to={`/app/evidence-seekers/${seeker.uuid}/manage`}
                   className="flex-1 bg-blue-600 text-white px-3 py-2 rounded-md text-sm hover:bg-blue-700 text-center"
                 >
                   Manage

@@ -53,3 +53,15 @@ class DocumentRead(DocumentBase):
         from_attributes = True
         by_alias = True
         alias_generator = to_camel
+
+
+class DocumentIngestionResponse(BaseModel):
+    """Response schema returning document plus indexing job context."""
+
+    document: DocumentRead
+    job_uuid: UUID = Field(alias="jobUuid")
+    operation_id: str | None = Field(alias="operationId")
+
+    class Config:
+        populate_by_name = True
+        from_attributes = True

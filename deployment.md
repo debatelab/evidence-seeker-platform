@@ -117,6 +117,12 @@ git clone git@github.com:username/repo.git
 # Clone the application
 git clone git@github.com:debatelab/evidence-seeker-platform.git .
 git checkout main  # or your production branch
+
+# The GitHub Actions deployment workflow will keep this clone aligned
+# with the commit being released by running `git fetch origin` and
+# `git checkout <commit>` on each deploy. Avoid leaving uncommitted
+# changes in this directory, and ensure your deploy key can fetch from
+# GitHub.
 ```
 
 ### 2.3 Configure Environment Variables

@@ -1,5 +1,4 @@
 import logging
-import sys
 
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request, status
@@ -12,29 +11,21 @@ from loguru import logger
 from app.api.auth import router as auth_router
 from app.api.config import router as config_router
 from app.api.documents import router as documents_router
-from app.api.embeddings import router as embeddings_router
 from app.api.evidence_seekers import router as evidence_seekers_router
 from app.api.permissions import router as permissions_router
 from app.api.progress import router as progress_router
-from app.api.search import router as search_router
+from app.api.public import router as public_router
 from app.api.users import router as users_router
 from app.core.config import settings
 from app.core.database import create_tables
+from app.core.logging import setup_logging
 
-# Suppress the bcrypt version warning from passlib
-logging.getLogger("passlib").setLevel(logging.ERROR)
+# Set up logging first, before any other imports that might use logger
+setup_logging()
 
 
 def create_application() -> FastAPI:
     """Create and configure FastAPI application"""
-
-    # Configure Loguru
-    logger.remove()
-    logger.add(
-        sys.stdout,
-        level=settings.log_level,
-        format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
-    )
 
     # Create FastAPI app
     app = FastAPI(
@@ -102,16 +93,6 @@ def create_application() -> FastAPI:
         tags=["Permissions"],
     )
     app.include_router(
-        embeddings_router,
-        prefix=settings.api_v1_prefix + "/embeddings",
-        tags=["Embeddings"],
-    )
-    app.include_router(
-        search_router,
-        prefix=settings.api_v1_prefix + "/search",
-        tags=["Search"],
-    )
-    app.include_router(
         config_router,
         prefix=settings.api_v1_prefix + "/config",
         tags=["Configuration"],
@@ -120,6 +101,11 @@ def create_application() -> FastAPI:
         progress_router,
         prefix=settings.api_v1_prefix + "/progress",
         tags=["Progress"],
+    )
+    app.include_router(
+        public_router,
+        prefix=settings.api_v1_prefix + "/public",
+        tags=["Public"],
     )
 
     # Health check endpoint

@@ -1,5 +1,5 @@
 ########## Builder Stage ##########
-FROM python:3.11-slim AS builder
+FROM python:3.12-slim AS builder
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -48,7 +48,7 @@ RUN find .venv -type f -name '*.a' -delete && \
     du -sh .venv || true
 
 ########## Runtime Stage ##########
-FROM python:3.11-slim AS runtime
+FROM python:3.12-slim AS runtime
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \

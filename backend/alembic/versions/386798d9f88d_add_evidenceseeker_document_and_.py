@@ -90,6 +90,12 @@ def upgrade() -> None:
                 autoincrement=False,
                 nullable=True,
             ),
+            sa.Column(
+                "published_at",
+                postgresql.TIMESTAMP(timezone=True),
+                autoincrement=False,
+                nullable=True,
+            ),
             sa.ForeignKeyConstraint(
                 ["created_by"], ["users.id"], name="evidence_seekers_created_by_fkey"
             ),
@@ -235,6 +241,12 @@ def downgrade() -> None:
             "updated_at",
             postgresql.TIMESTAMP(),
             server_default=sa.text("now()"),
+            autoincrement=False,
+            nullable=True,
+        ),
+        sa.Column(
+            "published_at",
+            postgresql.TIMESTAMP(timezone=True),
             autoincrement=False,
             nullable=True,
         ),

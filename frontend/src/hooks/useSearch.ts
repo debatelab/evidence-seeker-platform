@@ -1,176 +1,100 @@
-/**
- * React hooks for search operations
- */
-
-import { useState, useEffect, useCallback } from "react";
-import api from "../utils/api";
-import {
-  SearchQuery,
-  SearchResponse,
-  EmbeddingSearchQuery,
-  EmbeddingSearchResponse,
-  DocumentChunk,
-  DocumentChunksResponse,
-  SearchStatistics,
-  SimilarDocumentsQuery,
-  SimilarDocumentsResponse,
-  AnalysisQuery,
-  AnalysisResult,
+import { useCallback, useEffect, useState } from "react";
+import apiClient, { evidenceSeekerAPI } from "../utils/api";
+import type {
+  EvidenceSearchRequest,
+  EvidenceSearchResponse,
   ProgressUpdate,
+  SystemStatistics,
 } from "../types/search";
 
-export const useSearch = () => {
+const toErrorMessage = (error: unknown, fallback: string): string => {
+  if (
+    error &&
+    typeof error === "object" &&
+    "response" in error &&
+    error.response &&
+    typeof error.response === "object" &&
+    error.response !== null &&
+    "data" in error.response
+  ) {
+    const detail =
+      (error.response as { data?: { detail?: unknown } }).data?.detail ?? null;
+    if (typeof detail === "string") {
+      return detail;
+    }
+    if (
+      detail &&
+      typeof detail === "object" &&
+      "message" in detail &&
+      typeof (detail as Record<string, unknown>).message === "string"
+    ) {
+      return (detail as { message: string }).message;
+    }
+  }
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return fallback;
+};
+
+export const useEvidenceSearch = (evidenceSeekerUuid: string) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const search = useCallback(async (query: SearchQuery) => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await api.post("/search", query);
-      return response.data as SearchResponse;
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.detail || "Search failed";
-      setError(errorMessage);
-      throw new Error(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const search = useCallback(
+    async (request: EvidenceSearchRequest): Promise<EvidenceSearchResponse> => {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await evidenceSeekerAPI.searchEvidence(
+          evidenceSeekerUuid,
+          request
+        );
+        return response;
+      } catch (err: any) {
+        const message = toErrorMessage(err, "Search failed");
+        setError(message);
+        throw new Error(message);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [evidenceSeekerUuid]
+  );
 
   return { search, loading, error };
 };
 
-export const useEmbeddingSearch = () => {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const searchByEmbedding = useCallback(async (query: EmbeddingSearchQuery) => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await api.post("/search/embedding", query);
-      return response.data as EmbeddingSearchResponse;
-    } catch (err: any) {
-      const errorMessage =
-        err.response?.data?.detail || "Embedding search failed";
-      setError(errorMessage);
-      throw new Error(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  return { searchByEmbedding, loading, error };
-};
-
-export const useDocumentChunks = (documentId: number) => {
-  const [chunks, setChunks] = useState<DocumentChunk[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchChunks = useCallback(async () => {
-    if (!documentId) return;
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await api.get(`/search/document/${documentId}/chunks`);
-      const data = response.data as DocumentChunksResponse;
-      setChunks(data.chunks);
-    } catch (err: any) {
-      setError(err.response?.data?.detail || "Failed to fetch document chunks");
-    } finally {
-      setLoading(false);
-    }
-  }, [documentId]);
-
-  useEffect(() => {
-    fetchChunks();
-  }, [fetchChunks]);
-
-  return { chunks, loading, error, refetch: fetchChunks };
-};
-
-export const useSearchStatistics = () => {
-  const [stats, setStats] = useState<SearchStatistics | null>(null);
+export const useSystemStatistics = () => {
+  const [stats, setStats] = useState<SystemStatistics | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchStats = useCallback(async () => {
     setLoading(true);
     setError(null);
-
     try {
-      const response = await api.get("/search/statistics");
+      const response = await apiClient.get<SystemStatistics>(
+        "/config/system-stats"
+      );
       setStats(response.data);
     } catch (err: any) {
-      setError(
-        err.response?.data?.detail || "Failed to fetch search statistics"
-      );
+      const message =
+        err?.response?.data?.detail ?? err?.message ?? "Failed to load stats";
+      setError(message);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchStats();
+    void fetchStats();
   }, [fetchStats]);
 
   return { stats, loading, error, refetch: fetchStats };
 };
 
-export const useSimilarDocuments = () => {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const findSimilar = useCallback(async (query: SimilarDocumentsQuery) => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await api.post("/search/similar", query);
-      return response.data as SimilarDocumentsResponse;
-    } catch (err: any) {
-      const errorMessage =
-        err.response?.data?.detail || "Failed to find similar documents";
-      setError(errorMessage);
-      throw new Error(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  return { findSimilar, loading, error };
-};
-
-export const useAnalysis = () => {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const analyze = useCallback(async (query: AnalysisQuery) => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await api.post("/search/analyze", query);
-      return response.data as AnalysisResult;
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.detail || "Analysis failed";
-      setError(errorMessage);
-      throw new Error(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  return { analyze, loading, error };
-};
-
-export const useProgressUpdates = (operationId: string) => {
+export const useProgressUpdates = (operationId: string | null) => {
   const [updates, setUpdates] = useState<ProgressUpdate[]>([]);
   const [currentUpdate, setCurrentUpdate] = useState<ProgressUpdate | null>(
     null
@@ -179,20 +103,39 @@ export const useProgressUpdates = (operationId: string) => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!operationId) return;
+    if (!operationId) {
+      setCurrentUpdate(null);
+      setUpdates([]);
+      return;
+    }
 
-    // In a real implementation, this would connect to WebSocket
-    // For now, we'll simulate with polling
-    const pollProgress = async () => {
+    let isMounted = true;
+    let intervalId: number | undefined;
+    setConnected(false);
+    setError(null);
+
+    const isTerminalStatus = (status: string | undefined): boolean => {
+      if (!status) return false;
+      return ["COMPLETED", "FAILED", "CANCELLED", "SUCCEEDED"].includes(
+        status.toUpperCase()
+      );
+    };
+
+    const poll = async () => {
       try {
-        const response = await api.get(`/progress/operations/${operationId}`);
-        const operation = response.data;
+        const response = await apiClient.get(
+          `/progress/operations/${operationId}`
+        );
+        if (!isMounted) {
+          return;
+        }
 
+        const operation = response.data;
         const update: ProgressUpdate = {
           operation_id: operation.operation_id,
-          progress: operation.progress,
-          status: operation.status,
-          message: operation.message,
+          progress: operation.progress ?? 0,
+          status: operation.status ?? "UNKNOWN",
+          message: operation.message ?? "",
           current_step: operation.current_step,
           total_steps: operation.total_steps,
           estimated_time_remaining: operation.estimated_time_remaining,
@@ -201,24 +144,45 @@ export const useProgressUpdates = (operationId: string) => {
         };
 
         setCurrentUpdate(update);
-        setUpdates((prev) => [...prev, update]);
+        setUpdates((prev) => {
+          const next = [...prev, update];
+          // Prevent unbounded growth
+          return next.slice(-50);
+        });
         setConnected(true);
-        setError(null);
+
+        // Stop polling if status is terminal
+        if (isTerminalStatus(update.status)) {
+          if (intervalId !== undefined) {
+            window.clearInterval(intervalId);
+            intervalId = undefined;
+          }
+        }
       } catch (err: any) {
-        setError(err.response?.data?.detail || "Failed to get progress");
+        if (!isMounted) {
+          return;
+        }
+        const message =
+          err?.response?.data?.detail ??
+          err?.message ??
+          "Failed to fetch progress";
+        setError(message);
         setConnected(false);
       }
     };
 
-    // Initial poll
-    pollProgress();
+    // initial fetch
+    void poll();
 
-    // Set up polling interval
-    const interval = setInterval(pollProgress, 2000); // Poll every 2 seconds
+    intervalId = window.setInterval(() => {
+      void poll();
+    }, 2000);
 
     return () => {
-      clearInterval(interval);
-      setConnected(false);
+      isMounted = false;
+      if (intervalId !== undefined) {
+        window.clearInterval(intervalId);
+      }
     };
   }, [operationId]);
 

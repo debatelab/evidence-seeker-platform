@@ -3,8 +3,10 @@ import {
   createBrowserRouter,
   RouterProvider,
   Link,
-  useParams,
   Navigate,
+  useNavigate,
+  useParams,
+  Outlet,
 } from "react-router";
 import { useAuth } from "./hooks/useAuth";
 import { usePermissions } from "./hooks/usePermissions";
@@ -21,12 +23,16 @@ import DocumentList from "./components/Document/DocumentList";
 import DocumentUpload from "./components/Document/DocumentUpload";
 import { SearchInterface } from "./components/Search/SearchInterface";
 import EvidenceSeekerSettings from "./components/EvidenceSeeker/EvidenceSeekerSettings";
+import EvidenceSeekerFactChecks from "./components/EvidenceSeeker/EvidenceSeekerFactChecks";
+import EvidenceSeekerConfig from "./components/EvidenceSeeker/EvidenceSeekerConfig";
 import { UserRoleManager } from "./components/EvidenceSeeker/UserRoleManager";
-import { APIKeyManager } from "./components/Config/APIKeyManager";
 import ErrorBoundary from "./components/ErrorBoundary";
 import PlatformSettings from "./pages/PlatformSettings";
 import { useEvidenceSeekers } from "./hooks/useEvidenceSeeker";
 import { EvidenceSeeker } from "./types/evidenceSeeker";
+import PublicHomePage from "./pages/public/PublicHomePage";
+import PublicEvidenceSeekerPage from "./pages/public/PublicEvidenceSeekerPage";
+import PublicFactCheckPage from "./pages/public/PublicFactCheckPage";
 
 // Wrapper component to provide Evidence Seeker UUID to tab components
 interface EvidenceSeekerUuidProp {
@@ -81,9 +87,7 @@ const TabWrapper = <P extends EvidenceSeekerUuidProp = EvidenceSeekerUuidProp>({
 
 const App: React.FC = () => {
   const { isAuthenticated, user, logout } = useAuth();
-  const [isLoginMode, setIsLoginMode] = useState(true);
 
-  // Add this useEffect for debugging
   useEffect(() => {
     console.log("App - isAuthenticated:", isAuthenticated);
     console.log("App - user:", user);
@@ -91,14 +95,6 @@ const App: React.FC = () => {
       console.log("App - User is authenticated, should show welcome page.");
     }
   }, [isAuthenticated, user]);
-
-  const handleSwitchToRegister = () => {
-    setIsLoginMode(false);
-  };
-
-  const handleSwitchToLogin = () => {
-    setIsLoginMode(true);
-  };
 
   // Dashboard component
   const Dashboard = () => (
@@ -125,7 +121,7 @@ const App: React.FC = () => {
             Welcome to Evidence Seeker Platform
           </h3>
           <p className="text-gray-500 mb-4">
-            You are successfully authenticated! This is Iteration 2 of the
+            You are successfully authenticated! This is Iteration 4 of the
             platform.
           </p>
           <div className="bg-gray-100 rounded-md p-4 text-left max-w-md mx-auto">
@@ -152,7 +148,7 @@ const App: React.FC = () => {
           </div>
           <div className="mt-6">
             <Link
-              to="/evidence-seekers"
+              to="/app/evidence-seekers"
               className="bg-blue-600 text-white px-6 py-2 rounded-md text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
             >
               Manage Evidence Seekers
@@ -164,7 +160,7 @@ const App: React.FC = () => {
   );
 
   // Layout component with navigation
-  const AppLayout = ({ children }: { children: React.ReactNode }) => {
+  const AppLayout: React.FC = () => {
     const { hasPlatformAdminAccess } = usePermissions();
     console.log({ hasPlatformAdminAccess: hasPlatformAdminAccess() });
     return (
@@ -196,20 +192,20 @@ const App: React.FC = () => {
                 </div>
                 <div className="flex space-x-4">
                   <Link
-                    to="/"
+                    to="/app"
                     className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
                   >
                     Dashboard
                   </Link>
                   <Link
-                    to="/evidence-seekers"
+                    to="/app/evidence-seekers"
                     className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
                   >
                     Evidence Seekers
                   </Link>
                   {hasPlatformAdminAccess() && (
                     <Link
-                      to="/platform-settings"
+                      to="/app/platform-settings"
                       className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
                     >
                       Platform Admin
@@ -221,6 +217,12 @@ const App: React.FC = () => {
                 <span className="text-sm text-gray-700">
                   Welcome, {user?.email}
                 </span>
+                <Link
+                  to="/"
+                  className="text-sm text-blue-600 hover:text-blue-700"
+                >
+                  View Public Site
+                </Link>
                 <button
                   onClick={logout}
                   className="bg-red-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
@@ -231,116 +233,63 @@ const App: React.FC = () => {
             </div>
           </div>
         </nav>
-        {children}
+        <Outlet />
       </div>
     );
   };
 
-  // Auth component
-  const AuthPage = () => (
-    <AuthLayout
-      title={isLoginMode ? "Welcome Back" : "Create Account"}
-      subtitle={
-        isLoginMode
-          ? "Please sign in to continue"
-          : "Join Evidence Seeker Platform"
-      }
-    >
-      {isLoginMode ? (
-        <LoginForm onSwitchToRegister={handleSwitchToRegister} />
-      ) : (
-        <RegisterForm onSwitchToLogin={handleSwitchToLogin} />
-      )}
-    </AuthLayout>
-  );
+  const LoginPage = () => {
+    const navigate = useNavigate();
+    return (
+      <AuthLayout title="Welcome Back" subtitle="Please sign in to continue">
+        <LoginForm onSwitchToRegister={() => navigate("/register")} />
+      </AuthLayout>
+    );
+  };
+
+  const RegisterPage = () => {
+    const navigate = useNavigate();
+    return (
+      <AuthLayout
+        title="Join Evidence Seeker Platform"
+        subtitle="Create your account"
+      >
+        <RegisterForm onSwitchToLogin={() => navigate("/login")} />
+      </AuthLayout>
+    );
+  };
+
+  const RequireAuth: React.FC<{ children: React.ReactNode }> = ({
+    children,
+  }) => {
+    if (!isAuthenticated || !user) {
+      return <Navigate to="/login" replace />;
+    }
+    return <>{children}</>;
+  };
 
   // Create router configuration
   const router = createBrowserRouter([
     {
       path: "/",
+      element: <PublicHomePage />,
+    },
+    {
+      path: "/login",
       element:
         isAuthenticated && user ? (
-          <AppLayout>
-            <Dashboard />
-          </AppLayout>
+          <Navigate to="/app" replace />
         ) : (
-          <AuthPage />
+          <LoginPage />
         ),
     },
     {
-      path: "/evidence-seekers",
+      path: "/register",
       element:
         isAuthenticated && user ? (
-          <AppLayout>
-            <EvidenceSeekerList />
-          </AppLayout>
+          <Navigate to="/app" replace />
         ) : (
-          <AuthPage />
-        ),
-    },
-    {
-      path: "/evidence-seekers/new",
-      element:
-        isAuthenticated && user ? (
-          <AppLayout>
-            <EvidenceSeekerForm />
-          </AppLayout>
-        ) : (
-          <AuthPage />
-        ),
-    },
-
-    {
-      path: "/evidence-seekers/:evidenceSeekerId/manage",
-      element:
-        isAuthenticated && user ? (
-          <AppLayout>
-            <EvidenceSeekerManagementWrapper />
-          </AppLayout>
-        ) : (
-          <AuthPage />
-        ),
-      children: [
-        {
-          path: "documents",
-          element: <TabWrapper Component={DocumentList} />,
-        },
-        {
-          path: "search",
-          element: <TabWrapper Component={SearchInterface} />,
-        },
-        {
-          path: "settings",
-          element: <TabWrapper Component={EvidenceSeekerSettings} />,
-        },
-        {
-          path: "users",
-          element: (
-            <TabWrapper
-              Component={UserRoleManager}
-              needsEvidenceSeeker={false}
-            />
-          ),
-        },
-        {
-          path: "config",
-          element: <TabWrapper Component={APIKeyManager} />,
-        },
-        {
-          index: true,
-          element: <Navigate to="documents" replace />,
-        },
-      ],
-    },
-    {
-      path: "/evidence-seekers/:evidenceSeekerId/documents/upload",
-      element:
-        isAuthenticated && user ? (
-          <AppLayout>
-            <TabWrapper Component={DocumentUpload} />
-          </AppLayout>
-        ) : (
-          <AuthPage />
+          <RegisterPage />
         ),
     },
     {
@@ -356,15 +305,81 @@ const App: React.FC = () => {
       element: <ResetPassword />,
     },
     {
-      path: "/platform-settings",
-      element:
-        isAuthenticated && user ? (
-          <AppLayout>
-            <PlatformSettings />
-          </AppLayout>
-        ) : (
-          <AuthPage />
-        ),
+      path: "/evidence-seekers/:seekerUuid",
+      element: <PublicEvidenceSeekerPage />,
+    },
+    {
+      path: "/fact-checks/:runUuid",
+      element: <PublicFactCheckPage />,
+    },
+    {
+      path: "/app",
+      element: (
+        <RequireAuth>
+          <AppLayout />
+        </RequireAuth>
+      ),
+      children: [
+        {
+          index: true,
+          element: <Dashboard />,
+        },
+        {
+          path: "evidence-seekers",
+          element: <EvidenceSeekerList />,
+        },
+        {
+          path: "evidence-seekers/new",
+          element: <EvidenceSeekerForm />,
+        },
+        {
+          path: "evidence-seekers/:evidenceSeekerId/manage",
+          element: <EvidenceSeekerManagementWrapper />,
+          children: [
+            {
+              path: "documents",
+              element: <TabWrapper Component={DocumentList} />,
+            },
+            {
+              path: "search",
+              element: <TabWrapper Component={SearchInterface} />,
+            },
+            {
+              path: "fact-checks",
+              element: <TabWrapper Component={EvidenceSeekerFactChecks} />,
+            },
+            {
+              path: "settings",
+              element: <TabWrapper Component={EvidenceSeekerSettings} />,
+            },
+            {
+              path: "users",
+              element: (
+                <TabWrapper
+                  Component={UserRoleManager}
+                  needsEvidenceSeeker={false}
+                />
+              ),
+            },
+            {
+              path: "config",
+              element: <TabWrapper Component={EvidenceSeekerConfig} />,
+            },
+            {
+              index: true,
+              element: <Navigate to="documents" replace />,
+            },
+          ],
+        },
+        {
+          path: "evidence-seekers/:evidenceSeekerId/documents/upload",
+          element: <TabWrapper Component={DocumentUpload} />,
+        },
+        {
+          path: "platform-settings",
+          element: <PlatformSettings />,
+        },
+      ],
     },
   ]);
 

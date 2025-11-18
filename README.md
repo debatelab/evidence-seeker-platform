@@ -39,6 +39,14 @@ This is the full feature set for the initial release.
 * **Simple Configuration**: A user-friendly interface for essential settings, like selecting an inference provider and entering API tokens (which must be stored encrypted).  
 * **Expert Configuration**: A text area for advanced YAML configuration will be considered a **post-MVP feature** to ensure the deadline is met.
 
+#### Simplified Configuration Flow
+
+1. **Guided creation wizard** – Creating an Evidence Seeker now walks admins through three steps (basics, Hugging Face credentials, review) before the project is created so no seeker is left without working inference settings.
+2. **Status-driven management** – Every seeker surfaces its configuration state via badges on the list page, within the management header, and on the configuration tab. Status metadata includes the current setup mode, last configured timestamp, and the requirements that are still missing.
+3. **Workflow guards** – Document uploads, reindexing, semantic search, and fact-check runs are blocked in both the UI and API until the configuration state is `READY`. Users see a call-to-action to open the configuration tab, while the backend returns `409 Conflict` with machine-readable details so clients can respond gracefully.
+4. **Expert mode toggle** – Advanced retrieval controls are hidden by default. Once the simple setup succeeds, admins can opt into expert mode per seeker to edit backend/language/override fields. They can revert to simple mode at any time to rely on platform defaults.
+5. **API key rotation** – The configuration tab exposes the API Key Manager so admins can add a new Hugging Face key, switch the active credential, and remove the old key without downtime. Rotating a key automatically re-validates the configuration state.
+
 ### **Public Interface**
 
 * **Discovery**: Non-registered users can view a list of all **public** Evidence Seekers.  
@@ -55,6 +63,11 @@ This is the full feature set for the initial release.
 * **API Key Encryption**: Fernet symmetric encryption for storing user API keys
 * **CORS Configuration**: Properly configured for frontend-backend communication
 * **Input Sanitization**: All YAML configuration validated and sanitized
+
+### **Feature Flags**
+
+* `ENABLE_SIMPLE_CONFIG` (default `true`) – when enabled, the onboarding wizard, configuration status badges, and guarded workflows are enforced across the platform. Set to `false` if you need to temporarily bypass the guardrails (e.g., for legacy data import).  
+* `EVSE_REQUIRE_BILL_TO` (default `false`) – require a billing reference (`bill_to`) during setup for organizations that need per-tenant tracking.
 
 ## **🛠️ Tech Stack**
 
@@ -237,7 +250,7 @@ KIT DebateLab Team
 
 ### **Prerequisites**
 - Docker and Docker Compose
-- Python 3.11+
+- Python 3.12+
 - Node.js 18+
 - Git
 

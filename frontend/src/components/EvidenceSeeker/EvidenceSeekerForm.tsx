@@ -1,95 +1,310 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
-import { EvidenceSeekerCreate } from "../../types/evidenceSeeker";
+import { KeyRound, CheckCircle2 } from "lucide-react";
+import {
+  ConfigurationStatus,
+  EvidenceSeeker,
+  EvidenceSeekerCreate,
+  EvidenceSeekerUpdate,
+} from "../../types/evidenceSeeker";
 import { useEvidenceSeekers } from "../../hooks/useEvidenceSeeker";
 import PageLayout from "../PageLayout";
+import { useConfigurationStatus } from "../../hooks/useConfigurationStatus";
+import WizardDocumentStep from "./Wizard/WizardDocumentStep";
+import apiClient, { evidenceSeekerAPI } from "../../utils/api";
 
 interface EvidenceSeekerFormProps {
   onSuccess?: () => void;
   onCancel?: () => void;
 }
 
+const steps = [
+  { id: 0, label: "Describe Evidence Seeker" },
+  { id: 1, label: "Connect inference" },
+  { id: 2, label: "Upload documents" },
+  { id: 3, label: "Review & finish" },
+];
+
+const WIZARD_API_KEY_NAME = "Onboarding key";
+
 const EvidenceSeekerForm: React.FC<EvidenceSeekerFormProps> = ({
   onSuccess,
   onCancel,
 }) => {
   const navigate = useNavigate();
-  const { createEvidenceSeeker } = useEvidenceSeekers();
+  const {
+    createEvidenceSeeker,
+    updateEvidenceSeeker,
+    finishOnboarding: completeOnboarding,
+    skipDocuments: acknowledgeSkip,
+  } = useEvidenceSeekers();
 
-  const [formData, setFormData] = useState({
+  const [step, setStep] = useState(0);
+  const [provisioning, setProvisioning] = useState(false);
+  const [finishLoading, setFinishLoading] = useState(false);
+  const [statusPolling, setStatusPolling] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [finishError, setFinishError] = useState<string | null>(null);
+
+  const [details, setDetails] = useState({
     title: "",
     description: "",
     isPublic: false,
   });
-  const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [credentials, setCredentials] = useState({
+    apiKeyValue: "",
+    billTo: "",
+  });
+  const [detailErrors, setDetailErrors] = useState<Record<string, string>>({});
+  const [credentialErrors, setCredentialErrors] = useState<Record<string, string>>({});
+  const [wizardSeeker, setWizardSeeker] = useState<EvidenceSeeker | null>(null);
+  const [onboardingToken, setOnboardingToken] = useState<string | null>(null);
+  const [documentRequirementMet, setDocumentRequirementMet] = useState(false);
+  const [skipAcknowledged, setSkipAcknowledged] = useState(false);
+  const [appliedCredentials, setAppliedCredentials] = useState(() => ({
+    apiKeyValue: "",
+    billTo: "",
+  }));
+  const { status: wizardStatus } = useConfigurationStatus(wizardSeeker?.uuid);
 
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-
-    if (!formData.title.trim()) {
-      newErrors.title = "Title is required";
-    } else if (formData.title.length > 100) {
-      newErrors.title = "Title must be 100 characters or less";
+  useEffect(() => {
+    if (wizardStatus?.documentSkipAcknowledged !== undefined) {
+      setSkipAcknowledged(wizardStatus.documentSkipAcknowledged);
     }
+  }, [wizardStatus?.documentSkipAcknowledged]);
 
-    if (formData.description.length > 500) {
-      newErrors.description = "Description must be 500 characters or less";
+  const validateDetails = () => {
+    const errors: Record<string, string> = {};
+    if (!details.title.trim()) {
+      errors.title = "Title is required.";
+    } else if (details.title.length > 100) {
+      errors.title = "Title must be 100 characters or fewer.";
     }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    if (details.description.length > 500) {
+      errors.description = "Description must be 500 characters or fewer.";
+    }
+    setDetailErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const validateCredentials = () => {
+    const errors: Record<string, string> = {};
+    if (!credentials.apiKeyValue.trim()) {
+      errors.apiKeyValue = "Paste your Hugging Face API key.";
+    } else if (!credentials.apiKeyValue.trim().startsWith("hf_")) {
+      errors.apiKeyValue = "Hugging Face keys typically start with hf_.";
+    }
+    setCredentialErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
-    if (!validateForm()) {
+  const handleNext = async () => {
+    if (step === 0) {
+      if (!validateDetails()) {
+        return;
+      }
+      setStep(1);
+      return;
+    }
+    if (step === 1) {
+      const success = await ensureSeekerProvisioned();
+      if (success) {
+        setStep(2);
+      }
+      return;
+    }
+    if (step === 2) {
+      if (!documentRequirementMet && !skipAcknowledged) {
+        setError("Upload at least one document or confirm the skip option.");
+        return;
+      }
+      setError(null);
+      setStep(3);
+    }
+  };
+
+  const handleBack = () => {
+    setStep((prev) => Math.max(prev - 1, 0));
+  };
+
+  const summary = useMemo(
+    () => [
+      { label: "Title", value: details.title },
+      { label: "Description", value: details.description || "—" },
+      { label: "Visibility", value: details.isPublic ? "Public" : "Private" },
+      { label: "Billing reference", value: credentials.billTo || "—" },
+      {
+        label: "Documents",
+        value: skipAcknowledged
+          ? "Will add later"
+          : documentRequirementMet
+          ? "At least one uploaded"
+          : "Pending upload",
+      },
+    ],
+    [details, credentials, skipAcknowledged, documentRequirementMet]
+  );
+
+  const snapshotCredentials = () => ({
+    apiKeyValue: credentials.apiKeyValue,
+    billTo: credentials.billTo,
+  });
+
+  const persistBasicDetails = async (seekerRecord: EvidenceSeeker) => {
+    const updates: EvidenceSeekerUpdate = {};
+    if (details.title.trim() && details.title.trim() !== seekerRecord.title) {
+      updates.title = details.title.trim();
+    }
+    if (
+      (details.description || "") !==
+      (seekerRecord.description ?? "")
+    ) {
+      updates.description = details.description.trim();
+    }
+    if (details.isPublic !== seekerRecord.isPublic) {
+      updates.isPublic = details.isPublic;
+    }
+    if (Object.keys(updates).length === 0) {
+      return;
+    }
+    await updateEvidenceSeeker(seekerRecord.id, updates);
+    setWizardSeeker((prev) => (prev ? { ...prev, ...updates } : prev));
+  };
+
+  const rotateCredentialsIfNeeded = async (seekerRecord: EvidenceSeeker) => {
+    const valueChanged = appliedCredentials.apiKeyValue !== credentials.apiKeyValue;
+    const billToChanged = appliedCredentials.billTo !== credentials.billTo;
+
+    if (!valueChanged && !billToChanged) {
       return;
     }
 
-    setLoading(true);
-
-    try {
-      // Create new Evidence Seeker
-      const createData: EvidenceSeekerCreate = {
-        title: formData.title,
-        description: formData.description,
-        isPublic: formData.isPublic,
-      };
-      const success = (await createEvidenceSeeker(createData)) !== null;
-
-      if (success) {
-        // Navigate to the list page with success message
-        navigate("/evidence-seekers", {
-          state: { message: "Evidence Seeker created successfully!" },
-        });
-
-        if (onSuccess) {
-          onSuccess();
+    if (valueChanged) {
+      const response = await apiClient.post(
+        `/config/${seekerRecord.uuid}/api-keys`,
+        {
+          provider: "huggingface",
+          name: WIZARD_API_KEY_NAME,
+          api_key: credentials.apiKeyValue.trim(),
+          description: "Wizard credential",
         }
+      );
+      const keyId = response.data?.id;
+      if (!keyId) {
+        throw new Error("Failed to store API key.");
       }
-    } catch (err) {
-      setErrors({ general: "An error occurred. Please try again." });
+      await evidenceSeekerAPI.updateSettings(seekerRecord.uuid, {
+        huggingfaceApiKeyId: keyId,
+        embedBillTo: credentials.billTo.trim() || undefined,
+      });
+    } else if (billToChanged) {
+      await evidenceSeekerAPI.updateSettings(seekerRecord.uuid, {
+        embedBillTo: credentials.billTo.trim() || undefined,
+      });
+    }
+    setAppliedCredentials(snapshotCredentials());
+  };
+
+  const ensureSeekerProvisioned = async (): Promise<boolean> => {
+    if (!validateDetails() || !validateCredentials()) {
+      return false;
+    }
+    setProvisioning(true);
+    setError(null);
+    try {
+      if (!wizardSeeker) {
+        const payload: EvidenceSeekerCreate = {
+          title: details.title.trim(),
+          description: details.description.trim(),
+          isPublic: details.isPublic,
+          initialConfiguration: {
+        apiKeyName: WIZARD_API_KEY_NAME,
+        apiKeyValue: credentials.apiKeyValue.trim(),
+        billTo: credentials.billTo.trim() || undefined,
+        setupMode: "SIMPLE",
+          },
+        };
+        const created = await createEvidenceSeeker(payload);
+        if (!created) {
+          throw new Error("Failed to create Evidence Seeker.");
+        }
+        setWizardSeeker(created);
+        setOnboardingToken(created.onboardingToken ?? null);
+        setSkipAcknowledged(created.documentSkipAcknowledged ?? false);
+        setAppliedCredentials(snapshotCredentials());
+        return true;
+      }
+      await persistBasicDetails(wizardSeeker);
+      await rotateCredentialsIfNeeded(wizardSeeker);
+      return true;
+    } catch (err: any) {
+      setError(err?.message ?? "Failed to save configuration.");
+      return false;
     } finally {
-      setLoading(false);
+      setProvisioning(false);
     }
   };
 
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: "" }));
+  const handleSkipDocuments = async () => {
+    if (!wizardSeeker) {
+      throw new Error("Create the Evidence Seeker before skipping documents.");
+    }
+    const status = await acknowledgeSkip(wizardSeeker.uuid);
+    setSkipAcknowledged(status.documentSkipAcknowledged);
+    return status;
+  };
+
+  const delay = (ms: number) =>
+    new Promise((resolve) => {
+      setTimeout(resolve, ms);
+    });
+
+  const waitForReady = async (): Promise<ConfigurationStatus | null> => {
+    if (!wizardSeeker) {
+      return null;
+    }
+    setStatusPolling(true);
+    try {
+      for (let attempt = 0; attempt < 12; attempt += 1) {
+        const status = await evidenceSeekerAPI.getConfigurationStatus(
+          wizardSeeker.uuid
+        );
+        if (status.isReady) {
+          return status;
+        }
+        await delay(5000);
+      }
+      throw new Error(
+        "Documents are still processing. Give it a moment and try finishing again."
+      );
+    } finally {
+      setStatusPolling(false);
     }
   };
 
-  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, checked } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: checked }));
+  const handleFinish = async () => {
+    if (!wizardSeeker) {
+      return;
+    }
+    setFinishError(null);
+    setFinishLoading(true);
+    try {
+      await completeOnboarding(wizardSeeker.uuid);
+      if (skipAcknowledged) {
+        navigate(`/app/evidence-seekers/${wizardSeeker.uuid}/manage/documents`);
+        onSuccess?.();
+        return;
+      }
+      await waitForReady();
+      navigate(`/app/evidence-seekers/${wizardSeeker.uuid}/manage/fact-checks`, {
+        state: { showOnboardingHint: true },
+      });
+      onSuccess?.();
+    } catch (err: any) {
+      setFinishError(err?.message ?? "Failed to finish onboarding.");
+    } finally {
+      setFinishLoading(false);
+    }
   };
 
   return (
@@ -97,109 +312,340 @@ const EvidenceSeekerForm: React.FC<EvidenceSeekerFormProps> = ({
       <div className="bg-white shadow-sm rounded-lg border border-gray-200">
         <div className="px-6 py-4 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-gray-900">
-            Create Evidence Seeker
+            Guided Evidence Seeker setup
           </h2>
+          <p className="text-sm text-gray-600">
+            Three quick steps to make your Evidence Seeker upload-ready.
+          </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {errors.general && (
-            <div className="bg-red-50 border border-red-200 rounded-md p-4">
-              <div className="text-red-800">{errors.general}</div>
+        <div className="px-6 py-4 border-b border-gray-200">
+          <ol className="flex items-center gap-3">
+            {steps.map((item, index) => (
+              <li key={item.id} className="flex items-center gap-2">
+                <div
+                  className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                    index === step
+                      ? "bg-blue-600 text-white"
+                      : index < step
+                      ? "bg-blue-100 text-blue-700"
+                      : "bg-gray-100 text-gray-500"
+                  }`}
+                >
+                  {index + 1}
+                </div>
+                <span
+                  className={`text-sm ${
+                    index === step ? "text-gray-900 font-medium" : "text-gray-500"
+                  }`}
+                >
+                  {item.label}
+                </span>
+                {index < steps.length - 1 && (
+                  <div className="h-px w-6 bg-gray-200" />
+                )}
+              </li>
+            ))}
+          </ol>
+        </div>
+
+        <div className="p-6 space-y-6">
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-md p-4 text-sm text-red-800">
+              {error}
             </div>
           )}
 
-          <div>
-            <label
-              htmlFor="title"
-              className="block text-sm font-medium text-gray-700 mb-2"
-            >
-              Title *
-            </label>
-            <input
-              type="text"
-              id="title"
-              name="title"
-              value={formData.title}
-              onChange={handleInputChange}
-              className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                errors.title ? "border-red-300" : "border-gray-300"
-              }`}
-              placeholder="Enter a title for your evidence seeker"
-            />
-            {errors.title && (
-              <p className="mt-1 text-sm text-red-600">{errors.title}</p>
-            )}
-            <p className="mt-1 text-sm text-gray-500">
-              {formData.title.length}/100 characters
-            </p>
-          </div>
+          {step === 0 && (
+            <section className="space-y-4">
+              <div>
+                <label
+                  htmlFor="title"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  What should we call this Evidence Seeker?
+                </label>
+                <input
+                  type="text"
+                  id="title"
+                  value={details.title}
+                  onChange={(event) =>
+                    setDetails((prev) => ({
+                      ...prev,
+                      title: event.target.value,
+                    }))
+                  }
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    detailErrors.title ? "border-red-300" : "border-gray-300"
+                  }`}
+                  placeholder="e.g. Climate Policy Evidence Seeker"
+                />
+                {detailErrors.title && (
+                  <p className="text-sm text-red-600 mt-1">{detailErrors.title}</p>
+                )}
+                <p className="text-xs text-gray-500 mt-1">
+                  {details.title.length}/100 characters
+                </p>
+              </div>
 
-          <div>
-            <label
-              htmlFor="description"
-              className="block text-sm font-medium text-gray-700 mb-2"
-            >
-              Description
-            </label>
-            <textarea
-              id="description"
-              name="description"
-              value={formData.description}
-              onChange={handleInputChange}
-              rows={4}
-              className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                errors.description ? "border-red-300" : "border-gray-300"
-              }`}
-              placeholder="Describe what this evidence seeker is for..."
-            />
-            {errors.description && (
-              <p className="mt-1 text-sm text-red-600">{errors.description}</p>
-            )}
-            <p className="mt-1 text-sm text-gray-500">
-              {formData.description.length}/500 characters
-            </p>
-          </div>
+              <div>
+                <label
+                  htmlFor="description"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Short description
+                </label>
+                <textarea
+                  id="description"
+                  value={details.description}
+                  onChange={(event) =>
+                    setDetails((prev) => ({
+                      ...prev,
+                      description: event.target.value,
+                    }))
+                  }
+                  rows={4}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    detailErrors.description
+                      ? "border-red-300"
+                      : "border-gray-300"
+                  }`}
+                  placeholder="Describe the corpus or topic this Evidence Seeker will focus on."
+                />
+                {detailErrors.description && (
+                  <p className="text-sm text-red-600 mt-1">
+                    {detailErrors.description}
+                  </p>
+                )}
+                <p className="text-xs text-gray-500 mt-1">
+                  {details.description.length}/500 characters
+                </p>
+              </div>
 
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              id="isPublic"
-              name="isPublic"
-              checked={formData.isPublic}
-              onChange={handleCheckboxChange}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-            />
-            <label
-              htmlFor="isPublic"
-              className="ml-2 block text-sm text-gray-900"
-            >
-              Make this evidence seeker public
-            </label>
-          </div>
-          <p className="text-sm text-gray-500 ml-6">
-            Public evidence seekers can be viewed and tested by anyone, even
-            without an account.
-          </p>
+              <div className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  id="isPublic"
+                  checked={details.isPublic}
+                  onChange={(event) =>
+                    setDetails((prev) => ({
+                      ...prev,
+                      isPublic: event.target.checked,
+                    }))
+                  }
+                  className="mt-1 h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <div>
+                  <label htmlFor="isPublic" className="text-sm font-medium text-gray-900">
+                    Make this Evidence Seeker public
+                  </label>
+                  <p className="text-sm text-gray-600">
+                    Public seekers can be browsed and tested by anyone with the link.
+                  </p>
+                </div>
+              </div>
+            </section>
+          )}
 
-          <div className="flex justify-end space-x-3 pt-4">
-            {onCancel && (
-              <button
-                type="button"
-                onClick={onCancel}
-                className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                Cancel
-              </button>
-            )}
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? "Saving..." : "Create"}
-            </button>
+          {step === 1 && (
+            <section className="space-y-5">
+              <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-900 flex items-start gap-3">
+                <KeyRound className="h-5 w-5 mt-1" />
+                <div>
+                  <p className="font-medium">Connect Hugging Face credentials</p>
+                  <p>
+                    We store this key encrypted and use it to run embeddings and inference.
+                    You can rotate or remove it at any time.
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Hugging Face API key
+                </label>
+                <input
+                  type="password"
+                  value={credentials.apiKeyValue}
+                  onChange={(event) =>
+                    setCredentials((prev) => ({
+                      ...prev,
+                      apiKeyValue: event.target.value,
+                    }))
+                  }
+                  className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 ${
+                    credentialErrors.apiKeyValue
+                      ? "border-red-300"
+                      : "border-gray-300"
+                  }`}
+                  placeholder="hf_..."
+                />
+                {credentialErrors.apiKeyValue && (
+                  <p className="text-sm text-red-600 mt-1">
+                    {credentialErrors.apiKeyValue}
+                  </p>
+                )}
+                <p className="text-xs text-gray-500 mt-1">
+                  Required for embeddings and inference. We encrypt it at rest.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Billing reference (optional)
+                </label>
+                <input
+                  type="text"
+                  value={credentials.billTo}
+                  onChange={(event) =>
+                    setCredentials((prev) => ({
+                      ...prev,
+                      billTo: event.target.value,
+                    }))
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                  placeholder="hf_organisation"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Only needed if you track usage by organization.
+                </p>
+              </div>
+            </section>
+          )}
+
+          {step === 2 && (
+            <section className="space-y-4">
+              {wizardSeeker ? (
+                <WizardDocumentStep
+                  evidenceSeekerUuid={wizardSeeker.uuid}
+                  onboardingToken={onboardingToken ?? undefined}
+                  skipAcknowledged={skipAcknowledged}
+                  onRequirementChange={setDocumentRequirementMet}
+                  onSkipDocuments={handleSkipDocuments}
+                />
+              ) : (
+                <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                  Complete the previous steps to unlock document uploads.
+                </div>
+              )}
+            </section>
+          )}
+
+          {step === 3 && (
+            <section className="space-y-4">
+              <div className="rounded-xl border border-green-100 bg-green-50 p-4 text-sm text-green-900 flex items-start gap-3">
+                <CheckCircle2 className="h-5 w-5 mt-1" />
+                <div>
+                  <p className="font-medium">Review & confirm</p>
+                  <p>
+                    We will create the Evidence Seeker and store your API key securely. You can
+                    fine-tune settings later from the configuration tab.
+                  </p>
+                </div>
+              </div>
+              {wizardStatus && (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="border border-gray-200 rounded-lg p-4">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      Inference credentials
+                    </p>
+                    <p className="text-sm text-gray-900 mt-1">
+                      {wizardStatus.missingRequirements.includes("CREDENTIALS")
+                        ? "Pending verification"
+                        : "Connected"}
+                    </p>
+                  </div>
+                  <div className="border border-gray-200 rounded-lg p-4">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      Document uploads
+                    </p>
+                    <p className="text-sm text-gray-900 mt-1">
+                      {skipAcknowledged
+                        ? "Skipping for now"
+                        : documentRequirementMet
+                        ? "At least one uploaded"
+                        : "Waiting for uploads"}
+                    </p>
+                  </div>
+                </div>
+              )}
+              <dl className="grid grid-cols-1 gap-4">
+                {summary.map((item) => (
+                  <div
+                    key={item.label}
+                    className="border border-gray-200 rounded-lg p-4 bg-gray-50"
+                  >
+                    <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                      {item.label}
+                    </dt>
+                    <dd className="text-sm text-gray-900 mt-1">{item.value || "—"}</dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
+          )}
+
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-between gap-3 pt-4 border-t border-gray-100">
+            <div className="flex gap-2">
+              {onCancel && (
+                <button
+                  type="button"
+                  onClick={onCancel}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+              )}
+              {step > 0 && (
+                <button
+                  type="button"
+                  onClick={handleBack}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                >
+                  Back
+                </button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              {step < steps.length - 1 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    void handleNext();
+                  }}
+                  disabled={
+                    (step === 1 && provisioning) ||
+                    (step === 2 && !documentRequirementMet && !skipAcknowledged)
+                  }
+                  className="px-4 py-2 rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60"
+                >
+                  {step === 2 ? "Review setup" : "Continue"}
+                </button>
+              )}
+              {step === steps.length - 1 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    void handleFinish();
+                  }}
+                  disabled={finishLoading || statusPolling}
+                  className="px-4 py-2 rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {finishLoading || statusPolling
+                    ? "Finalizing…"
+                    : skipAcknowledged
+                    ? "Finish with missing documents"
+                    : "Finish setup"}
+                </button>
+              )}
+            </div>
           </div>
-        </form>
+          {finishError && (
+            <div className="mt-3 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+              {finishError}
+            </div>
+          )}
+        </div>
       </div>
     </PageLayout>
   );

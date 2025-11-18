@@ -9,6 +9,7 @@ export interface Document {
   mimeType: string;
   evidenceSeekerUuid: string; // External API uses UUID
   evidenceSeekerId?: number; // Keep for internal use
+  indexFileKey?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -23,4 +24,10 @@ export interface FileUpload {
   file: File;
   title: string;
   description: string;
+}
+
+export interface DocumentIngestionResponse {
+  document: Document;
+  jobUuid: string;
+  operationId: string | null;
 }

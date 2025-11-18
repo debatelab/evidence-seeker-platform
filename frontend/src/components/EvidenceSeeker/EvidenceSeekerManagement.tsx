@@ -12,16 +12,25 @@ import {
   Database,
   Key,
   Users,
+  ShieldCheck,
 } from "lucide-react";
 import { EvidenceSeeker } from "../../types/evidenceSeeker";
 import { useEvidenceSeekers } from "../../hooks/useEvidenceSeeker";
 import PageLayout from "../PageLayout";
+import { useConfigurationStatus } from "../../hooks/useConfigurationStatus";
+import { ConfigurationStatusBadge } from "../Configuration/ConfigurationStatusBadge";
 
 interface EvidenceSeekerManagementProps {
   evidenceSeekerUuid: string;
 }
 
-type TabType = "documents" | "search" | "settings" | "users" | "config";
+type TabType =
+  | "documents"
+  | "search"
+  | "fact-checks"
+  | "settings"
+  | "users"
+  | "config";
 
 const EvidenceSeekerManagement: React.FC<EvidenceSeekerManagementProps> = ({
   evidenceSeekerUuid,
@@ -31,6 +40,9 @@ const EvidenceSeekerManagement: React.FC<EvidenceSeekerManagementProps> = ({
   const navigate = useNavigate();
   const [evidenceSeeker, setEvidenceSeeker] = useState<EvidenceSeeker | null>(
     null
+  );
+  const { status: configurationStatus } = useConfigurationStatus(
+    evidenceSeekerUuid
   );
 
   const tabs = [
@@ -47,6 +59,12 @@ const EvidenceSeekerManagement: React.FC<EvidenceSeekerManagementProps> = ({
       description: "Search through documents with AI",
     },
     {
+      id: "fact-checks" as TabType,
+      label: "Fact Checks",
+      icon: ShieldCheck,
+      description: "Submit statements and inspect fact-check runs",
+    },
+    {
       id: "settings" as TabType,
       label: "Settings",
       icon: Settings,
@@ -60,9 +78,9 @@ const EvidenceSeekerManagement: React.FC<EvidenceSeekerManagementProps> = ({
     },
     {
       id: "config" as TabType,
-      label: "API Keys",
+      label: "Configuration",
       icon: Key,
-      description: "Manage AI provider credentials",
+      description: "Configure pipeline defaults and provider credentials",
     },
   ];
 
@@ -105,13 +123,14 @@ const EvidenceSeekerManagement: React.FC<EvidenceSeekerManagementProps> = ({
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <Link
-              to="/evidence-seekers"
+              to="/app/evidence-seekers"
               className="flex items-center text-gray-600 hover:text-gray-900"
             >
               <ArrowLeft className="h-5 w-5 mr-2" />
               Back to Evidence Seekers
             </Link>
           </div>
+          <ConfigurationStatusBadge state={configurationStatus?.state ?? null} />
         </div>
 
         {/* Evidence Seeker Info */}

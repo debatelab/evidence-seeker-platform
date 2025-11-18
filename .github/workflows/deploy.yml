@@ -100,6 +100,10 @@ jobs:
             set -euo pipefail
             cd /opt/evidence-seeker-platform
 
+            echo "Syncing repository to deployed commit"
+            git fetch origin
+            git checkout "${GITHUB_SHA}"
+
             # Inject digests directly as shell variables (embed the values)
             BACKEND_IMAGE="${{ steps.digest-backend.outputs.digest }}"
             FRONTEND_IMAGE="${{ steps.digest-frontend.outputs.digest }}"

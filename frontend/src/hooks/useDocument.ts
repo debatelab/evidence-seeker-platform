@@ -1,8 +1,49 @@
 import { useState, useEffect, useCallback } from "react";
-import { Document, DocumentCreate } from "../types/document";
-import api from "../utils/api";
+import type {
+  Document,
+  DocumentCreate,
+  DocumentIngestionResponse,
+} from "../types/document";
+import { documentsAPI } from "../utils/api";
 
-export const useDocuments = (evidenceSeekerUuid: string) => {
+interface UseDocumentsOptions {
+  enabled?: boolean;
+}
+
+const toErrorMessage = (error: unknown, fallback: string): string => {
+  if (
+    error &&
+    typeof error === "object" &&
+    "response" in error &&
+    error.response &&
+    typeof error.response === "object" &&
+    error.response !== null &&
+    "data" in error.response
+  ) {
+    const detail =
+      (error.response as { data?: { detail?: unknown } }).data?.detail ?? null;
+    if (typeof detail === "string") {
+      return detail;
+    }
+    if (
+      detail &&
+      typeof detail === "object" &&
+      "message" in detail &&
+      typeof (detail as Record<string, unknown>).message === "string"
+    ) {
+      return (detail as { message: string }).message;
+    }
+  }
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return fallback;
+};
+
+export const useDocuments = (
+  evidenceSeekerUuid: string,
+  options: UseDocumentsOptions = {}
+) => {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -11,39 +52,31 @@ export const useDocuments = (evidenceSeekerUuid: string) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await api.get(
-        `/documents?evidence_seeker_uuid=${evidenceSeekerUuid}`
-      );
-      setDocuments(response.data);
+      const data = await documentsAPI.listDocuments(evidenceSeekerUuid);
+      setDocuments(data);
     } catch (err) {
-      setError("Failed to fetch documents");
+      setError(toErrorMessage(err, "Failed to fetch documents"));
     } finally {
       setLoading(false);
     }
   }, [evidenceSeekerUuid]);
 
   const uploadDocument = async (
-    data: DocumentCreate
-  ): Promise<Document | null> => {
+    data: DocumentCreate,
+    options?: { onboardingToken?: string }
+  ): Promise<DocumentIngestionResponse | null> => {
     setLoading(true);
     setError(null);
     try {
-      const formData = new FormData();
-      formData.append("file", data.file);
-      formData.append("title", data.title);
-      formData.append("description", data.description);
-      formData.append("evidence_seeker_uuid", evidenceSeekerUuid);
-      console.log(data);
-      const response = await api.post("/documents/upload", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
-      const newDocument = response.data;
-      setDocuments((prev) => [...prev, newDocument]);
-      return newDocument;
+      const response = await documentsAPI.uploadDocument(
+        evidenceSeekerUuid,
+        data,
+        options
+      );
+      setDocuments((prev) => [...prev, response.document]);
+      return response;
     } catch (err) {
-      setError("Failed to upload document");
+      setError(toErrorMessage(err, "Failed to upload document"));
       return null;
     } finally {
       setLoading(false);
@@ -54,22 +87,24 @@ export const useDocuments = (evidenceSeekerUuid: string) => {
     setLoading(true);
     setError(null);
     try {
-      await api.delete(`/documents/${uuid}`);
+      await documentsAPI.deleteDocument(uuid);
       setDocuments((prev) => prev.filter((doc) => doc.uuid !== uuid));
       return true;
     } catch (err) {
-      setError("Failed to delete document");
+      setError(toErrorMessage(err, "Failed to delete document"));
       return false;
     } finally {
       setLoading(false);
     }
   };
 
+  const enabled = options.enabled ?? true;
+
   useEffect(() => {
-    if (evidenceSeekerUuid) {
+    if (evidenceSeekerUuid && enabled) {
       fetchDocuments();
     }
-  }, [evidenceSeekerUuid, fetchDocuments]);
+  }, [evidenceSeekerUuid, fetchDocuments, enabled]);
 
   return {
     documents,
@@ -78,37 +113,5 @@ export const useDocuments = (evidenceSeekerUuid: string) => {
     fetchDocuments,
     uploadDocument,
     deleteDocument,
-  };
-};
-
-export const useDocument = (id: number) => {
-  const [document, setDocument] = useState<Document | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchDocument = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await api.get(`/documents/${id}`);
-      setDocument(response.data);
-    } catch (err) {
-      setError("Failed to fetch document");
-    } finally {
-      setLoading(false);
-    }
-  }, [id]);
-
-  useEffect(() => {
-    if (id) {
-      fetchDocument();
-    }
-  }, [id, fetchDocument]);
-
-  return {
-    document,
-    loading,
-    error,
-    fetchDocument,
   };
 };

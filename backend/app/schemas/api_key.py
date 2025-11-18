@@ -3,6 +3,7 @@ Pydantic schemas for API key management.
 """
 
 from datetime import datetime
+from uuid import UUID
 
 from pydantic import BaseModel, Field
 
@@ -38,7 +39,8 @@ class APIKeyRead(APIKeyBase):
     """Schema for reading API key data (without sensitive information)."""
 
     id: int
-    user_id: int
+    evidence_seeker_id: int
+    evidence_seeker_uuid: UUID
     is_active: bool
     last_used_at: datetime | None
     expires_at: datetime | None

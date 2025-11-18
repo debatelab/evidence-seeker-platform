@@ -1,11 +1,9 @@
-import enum
 from uuid import uuid4
 
 from sqlalchemy import (
     BigInteger,
     Column,
     DateTime,
-    Enum,
     ForeignKey,
     Integer,
     String,
@@ -16,15 +14,6 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
-
-
-class EmbeddingStatus(enum.Enum):
-    """Status of document embedding generation"""
-
-    PENDING = "PENDING"
-    PROCESSING = "PROCESSING"
-    COMPLETED = "COMPLETED"
-    FAILED = "FAILED"
 
 
 class Document(Base):
@@ -49,13 +38,8 @@ class Document(Base):
         UUID(as_uuid=True), ForeignKey("evidence_seekers.uuid"), nullable=False
     )
 
-    # Embedding-related fields
-    embedding_status = Column(  # type: ignore[var-annotated]
-        Enum(EmbeddingStatus), default=EmbeddingStatus.PENDING, nullable=False
-    )
-    embedding_generated_at = Column(DateTime, nullable=True)
-    embedding_model = Column(String(100), nullable=True)
-    embedding_dimensions = Column(Integer, nullable=True)
+    # EvidenceSeeker indexing metadata
+    index_file_key = Column(String(255), nullable=True)
 
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())

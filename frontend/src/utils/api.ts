@@ -3,6 +3,30 @@ import axios, {
   AxiosResponse,
   InternalAxiosRequestConfig,
 } from "axios";
+import type { Document, DocumentIngestionResponse } from "../types/document";
+import type {
+  ConfigurationStatus,
+  EvidenceSeekerSettings,
+  EvidenceSeekerTestSettingsResponse,
+} from "../types/evidenceSeeker";
+import type { IndexJob } from "../types/indexJob";
+import type {
+  CreateFactCheckRunRequest,
+  FactCheckResult,
+  FactCheckRun,
+  FactCheckRunDetail,
+  RerunFactCheckRequest,
+} from "../types/factCheck";
+import type {
+  EvidenceSearchRequest,
+  EvidenceSearchResponse,
+} from "../types/search";
+import type {
+  PaginatedPublicEvidenceSeekers,
+  PublicEvidenceSeekerDetailResponse,
+  PublicFactCheckRunDetailResponse,
+  PublicFactCheckRunsResponse,
+} from "../types/public";
 
 // API base URL - will be replaced by environment variable in production
 const API_BASE_URL =
@@ -130,12 +154,267 @@ export const permissionsAPI = {
 
 // Documents API endpoints
 export const documentsAPI = {
+  listDocuments: async (evidenceSeekerUuid: string): Promise<Document[]> => {
+    const response = await apiClient.get<Document[]>("/documents", {
+      params: { evidence_seeker_uuid: evidenceSeekerUuid },
+    });
+    return response.data;
+  },
+
+  uploadDocument: async (
+    evidenceSeekerUuid: string,
+    payload: { file: File; title: string; description?: string | null },
+    options?: { onboardingToken?: string }
+  ): Promise<DocumentIngestionResponse> => {
+    const formData = new FormData();
+    formData.append("file", payload.file);
+    formData.append("title", payload.title);
+    formData.append("description", payload.description ?? "");
+    formData.append("evidence_seeker_uuid", evidenceSeekerUuid);
+
+    const response = await apiClient.post<DocumentIngestionResponse>(
+      "/documents/upload",
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+          ...(options?.onboardingToken
+            ? { "X-Onboarding-Token": options.onboardingToken }
+            : {}),
+        },
+      }
+    );
+    return response.data;
+  },
+
+  deleteDocument: async (
+    documentUuid: string
+  ): Promise<{ detail: string; jobUuid?: string; operationId?: string | null }> => {
+    const response = await apiClient.delete<
+      { detail: string; jobUuid?: string; operationId?: string | null }
+    >(`/documents/${documentUuid}`);
+    return response.data;
+  },
+
   downloadDocument: async (documentUuid: string): Promise<Blob> => {
     const response = await apiClient.get(
       `/documents/${documentUuid}/download`,
       {
         responseType: "blob",
       }
+    );
+    return response.data;
+  },
+};
+
+export const publicAPI = {
+  listEvidenceSeekers: async (
+    page = 1,
+    pageSize = 12,
+    search?: string
+  ): Promise<PaginatedPublicEvidenceSeekers> => {
+    const response = await apiClient.get<PaginatedPublicEvidenceSeekers>(
+      "/public/evidence-seekers",
+      {
+        params: {
+          page,
+          page_size: pageSize,
+          ...(search ? { search } : {}),
+        },
+      }
+    );
+    return response.data;
+  },
+
+  getEvidenceSeeker: async (
+    seekerUuid: string
+  ): Promise<PublicEvidenceSeekerDetailResponse> => {
+    const response = await apiClient.get<PublicEvidenceSeekerDetailResponse>(
+      `/public/evidence-seekers/${seekerUuid}`
+    );
+    return response.data;
+  },
+
+  createFactCheckRun: async (
+    seekerUuid: string,
+    payload: CreateFactCheckRunRequest
+  ): Promise<FactCheckRun> => {
+    const response = await apiClient.post<FactCheckRun>(
+      `/public/evidence-seekers/${seekerUuid}/fact-checks`,
+      payload
+    );
+    return response.data;
+  },
+
+  listFactChecks: async (
+    page = 1,
+    pageSize = 10
+  ): Promise<PublicFactCheckRunsResponse> => {
+    const response = await apiClient.get<PublicFactCheckRunsResponse>(
+      "/public/fact-checks",
+      { params: { page, page_size: pageSize } }
+    );
+    return response.data;
+  },
+
+  getFactCheck: async (
+    runUuid: string
+  ): Promise<PublicFactCheckRunDetailResponse> => {
+    const response = await apiClient.get<PublicFactCheckRunDetailResponse>(
+      `/public/fact-checks/${runUuid}`
+    );
+    return response.data;
+  },
+};
+
+export const evidenceSeekerAPI = {
+  getConfigurationStatus: async (
+    evidenceSeekerUuid: string
+  ): Promise<ConfigurationStatus> => {
+    const response = await apiClient.get<ConfigurationStatus>(
+      `/evidence-seekers/${evidenceSeekerUuid}/status`
+    );
+    return response.data;
+  },
+  getSettings: async (
+    evidenceSeekerUuid: string
+  ): Promise<EvidenceSeekerSettings> => {
+    const response = await apiClient.get<EvidenceSeekerSettings>(
+      `/evidence-seekers/${evidenceSeekerUuid}/settings`
+    );
+    return response.data;
+  },
+
+  updateSettings: async (
+    evidenceSeekerUuid: string,
+    payload: Record<string, unknown>
+  ): Promise<EvidenceSeekerSettings> => {
+    const response = await apiClient.put<EvidenceSeekerSettings>(
+      `/evidence-seekers/${evidenceSeekerUuid}/settings`,
+      payload
+    );
+    return response.data;
+  },
+
+  testSettings: async (
+    evidenceSeekerUuid: string,
+    payload: { metadataFilters?: Record<string, unknown>; statement?: string }
+  ): Promise<EvidenceSeekerTestSettingsResponse> => {
+    const response = await apiClient.post<EvidenceSeekerTestSettingsResponse>(
+      `/evidence-seekers/${evidenceSeekerUuid}/settings/test`,
+      payload
+    );
+    return response.data;
+  },
+
+  triggerReindex: async (
+    evidenceSeekerUuid: string
+  ): Promise<IndexJob> => {
+    const response = await apiClient.post<IndexJob>(
+      `/evidence-seekers/${evidenceSeekerUuid}/documents/reindex`
+    );
+    return response.data;
+  },
+
+  listIndexJobs: async (evidenceSeekerUuid: string): Promise<IndexJob[]> => {
+    const response = await apiClient.get<IndexJob[]>(
+      `/evidence-seekers/${evidenceSeekerUuid}/index-jobs`
+    );
+    return response.data;
+  },
+
+  searchEvidence: async (
+    evidenceSeekerUuid: string,
+    payload: EvidenceSearchRequest
+  ): Promise<EvidenceSearchResponse> => {
+    const response = await apiClient.post<EvidenceSearchResponse>(
+      `/evidence-seekers/${evidenceSeekerUuid}/search`,
+      payload
+    );
+    return response.data;
+  },
+
+  listFactCheckRuns: async (
+    evidenceSeekerUuid: string,
+    params?: { skip?: number; limit?: number }
+  ): Promise<FactCheckRun[]> => {
+    const response = await apiClient.get<FactCheckRun[]>(
+      `/evidence-seekers/${evidenceSeekerUuid}/runs`,
+      {
+        params: {
+          skip: params?.skip ?? 0,
+          limit: params?.limit ?? 50,
+        },
+      }
+    );
+    return response.data;
+  },
+
+  createFactCheckRun: async (
+    evidenceSeekerUuid: string,
+    payload: CreateFactCheckRunRequest
+  ): Promise<FactCheckRun> => {
+    const response = await apiClient.post<FactCheckRun>(
+      `/evidence-seekers/${evidenceSeekerUuid}/runs`,
+      payload
+    );
+    return response.data;
+  },
+
+  getFactCheckRun: async (
+    evidenceSeekerUuid: string,
+    runUuid: string
+  ): Promise<FactCheckRunDetail> => {
+    const response = await apiClient.get<FactCheckRunDetail>(
+      `/evidence-seekers/${evidenceSeekerUuid}/runs/${runUuid}`
+    );
+    return response.data;
+  },
+
+  getFactCheckResults: async (
+    evidenceSeekerUuid: string,
+    runUuid: string
+  ): Promise<FactCheckResult[]> => {
+    const response = await apiClient.get<FactCheckResult[]>(
+      `/evidence-seekers/${evidenceSeekerUuid}/runs/${runUuid}/results`
+    );
+    return response.data;
+  },
+
+  cancelFactCheckRun: async (
+    evidenceSeekerUuid: string,
+    runUuid: string
+  ): Promise<{ detail: string }> => {
+    const response = await apiClient.delete<{ detail: string }>(
+      `/evidence-seekers/${evidenceSeekerUuid}/runs/${runUuid}`
+    );
+    return response.data;
+  },
+
+  rerunFactCheck: async (
+    evidenceSeekerUuid: string,
+    runUuid: string,
+    payload: RerunFactCheckRequest
+  ): Promise<FactCheckRun> => {
+    const response = await apiClient.post<FactCheckRun>(
+      `/evidence-seekers/${evidenceSeekerUuid}/runs/${runUuid}/rerun`,
+      payload
+    );
+    return response.data;
+  },
+  skipDocuments: async (
+    evidenceSeekerUuid: string
+  ): Promise<ConfigurationStatus> => {
+    const response = await apiClient.post<ConfigurationStatus>(
+      `/evidence-seekers/${evidenceSeekerUuid}/onboarding/skip-documents`
+    );
+    return response.data;
+  },
+  finishOnboarding: async (
+    evidenceSeekerUuid: string
+  ): Promise<ConfigurationStatus> => {
+    const response = await apiClient.post<ConfigurationStatus>(
+      `/evidence-seekers/${evidenceSeekerUuid}/finish-onboarding`
     );
     return response.data;
   },

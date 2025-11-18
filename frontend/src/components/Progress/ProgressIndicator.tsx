@@ -151,7 +151,9 @@ export const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
                     )}
                   </span>
                 )}
-                <span>{formatTimestamp(currentUpdate.timestamp)}</span>
+                {currentUpdate.timestamp && (
+                  <span>{formatTimestamp(currentUpdate.timestamp)}</span>
+                )}
               </div>
 
               {!connected && (

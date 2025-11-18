@@ -1,6 +1,9 @@
+import asyncio
+import logging
 import os
 from collections.abc import Sequence
-from typing import cast
+from typing import Awaitable, cast
+from uuid import UUID
 
 from fastapi import (
     APIRouter,
@@ -8,6 +11,7 @@ from fastapi import (
     Depends,
     File,
     Form,
+    Header,
     HTTPException,
     UploadFile,
     status,
@@ -17,45 +21,113 @@ from sqlalchemy.orm import Session
 
 from ..core.auth import User, get_current_user
 from ..core.database import get_db
-from ..core.embedding_service import embedding_service
+from ..core.evidence_seeker_config_service import (
+    ConfigurationNotReadyError,
+    evidence_seeker_config_service,
+)
+from ..core.evidence_seeker_index_service import evidence_seeker_index_service
 from ..core.file_utils import delete_file, save_upload_file, validate_file
+from ..core.onboarding_tokens import onboarding_token_service
+from ..core.progress_tracker import progress_tracker
 from ..core.permissions import check_evidence_seeker_permission
 from ..models.document import Document
 from ..models.evidence_seeker import EvidenceSeeker
+from ..models.index_job import IndexJob
 from ..models.permission import UserRole
-from ..schemas.document import DocumentRead
+from ..schemas.document import DocumentIngestionResponse, DocumentRead
 
 router = APIRouter()
 
+logger = logging.getLogger(__name__)
 
-async def generate_document_embeddings(document_id: int) -> None:
-    """Background task to generate embeddings for a document"""
-    # Create a new database session for the background task
+
+def _config_guard_detail(exc: ConfigurationNotReadyError) -> dict[str, object]:
+    payload = evidence_seeker_config_service.serialise_status(exc.status)
+    payload.setdefault("message", "Evidence Seeker configuration incomplete")
+    return payload
+
+
+def _run_async_task(coro: Awaitable[None]) -> None:
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        asyncio.run(coro)
+    else:
+        loop.create_task(coro)
+
+
+def _process_index_update(job_id: int, document_ids: list[int]) -> None:
     from ..core.database import SessionLocal
 
-    db = SessionLocal()
-    try:
-        # Generate embeddings using the embedding service
-        success = await embedding_service.generate_embeddings_for_document(
-            document_id, db
-        )
-        if success:
-            print(f"Successfully generated embeddings for document {document_id}")
-        else:
-            print(f"Failed to generate embeddings for document {document_id}")
-    except Exception as e:
-        print(f"Error generating embeddings for document {document_id}: {str(e)}")
-    finally:
-        db.close()
+    async def _run() -> None:
+        db = SessionLocal()
+        try:
+            job = db.get(IndexJob, job_id)
+            if job is None:
+                return
+            seeker = db.get(EvidenceSeeker, job.evidence_seeker_id)
+            if seeker is None:
+                return
+            documents = (
+                db.query(Document)
+                .filter(Document.id.in_(document_ids))
+                .all()
+            )
+            if not documents:
+                return
+
+            await evidence_seeker_index_service.run_update(db, job, seeker, documents)
+        except Exception as exc:  # pragma: no cover - defensive logging
+            logger.exception("Index update job %s failed", job_id)
+        finally:
+            db.close()
+
+    _run_async_task(_run())
 
 
-@router.post("/upload", response_model=DocumentRead)
+def _process_index_delete(job_id: int, document_ids: list[int]) -> None:
+    from ..core.database import SessionLocal
+
+    async def _run() -> None:
+        db = SessionLocal()
+        try:
+            job = db.get(IndexJob, job_id)
+            if job is None:
+                return
+            seeker = db.get(EvidenceSeeker, job.evidence_seeker_id)
+            if seeker is None:
+                return
+            documents = (
+                db.query(Document)
+                .filter(Document.id.in_(document_ids))
+                .all()
+            )
+            if not documents:
+                return
+
+            await evidence_seeker_index_service.run_delete(db, job, seeker, documents)
+            for document in documents:
+                delete_file(cast(str, document.file_path))
+                db.delete(document)
+            db.commit()
+        except Exception as exc:  # pragma: no cover - defensive logging
+            logger.exception("Index delete job %s failed", job_id)
+        finally:
+            db.close()
+
+    _run_async_task(_run())
+
+
+@router.post("/upload", response_model=DocumentIngestionResponse)
 def upload_document(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     title: str = Form(...),
     description: str | None = Form(None),
     evidence_seeker_uuid: str = Form(...),  # Use UUID for external API
+    onboarding_token: str | None = Header(
+        default=None, alias="X-Onboarding-Token"
+    ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> DocumentRead:
@@ -65,8 +137,6 @@ def upload_document(
         raise HTTPException(status_code=400, detail="Invalid file type or size")
 
     # Get the evidence seeker (permission check already done in dependency)
-    from uuid import UUID
-
     try:
         uuid_obj = UUID(evidence_seeker_uuid)
         seeker = (
@@ -90,6 +160,22 @@ def upload_document(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Insufficient permissions: admin access required",
         )
+    allow_onboarding_upload = False
+    if onboarding_token:
+        allow_onboarding_upload = onboarding_token_service.verify_token(
+            onboarding_token,
+            seeker,
+            int(current_user.id),
+        )
+
+    try:
+        evidence_seeker_config_service.require_ready(db, seeker)
+    except ConfigurationNotReadyError as exc:
+        if not allow_onboarding_upload:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=_config_guard_detail(exc),
+            ) from exc
 
     # Save file and get file info
     file_path = save_upload_file(file, seeker_id)
@@ -140,12 +226,32 @@ def upload_document(
     db.commit()
     db.refresh(db_document)
 
-    # Trigger embedding generation in the background
-    # Extract scalar document_id value
-    document_id = cast(int, db_document.id)
-    background_tasks.add_task(generate_document_embeddings, document_id)
+    job = evidence_seeker_index_service.queue_update(
+        db=db,
+        seeker=seeker,
+        user_id=int(current_user.id),
+        documents=[db_document],
+    )
 
-    return db_document
+    background_tasks.add_task(
+        _process_index_update,
+        job.id,
+        [cast(int, db_document.id)],
+    )
+
+    response_payload = {
+        "document": db_document,
+        "jobUuid": job.uuid,
+        "operationId": job.operation_id,
+    }
+    if allow_onboarding_upload:
+        progress_tracker.record_event(
+            "evse_onboarding_document_uploaded",
+            user_id=int(current_user.id),
+            evidence_seeker_id=seeker_id,
+            metadata={"document_uuid": str(db_document.uuid)},
+        )
+    return response_payload
 
 
 @router.get("/", response_model=list[DocumentRead])
@@ -156,8 +262,6 @@ def get_documents(
 ) -> Sequence[Document]:
     """Get all documents for an Evidence Seeker - requires reader permissions"""
     # Get the evidence seeker
-    from uuid import UUID
-
     try:
         uuid_obj = UUID(evidence_seeker_uuid)
         seeker = (
@@ -197,8 +301,6 @@ def require_document_reader(
     db: Session = Depends(get_db),
 ) -> User:
     """Dependency to check if user can read a document"""
-    from uuid import UUID
-
     try:
         uuid_obj = UUID(document_uuid)
         document = db.query(Document).filter(Document.uuid == uuid_obj).first()
@@ -290,12 +392,11 @@ def require_document_admin(
 @router.delete("/{document_uuid}")
 def delete_document(
     document_uuid: str,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_document_admin),
 ) -> dict[str, str]:
     """Delete a document by UUID - requires admin permissions"""
-    from uuid import UUID
-
     try:
         uuid_obj = UUID(document_uuid)
         document = db.query(Document).filter(Document.uuid == uuid_obj).first()
@@ -305,13 +406,25 @@ def delete_document(
     if document is None:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    # Extract scalar file_path value
-    file_path = cast(str, document.file_path)
+    seeker = db.get(EvidenceSeeker, document.evidence_seeker_id)
+    if seeker is None:
+        raise HTTPException(status_code=404, detail="Evidence Seeker not found")
 
-    # Delete file
-    delete_file(file_path)
+    job = evidence_seeker_index_service.queue_delete(
+        db=db,
+        seeker=seeker,
+        user_id=int(current_user.id),
+        documents=[document],
+    )
 
-    # Delete from db
-    db.delete(document)
-    db.commit()
-    return {"detail": "Document deleted"}
+    background_tasks.add_task(
+        _process_index_delete,
+        job.id,
+        [cast(int, document.id)],
+    )
+
+    return {
+        "detail": "Document deletion scheduled",
+        "jobUuid": str(job.uuid),
+        "operationId": job.operation_id or "",
+    }

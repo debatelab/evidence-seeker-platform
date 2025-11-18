@@ -21,7 +21,8 @@ export interface APIKeyUpdate {
 
 export interface APIKeyRead extends APIKeyBase {
   id: number;
-  user_id: number;
+  evidence_seeker_id: number;
+  evidence_seeker_uuid: string;
   is_active: boolean;
   last_used_at?: string;
   expires_at?: string;

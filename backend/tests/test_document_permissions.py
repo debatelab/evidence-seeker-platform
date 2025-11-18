@@ -3,10 +3,46 @@ from io import BytesIO
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
+from app.core.onboarding_tokens import onboarding_token_service
+from app.models.api_key import APIKey
 from app.models.document import Document
 from app.models.evidence_seeker import EvidenceSeeker
+from app.models.evidence_seeker_settings import EvidenceSeekerSettings
 from app.models.permission import Permission, UserRole
 from app.models.user import User
+
+
+def _configure_seeker(
+    db: Session,
+    seeker: EvidenceSeeker,
+    *,
+    state: str = "READY",
+    missing: list[str] | None = None,
+) -> None:
+    """Attach a dummy Hugging Face key so guards allow operations."""
+    api_key = APIKey(
+        evidence_seeker_id=seeker.id,
+        evidence_seeker_uuid=seeker.uuid,
+        encrypted_key="encrypted-test-key",
+        key_hash="hash",
+        provider="huggingface",
+        name="default",
+    )
+    db.add(api_key)
+    db.commit()
+    db.refresh(api_key)
+
+    settings = EvidenceSeekerSettings(
+        evidence_seeker_id=seeker.id,
+        huggingface_api_key_id=api_key.id,
+        embed_backend_type="huggingface",
+        metadata_filters={},
+        setup_mode="SIMPLE",
+        configuration_state=state,
+        missing_requirements=missing or [],
+    )
+    db.add(settings)
+    db.commit()
 
 
 def test_upload_document_requires_auth(client: TestClient):
@@ -72,6 +108,7 @@ def test_upload_document_success_with_permission(
     seeker = EvidenceSeeker(title="Test Seeker", created_by=test_user.id)
     db.add(seeker)
     db.commit()
+    _configure_seeker(db, seeker)
 
     # Login
     login_response = client.post(
@@ -102,6 +139,130 @@ def test_upload_document_success_with_permission(
     assert data["title"] == "Test Document"
     assert data["description"] == "Test description"
     assert data["evidenceSeekerId"] == seeker.id
+
+
+def test_upload_document_blocked_until_configured(
+    client: TestClient, test_user: User, db: Session
+) -> None:
+    """Uploading documents should fail with 409 when config incomplete."""
+    seeker = EvidenceSeeker(title="Unconfigured", created_by=test_user.id)
+    db.add(seeker)
+    db.commit()
+
+    login_response = client.post(
+        "/api/v1/auth/jwt/login",
+        data={"username": test_user.email, "password": "testpassword"},
+    )
+    token = login_response.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    file_content = b"Test document content"
+    file = BytesIO(file_content)
+    file.name = "test.txt"
+
+    response = client.post(
+        "/api/v1/documents/upload",
+        files={"file": ("test.txt", file, "text/plain")},
+        data={
+            "title": "Test Document",
+            "description": "Test description",
+            "evidence_seeker_uuid": str(seeker.uuid),
+        },
+        headers=headers,
+    )
+    assert response.status_code == 409
+    detail = response.json()["detail"]
+    assert detail["state"] in {"UNCONFIGURED", "MISSING_CREDENTIALS"}
+
+
+def test_onboarding_token_allows_upload_before_ready(
+    client: TestClient, test_user: User, db: Session
+) -> None:
+    """Uploading with a valid onboarding token bypasses the ready guard."""
+    seeker = EvidenceSeeker(title="Wizard", created_by=test_user.id)
+    db.add(seeker)
+    db.commit()
+    _configure_seeker(
+        db,
+        seeker,
+        state="MISSING_DOCUMENTS",
+        missing=["DOCUMENTS"],
+    )
+
+    onboarding_token = onboarding_token_service.issue_token(
+        db=db,
+        seeker=seeker,
+        owner_user_id=test_user.id,
+    )
+
+    login_response = client.post(
+        "/api/v1/auth/jwt/login",
+        data={"username": test_user.email, "password": "testpassword"},
+    )
+    token = login_response.json()["access_token"]
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "X-Onboarding-Token": onboarding_token,
+    }
+
+    file_content = b"Wizard document"
+    file = BytesIO(file_content)
+    file.name = "wizard.txt"
+
+    response = client.post(
+        "/api/v1/documents/upload",
+        files={"file": (file.name, file, "text/plain")},
+        data={
+            "title": "Wizard attachment",
+            "description": "Uploaded during onboarding",
+            "evidence_seeker_uuid": str(seeker.uuid),
+        },
+        headers=headers,
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["document"]["title"] == "Wizard attachment"
+
+
+def test_invalid_onboarding_token_rejected(
+    client: TestClient, test_user: User, db: Session
+) -> None:
+    """An invalid onboarding token should not bypass the guard."""
+    seeker = EvidenceSeeker(title="InvalidToken", created_by=test_user.id)
+    db.add(seeker)
+    db.commit()
+    _configure_seeker(
+        db,
+        seeker,
+        state="MISSING_DOCUMENTS",
+        missing=["DOCUMENTS"],
+    )
+
+    login_response = client.post(
+        "/api/v1/auth/jwt/login",
+        data={"username": test_user.email, "password": "testpassword"},
+    )
+    token = login_response.json()["access_token"]
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "X-Onboarding-Token": "not-a-real-token",
+    }
+
+    file_content = b"Wizard document"
+    file = BytesIO(file_content)
+    file.name = "wizard.txt"
+
+    response = client.post(
+        "/api/v1/documents/upload",
+        files={"file": (file.name, file, "text/plain")},
+        data={
+            "title": "Wizard attachment",
+            "description": "Uploaded during onboarding",
+            "evidence_seeker_uuid": str(seeker.uuid),
+        },
+        headers=headers,
+    )
+    assert response.status_code == 409
 
 
 def test_get_documents_requires_auth(client: TestClient):

@@ -1,11 +1,13 @@
 import React, { useState } from "react";
-// navigate removed (unused)
+import { useNavigate } from "react-router";
 import { Document, DocumentCreate } from "../../types/document";
 import { useDocuments } from "../../hooks/useDocument";
 import UploadForm from "./UploadForm";
 import UploadProgress from "./UploadProgress";
 import UploadSuccess from "./UploadSuccess";
 import UploadError from "./UploadError";
+import { useConfigurationStatus } from "../../hooks/useConfigurationStatus";
+import { ConfigurationBlockedNotice } from "../Configuration/ConfigurationBlockedNotice";
 
 type UploadState = "form-input" | "uploading" | "success" | "error";
 
@@ -18,7 +20,18 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({
   evidenceSeekerUuid,
   onUploadSuccess,
 }) => {
-  const { uploadDocument } = useDocuments(evidenceSeekerUuid);
+  const navigate = useNavigate();
+  const {
+    status: configurationStatus,
+    loading: statusLoading,
+    error: statusError,
+  } = useConfigurationStatus(evidenceSeekerUuid);
+  const statusState = configurationStatus?.state;
+  const canUpload =
+    statusState === "READY" || statusState === "MISSING_DOCUMENTS";
+  const { uploadDocument } = useDocuments(evidenceSeekerUuid, {
+    enabled: canUpload,
+  });
 
   const [uploadState, setUploadState] = useState<UploadState>("form-input");
   const [currentFile, setCurrentFile] = useState<File | null>(null);
@@ -65,9 +78,9 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({
       setUploadProgress(100);
 
       if (result) {
-        setUploadedDocument(result);
+        setUploadedDocument(result.document);
         setUploadState("success");
-        onUploadSuccess?.(result);
+        onUploadSuccess?.(result.document);
       } else {
         setUploadError("Upload failed. Please try again.");
         setUploadState("error");
@@ -115,10 +128,47 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({
     setCurrentDescription("");
   };
 
+  if (statusLoading) {
+    return (
+      <div className="flex justify-center items-center p-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (statusError) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-md p-4 text-red-800">
+        {statusError}
+      </div>
+    );
+  }
+
+  if (!canUpload) {
+    return (
+      <ConfigurationBlockedNotice
+        status={configurationStatus}
+        onConfigure={() =>
+          navigate(`/app/evidence-seekers/${evidenceSeekerUuid}/manage/config`)
+        }
+        description="Finish connecting your inference provider before uploading new documents."
+      />
+    );
+  }
+
   // Render the appropriate component based on state
   switch (uploadState) {
     case "form-input":
-      return <UploadForm onStartUpload={handleStartUpload} />;
+      return (
+        <div className="space-y-4">
+          {statusState === "MISSING_DOCUMENTS" && (
+            <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+              Upload at least one document to finish setup.
+            </div>
+          )}
+          <UploadForm onStartUpload={handleStartUpload} />
+        </div>
+      );
 
     case "uploading":
       return currentFile ? (

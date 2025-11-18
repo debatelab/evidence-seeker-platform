@@ -11,7 +11,7 @@ from .config import settings
 # Sync engine for Alembic and other sync operations
 engine = create_engine(
     settings.database_url,
-    echo=settings.debug,
+    echo=settings.sqlalchemy_echo,
     future=True,
 )
 
@@ -21,7 +21,7 @@ async_database_url = settings.database_url.replace(
 )
 async_engine = create_async_engine(
     async_database_url,
-    echo=settings.debug,
+    echo=settings.sqlalchemy_echo,
     future=True,
 )
 

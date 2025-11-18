@@ -18,7 +18,7 @@ from ..schemas.api_key import (
     APIKeyValidation,
     APIKeyValidationResponse,
 )
-from ..schemas.search import SearchStatistics
+from ..schemas.search import SystemStatistics
 
 router = APIRouter()
 
@@ -253,15 +253,15 @@ def get_ai_config() -> dict[str, Any]:
         ) from e
 
 
-@router.get("/system-stats", response_model=SearchStatistics)
+@router.get("/system-stats", response_model=SystemStatistics)
 def get_system_stats(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> SearchStatistics:
+) -> SystemStatistics:
     """Get system statistics for AI components."""
     try:
         stats = config_service.get_system_stats(db=db)
-        return SearchStatistics(**stats)
+        return SystemStatistics(**stats)
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to get system stats: {str(e)}"
@@ -275,8 +275,9 @@ def get_supported_providers() -> dict[str, Any]:
         config = config_service.get_ai_config()
         return {
             "supported_providers": config["supported_providers"],
-            "embedding_model": config["embedding_model"],
-            "vector_dimensions": config["embedding_dimensions"],
+            "default_model": config["default_model"],
+            "max_concurrent_runs": config["max_concurrent_runs"],
+            "run_timeout_seconds": config["run_timeout_seconds"],
         }
     except Exception as e:
         raise HTTPException(

@@ -314,14 +314,10 @@ class ConfigService:
     def get_ai_config(self) -> dict[str, Any]:
         """Get AI-related configuration settings."""
         return {
-            "embedding_model": "sentence-transformers/paraphrase-multilingual-mpnet-base-v2",
-            "embedding_dimensions": 768,
-            "chunk_size": 512,
-            "chunk_overlap": 50,
-            "max_concurrent_embeddings": 3,
-            "supported_providers": ["huggingface", "openai"],
-            "default_similarity_threshold": 0.1,
-            "max_search_results": 50,
+            "default_model": settings.evse_default_model,
+            "max_concurrent_runs": settings.evse_max_concurrent_runs,
+            "run_timeout_seconds": settings.evse_run_timeout_seconds,
+            "supported_providers": ["huggingface"],
         }
 
     def get_system_stats(self, db: Session | None = None) -> dict[str, Any]:
@@ -336,27 +332,40 @@ class ConfigService:
         assert db is not None
 
         try:
-            from app.models import Document, Embedding
+            from app.models import (
+                Document,
+                EvidenceSeekerSettings,
+                FactCheckRun,
+                IndexJob,
+                IndexJobStatus,
+            )
 
             total_documents = db.query(Document).count()
-            documents_with_embeddings = (
+            indexed_documents = (
                 db.query(Document)
-                .filter(Document.embedding_status == "COMPLETED")
+                .filter(Document.index_file_key.isnot(None))
                 .count()
             )
-            total_embeddings = db.query(Embedding).count()
+            total_settings = db.query(EvidenceSeekerSettings).count()
+            total_runs = db.query(FactCheckRun).count()
+            pending_index_jobs = (
+                db.query(IndexJob)
+                .filter(
+                    IndexJob.status.in_(
+                        [IndexJobStatus.QUEUED, IndexJobStatus.RUNNING]
+                    )
+                )
+                .count()
+            )
             total_api_keys = db.query(APIKey).filter(APIKey.is_active).count()
 
             return {
                 "total_documents": total_documents,
-                "documents_with_embeddings": documents_with_embeddings,
-                "total_embeddings": total_embeddings,
+                "indexed_documents": indexed_documents,
+                "evidence_seeker_settings": total_settings,
+                "fact_check_runs": total_runs,
+                "active_index_jobs": pending_index_jobs,
                 "total_api_keys": total_api_keys,
-                "embedding_coverage": (
-                    documents_with_embeddings / total_documents
-                    if total_documents > 0
-                    else 0
-                ),
             }
         finally:
             if should_close:

@@ -49,7 +49,7 @@ class APIKey(Base):
 
     # Relationships
     evidence_seeker = relationship(
-        "EvidenceSeeker", backref="api_keys", foreign_keys=[evidence_seeker_id]
+        "EvidenceSeeker", back_populates="api_keys", foreign_keys=[evidence_seeker_id]
     )
 
     def __repr__(self) -> str:

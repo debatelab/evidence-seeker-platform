@@ -4,7 +4,7 @@ import {
   EvidenceSeekerCreate,
   EvidenceSeekerUpdate,
 } from "../types/evidenceSeeker";
-import api from "../utils/api";
+import api, { evidenceSeekerAPI } from "../utils/api";
 
 export const useEvidenceSeekers = () => {
   const [evidenceSeekers, setEvidenceSeekers] = useState<EvidenceSeeker[]>([]);
@@ -82,6 +82,20 @@ export const useEvidenceSeekers = () => {
     fetchEvidenceSeekers();
   }, []);
 
+  const finishOnboarding = useCallback(
+    async (evidenceSeekerUuid: string) => {
+      return evidenceSeekerAPI.finishOnboarding(evidenceSeekerUuid);
+    },
+    []
+  );
+
+  const skipDocuments = useCallback(
+    async (evidenceSeekerUuid: string) => {
+      return evidenceSeekerAPI.skipDocuments(evidenceSeekerUuid);
+    },
+    []
+  );
+
   return {
     evidenceSeekers,
     loading,
@@ -90,6 +104,8 @@ export const useEvidenceSeekers = () => {
     createEvidenceSeeker,
     updateEvidenceSeeker,
     deleteEvidenceSeeker,
+    finishOnboarding,
+    skipDocuments,
   };
 };
 
