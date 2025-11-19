@@ -2,6 +2,49 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --color-primary: #42bb83;
+  --color-primary-foreground: #ffffff;
+  --color-primary-hover: color-mix(in srgb, var(--color-primary) 85%, black);
+  --color-primary-soft: color-mix(in srgb, var(--color-primary) 12%, white);
+  --color-primary-muted: color-mix(in srgb, var(--color-primary) 22%, white);
+  --color-primary-border: color-mix(in srgb, var(--color-primary) 55%, white);
+  --color-primary-strong: color-mix(in srgb, var(--color-primary) 70%, black);
+  --color-primary-ring: color-mix(in srgb, var(--color-primary) 45%, transparent);
+}
+
+@layer components {
+  .brand-title {
+    font-family: theme("fontFamily.brand");
+    font-weight: theme("fontWeight.bold");
+    text-transform: lowercase;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center rounded-lg px-5 py-2.5 text-sm font-semibold shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60;
+    --tw-ring-color: var(--color-primary);
+    background-color: var(--color-primary);
+    color: var(--color-primary-foreground);
+  }
+
+  .btn-primary:hover {
+    background-color: var(--color-primary-hover);
+  }
+
+  .btn-primary-outline {
+    @apply inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60;
+    --tw-ring-color: var(--color-primary);
+    color: var(--color-primary);
+    border: 1px solid var(--color-primary-border);
+    background-color: var(--color-primary-soft);
+  }
+
+  .btn-primary-outline:hover {
+    background-color: var(--color-primary-muted);
+    border-color: var(--color-primary);
+  }
+}
+
 /* Custom global styles */
 body {
   margin: 0;

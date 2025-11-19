@@ -41,9 +41,8 @@ const EvidenceSeekerManagement: React.FC<EvidenceSeekerManagementProps> = ({
   const [evidenceSeeker, setEvidenceSeeker] = useState<EvidenceSeeker | null>(
     null
   );
-  const { status: configurationStatus } = useConfigurationStatus(
-    evidenceSeekerUuid
-  );
+  const { status: configurationStatus } =
+    useConfigurationStatus(evidenceSeekerUuid);
 
   const tabs = [
     {
@@ -130,14 +129,16 @@ const EvidenceSeekerManagement: React.FC<EvidenceSeekerManagementProps> = ({
               Back to Evidence Seekers
             </Link>
           </div>
-          <ConfigurationStatusBadge state={configurationStatus?.state ?? null} />
+          <ConfigurationStatusBadge
+            state={configurationStatus?.state ?? null}
+          />
         </div>
 
         {/* Evidence Seeker Info */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h1 className="brand-title text-2xl text-gray-900">
                 {evidenceSeeker.title}
               </h1>
               <p className="text-gray-600 mt-1">{evidenceSeeker.description}</p>

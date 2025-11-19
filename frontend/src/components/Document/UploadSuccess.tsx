@@ -42,7 +42,7 @@ const UploadSuccess: React.FC<UploadSuccessProps> = ({
           <div className="flex items-center space-x-3">
             <div className="text-2xl">✅</div>
             <div>
-              <h2 className="text-xl font-semibold text-gray-900">
+              <h2 className="brand-title text-xl text-gray-900">
                 Upload Complete!
               </h2>
               <p className="text-sm text-gray-600 mt-1">
@@ -97,25 +97,25 @@ const UploadSuccess: React.FC<UploadSuccessProps> = ({
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <button
                 onClick={onUploadAnother}
-                className="px-6 py-3 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                className="btn-primary px-6 py-3 text-sm"
               >
                 📤 Upload Another Document
               </button>
 
               <button
                 onClick={handleViewDocuments}
-                className="px-6 py-3 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                className="px-6 py-3 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
               >
                 📂 View All Documents
               </button>
             </div>
 
             {/* Additional Info */}
-            <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+            <div className="bg-primary-soft border border-primary-border rounded-md p-4">
               <div className="flex">
                 <div className="flex-shrink-0">
                   <svg
-                    className="h-5 w-5 text-blue-400"
+                    className="h-5 w-5 text-primary"
                     fill="currentColor"
                     viewBox="0 0 20 20"
                     xmlns="http://www.w3.org/2000/svg"
@@ -128,10 +128,10 @@ const UploadSuccess: React.FC<UploadSuccessProps> = ({
                   </svg>
                 </div>
                 <div className="ml-3">
-                  <h4 className="text-sm font-medium text-blue-800">
+                  <h4 className="text-sm font-medium text-primary-strong">
                     What\u2019s Next?
                   </h4>
-                  <div className="mt-2 text-sm text-blue-700">
+                  <div className="mt-2 text-sm text-primary">
                     <ul className="list-disc list-inside space-y-1">
                       <li>Your document is now being processed</li>
                       <li>You can start using it in your evidence seeker</li>

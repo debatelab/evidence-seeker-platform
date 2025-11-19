@@ -34,7 +34,7 @@ type RunStatus = FactCheckRun["status"];
 
 const statusTone: Record<RunStatus, string> = {
   PENDING: "bg-yellow-100 text-yellow-800",
-  RUNNING: "bg-blue-100 text-blue-800",
+  RUNNING: "bg-primary-soft text-primary-strong",
   SUCCEEDED: "bg-green-100 text-green-800",
   FAILED: "bg-red-100 text-red-800",
   CANCELLED: "bg-gray-100 text-gray-600",
@@ -104,7 +104,8 @@ const EvidenceSeekerFactChecks: React.FC<EvidenceSeekerFactChecksProps> = ({
   const location = useLocation();
   const [showHint, setShowHint] = useState(
     Boolean(
-      (location.state as { showOnboardingHint?: boolean } | null)?.showOnboardingHint
+      (location.state as { showOnboardingHint?: boolean } | null)
+        ?.showOnboardingHint
     )
   );
 
@@ -302,7 +303,7 @@ const EvidenceSeekerFactChecks: React.FC<EvidenceSeekerFactChecksProps> = ({
   if (statusLoading) {
     return (
       <div className="flex justify-center items-center p-10">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -330,19 +331,19 @@ const EvidenceSeekerFactChecks: React.FC<EvidenceSeekerFactChecksProps> = ({
   return (
     <div className="space-y-6">
       {showHint && (
-        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 flex items-start justify-between">
-          <div className="text-sm text-blue-800 space-y-1">
-            <p className="font-semibold text-blue-900">
+        <div className="rounded-lg border border-primary-border bg-primary-soft p-4 flex items-start justify-between">
+          <div className="text-sm text-primary space-y-1">
+            <p className="font-semibold text-primary-strong">
               You\u2019re ready to run your first fact check!
             </p>
             <p>
-              Enter a statement below and click Run Fact Check to validate it against
-              your newly uploaded documents.
+              Enter a statement below and click Run Fact Check to validate it
+              against your newly uploaded documents.
             </p>
           </div>
           <button
             type="button"
-            className="text-sm text-blue-700 hover:text-blue-900"
+            className="text-sm text-primary hover:text-primary-strong"
             onClick={() => setShowHint(false)}
           >
             Dismiss
@@ -351,8 +352,8 @@ const EvidenceSeekerFactChecks: React.FC<EvidenceSeekerFactChecksProps> = ({
       )}
       <section className="bg-white border border-gray-200 rounded-lg shadow-sm p-6 space-y-4">
         <header>
-          <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5 text-blue-600" />
+          <h2 className="brand-title text-lg text-gray-900 flex items-center gap-2">
+            <ShieldCheck className="h-5 w-5 text-primary" />
             Run a Fact Check
           </h2>
           <p className="text-sm text-gray-600">
@@ -369,7 +370,7 @@ const EvidenceSeekerFactChecks: React.FC<EvidenceSeekerFactChecksProps> = ({
               value={statement}
               onChange={(event) => setStatement(event.target.value)}
               rows={3}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               placeholder="Enter the claim you want to verify…"
               required
             />
@@ -378,7 +379,7 @@ const EvidenceSeekerFactChecks: React.FC<EvidenceSeekerFactChecksProps> = ({
           <button
             type="button"
             onClick={() => setAdvancedOpen((prev) => !prev)}
-            className="flex items-center text-sm text-blue-600 hover:text-blue-800"
+            className="flex items-center text-sm text-primary hover:text-primary-strong"
           >
             {advancedOpen ? (
               <ChevronUp className="h-4 w-4 mr-1" />
@@ -400,7 +401,7 @@ const EvidenceSeekerFactChecks: React.FC<EvidenceSeekerFactChecksProps> = ({
                   value={topK}
                   onChange={(event) => setTopK(event.target.value)}
                   placeholder="e.g. 10"
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
               <div>
@@ -413,7 +414,7 @@ const EvidenceSeekerFactChecks: React.FC<EvidenceSeekerFactChecksProps> = ({
                   value={temperature}
                   onChange={(event) => setTemperature(event.target.value)}
                   placeholder="e.g. 0.2"
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
               <div>
@@ -426,7 +427,7 @@ const EvidenceSeekerFactChecks: React.FC<EvidenceSeekerFactChecksProps> = ({
                   value={maxTokens}
                   onChange={(event) => setMaxTokens(event.target.value)}
                   placeholder="e.g. 1200"
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
               <div>
@@ -438,7 +439,7 @@ const EvidenceSeekerFactChecks: React.FC<EvidenceSeekerFactChecksProps> = ({
                   value={language}
                   onChange={(event) => setLanguage(event.target.value)}
                   placeholder="e.g. en"
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
               <div className="md:col-span-2">
@@ -451,7 +452,7 @@ const EvidenceSeekerFactChecks: React.FC<EvidenceSeekerFactChecksProps> = ({
                     setMetadataFiltersRaw(event.target.value)
                   }
                   rows={3}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                   placeholder='{"topic": "climate"}'
                 />
                 <p className="text-xs text-gray-500 mt-1">
@@ -466,7 +467,7 @@ const EvidenceSeekerFactChecks: React.FC<EvidenceSeekerFactChecksProps> = ({
                   type="text"
                   value={documentUuidsRaw}
                   onChange={(event) => setDocumentUuidsRaw(event.target.value)}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                   placeholder="uuid-1, uuid-2"
                 />
               </div>
@@ -484,7 +485,7 @@ const EvidenceSeekerFactChecks: React.FC<EvidenceSeekerFactChecksProps> = ({
             <button
               type="submit"
               disabled={creating}
-              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2 justify-center"
+              className="btn-primary px-4 py-2 flex items-center gap-2 justify-center disabled:opacity-50"
             >
               {creating ? (
                 <>
@@ -510,15 +511,15 @@ const EvidenceSeekerFactChecks: React.FC<EvidenceSeekerFactChecksProps> = ({
       </section>
 
       {activeRun && (
-        <section className="bg-white border border-blue-200 rounded-lg shadow-sm p-5 space-y-3">
+        <section className="bg-white border border-primary-border rounded-lg shadow-sm p-5 space-y-3">
           <header className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Activity className="h-5 w-5 text-blue-600" />
+              <Activity className="h-5 w-5 text-primary" />
               <div>
-                <h3 className="text-sm font-semibold text-blue-900">
+                <h3 className="text-sm font-semibold text-primary-strong">
                   Active run in progress
                 </h3>
-                <p className="text-xs text-blue-700">
+                <p className="text-xs text-primary">
                   {progressLabel} •{" "}
                   {progressConnected ? "Tracking" : "Awaiting updates"}
                 </p>
@@ -541,7 +542,7 @@ const EvidenceSeekerFactChecks: React.FC<EvidenceSeekerFactChecksProps> = ({
             </p>
             <div className="w-full bg-gray-100 rounded-full h-2">
               <div
-                className="bg-blue-600 h-2 rounded-full transition-all"
+                className="bg-primary h-2 rounded-full transition-all"
                 style={{ width: `${Math.min(progressValue, 100)}%` }}
               />
             </div>
@@ -571,7 +572,7 @@ const EvidenceSeekerFactChecks: React.FC<EvidenceSeekerFactChecksProps> = ({
 
           {loading ? (
             <div className="flex items-center justify-center py-6">
-              <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
               <span className="ml-2 text-sm text-gray-600">Loading runs…</span>
             </div>
           ) : runs.length === 0 ? (
@@ -588,8 +589,8 @@ const EvidenceSeekerFactChecks: React.FC<EvidenceSeekerFactChecksProps> = ({
                     onClick={() => void loadRun(run.uuid)}
                     className={`w-full text-left border rounded-lg p-4 transition shadow-sm ${
                       isSelected
-                        ? "border-blue-500 bg-blue-50"
-                        : "border-gray-200 bg-white hover:border-blue-200"
+                        ? "border-primary-border bg-primary-soft"
+                        : "border-gray-200 bg-white hover:border-primary-border"
                     }`}
                   >
                     <div className="flex items-center justify-between mb-2">
@@ -616,7 +617,7 @@ const EvidenceSeekerFactChecks: React.FC<EvidenceSeekerFactChecksProps> = ({
                       )}
                       <button
                         type="button"
-                        className="text-blue-600 hover:text-blue-800"
+                        className="text-primary hover:text-primary-strong"
                         onClick={(event) => {
                           event.stopPropagation();
                           void handleRerun(run.uuid);
@@ -661,7 +662,7 @@ const EvidenceSeekerFactChecks: React.FC<EvidenceSeekerFactChecksProps> = ({
 
           {detailLoading ? (
             <div className="flex items-center justify-center py-4">
-              <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
               <span className="ml-2 text-sm text-gray-600">
                 Loading run details…
               </span>
@@ -731,7 +732,8 @@ const EvidenceSeekerFactChecks: React.FC<EvidenceSeekerFactChecksProps> = ({
                           </div>
                           {typeof result.confidenceScore === "number" && (
                             <span className="text-xs text-gray-500">
-                              Confidence: {(result.confidenceScore * 100).toFixed(1)}%
+                              Confidence:{" "}
+                              {(result.confidenceScore * 100).toFixed(1)}%
                             </span>
                           )}
                         </div>

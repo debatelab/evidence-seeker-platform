@@ -142,7 +142,7 @@ export const UserManagement: React.FC = () => {
       case "PLATFORM_ADMIN":
         return <Crown className="h-4 w-4 text-purple-600" />;
       case "EVSE_ACCESS":
-        return <Shield className="h-4 w-4 text-blue-600" />;
+        return <Shield className="h-4 w-4 text-primary" />;
       default:
         return <UserCheck className="h-4 w-4 text-gray-600" />;
     }
@@ -157,7 +157,7 @@ export const UserManagement: React.FC = () => {
       );
     } else if (user.displayRole === "EVSE_ACCESS") {
       return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-soft text-primary-strong">
           Evidence Seeker Access ({user.evidenceSeekerRolesCount})
         </span>
       );
@@ -189,7 +189,7 @@ export const UserManagement: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <Users className="h-6 w-6 text-blue-600" />
+          <Users className="h-6 w-6 text-primary" />
           <div>
             <h3 className="text-lg font-semibold text-gray-900">
               User Management

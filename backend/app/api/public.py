@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+import logging
 from typing import Sequence
 from uuid import UUID
 
@@ -9,6 +10,7 @@ from fastapi import (
     BackgroundTasks,
     Depends,
     HTTPException,
+    Request,
     Query,
     status,
 )
@@ -16,11 +18,13 @@ from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.database import get_db
+from app.core.config import settings
 from app.core.evidence_seeker_config_service import (
     ConfigurationNotReadyError,
     evidence_seeker_config_service,
 )
 from app.core.evidence_seeker_pipeline import evidence_seeker_pipeline_manager
+from app.core.rate_limiter import get_public_run_rate_limiter
 from app.models.document import Document
 from app.models.evidence_seeker import EvidenceSeeker
 from app.models.fact_check import (
@@ -46,6 +50,7 @@ from app.schemas.public import (
 )
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 def _build_summary(
@@ -263,6 +268,7 @@ async def create_public_fact_check(
     seeker_uuid: UUID,
     request: FactCheckRunCreate,
     background_tasks: BackgroundTasks,
+    http_request: Request,
     db: Session = Depends(get_db),
 ) -> FactCheckRun:
     seeker = (
@@ -279,6 +285,21 @@ async def create_public_fact_check(
     if seeker is None:
         raise HTTPException(status_code=404, detail="Evidence Seeker not found")
 
+    limiter = get_public_run_rate_limiter()
+    identifier = _client_identifier(http_request)
+    rate_result = await limiter.check(identifier)
+    if not rate_result.allowed:
+        retry_after = str(rate_result.retry_after_seconds or 1)
+        logger.warning(
+            "Public fact-check rate limit exceeded",
+            extra={"client_ip": identifier, "seeker_uuid": str(seeker.uuid)},
+        )
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many public runs started from this address. Please wait before trying again.",
+            headers={"Retry-After": retry_after},
+        )
+
     try:
         evidence_seeker_config_service.require_ready(db, seeker)
     except ConfigurationNotReadyError as exc:
@@ -286,6 +307,37 @@ async def create_public_fact_check(
             status_code=status.HTTP_409_CONFLICT,
             detail=str(exc),
         ) from exc
+
+    queue_limit = settings.public_run_queue_limit_per_seeker
+    if queue_limit > 0:
+        pending_count = db.execute(
+            select(func.count())
+            .select_from(FactCheckRun)
+            .where(
+                FactCheckRun.evidence_seeker_id == seeker.id,
+                FactCheckRun.is_public.is_(True),
+                FactCheckRun.status.in_(
+                    (FactCheckRunStatus.PENDING, FactCheckRunStatus.RUNNING)
+                ),
+            )
+        ).scalar_one()
+
+        if pending_count >= queue_limit:
+            logger.info(
+                "Public fact-check queue limit hit",
+                extra={
+                    "pending_count": pending_count,
+                    "seeker_uuid": str(seeker.uuid),
+                    "queue_limit": queue_limit,
+                },
+            )
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "This Evidence Seeker already has several public runs in progress. "
+                    "Please wait for existing runs to finish."
+                ),
+            )
 
     run = evidence_seeker_pipeline_manager.create_fact_check_run(
         db=db,
@@ -416,3 +468,14 @@ def get_public_fact_check(
         seeker=summary,
         results=results,
     )
+def _client_identifier(request: Request) -> str:
+    """Return a stable identifier for rate limiting (trusting proxy headers)."""
+    forwarded_for = request.headers.get("x-forwarded-for")
+    if forwarded_for:
+        ip = forwarded_for.split(",")[0].strip()
+        if ip:
+            return ip
+    client = request.client
+    if client and client.host:
+        return client.host
+    return "unknown"

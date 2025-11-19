@@ -62,7 +62,7 @@ const EvidenceSeekerList: React.FC = () => {
           </p>
           <Link
             to="/app/evidence-seekers/new"
-            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 inline-block"
+            className="btn-primary inline-block px-4 py-2"
           >
             Create Evidence Seeker
           </Link>
@@ -95,12 +95,12 @@ const EvidenceSeekerList: React.FC = () => {
         )}
 
         <div className="flex justify-between items-center">
-          <h2 className="text-xl font-semibold text-gray-900">
+          <h2 className="brand-title text-xl text-gray-900">
             Evidence Seekers
           </h2>
           <Link
             to="/app/evidence-seekers/new"
-            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+            className="btn-primary px-4 py-2"
           >
             Create New
           </Link>
@@ -148,7 +148,7 @@ const EvidenceSeekerList: React.FC = () => {
               <div className="flex space-x-2">
                 <Link
                   to={`/app/evidence-seekers/${seeker.uuid}/manage`}
-                  className="flex-1 bg-blue-600 text-white px-3 py-2 rounded-md text-sm hover:bg-blue-700 text-center"
+                  className="btn-primary flex-1 text-center text-sm"
                 >
                   Manage
                 </Link>

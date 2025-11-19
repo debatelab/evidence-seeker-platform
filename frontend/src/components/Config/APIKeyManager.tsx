@@ -182,7 +182,7 @@ export const APIKeyManager: React.FC<APIKeyManagerProps> = ({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">
+          <h2 className="brand-title text-2xl text-gray-900">
             API Key Management
           </h2>
           <p className="text-gray-600">
@@ -191,7 +191,7 @@ export const APIKeyManager: React.FC<APIKeyManagerProps> = ({
         </div>
         <button
           onClick={() => setShowCreateForm(true)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+          className="btn-primary px-4 py-2 flex items-center space-x-2"
         >
           <Plus className="h-4 w-4" />
           <span>Add API Key</span>
@@ -225,7 +225,7 @@ export const APIKeyManager: React.FC<APIKeyManagerProps> = ({
                   onChange={(e) =>
                     setFormData({ ...formData, provider: e.target.value })
                   }
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary focus:border-primary"
                   required
                 >
                   {providers.map((provider) => (
@@ -246,7 +246,7 @@ export const APIKeyManager: React.FC<APIKeyManagerProps> = ({
                   onChange={(e) =>
                     setFormData({ ...formData, name: e.target.value })
                   }
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary focus:border-primary"
                   placeholder="e.g., Production Key"
                   required
                 />
@@ -263,7 +263,7 @@ export const APIKeyManager: React.FC<APIKeyManagerProps> = ({
                 onChange={(e) =>
                   setFormData({ ...formData, api_key: e.target.value })
                 }
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary focus:border-primary"
                 placeholder={`e.g., ${providers.find((p) => p.value === formData.provider)?.prefix}...`}
                 required
               />
@@ -278,7 +278,7 @@ export const APIKeyManager: React.FC<APIKeyManagerProps> = ({
                 onChange={(e) =>
                   setFormData({ ...formData, description: e.target.value })
                 }
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary focus:border-primary"
                 rows={3}
                 placeholder="Optional description for this API key"
               />
@@ -288,7 +288,7 @@ export const APIKeyManager: React.FC<APIKeyManagerProps> = ({
               <button
                 type="submit"
                 disabled={loading}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center space-x-2"
+                className="btn-primary px-4 py-2 flex items-center space-x-2 disabled:opacity-50"
               >
                 {loading && <Loader2 className="h-4 w-4 animate-spin" />}
                 <span>Create API Key</span>
@@ -342,7 +342,7 @@ export const APIKeyManager: React.FC<APIKeyManagerProps> = ({
                               name: e.target.value,
                             })
                           }
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary focus:border-primary"
                           required
                         />
                       </div>
@@ -359,7 +359,7 @@ export const APIKeyManager: React.FC<APIKeyManagerProps> = ({
                               is_active: e.target.value === "active",
                             })
                           }
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary focus:border-primary"
                         >
                           <option value="active">Active</option>
                           <option value="inactive">Inactive</option>
@@ -379,7 +379,7 @@ export const APIKeyManager: React.FC<APIKeyManagerProps> = ({
                             description: e.target.value,
                           })
                         }
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary focus:border-primary"
                         rows={2}
                       />
                     </div>
@@ -388,7 +388,7 @@ export const APIKeyManager: React.FC<APIKeyManagerProps> = ({
                       <button
                         type="submit"
                         disabled={loading}
-                        className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 disabled:opacity-50 flex items-center space-x-1"
+                        className="btn-primary px-3 py-1 text-sm flex items-center space-x-1 disabled:opacity-50"
                       >
                         {loading && (
                           <Loader2 className="h-3 w-3 animate-spin" />

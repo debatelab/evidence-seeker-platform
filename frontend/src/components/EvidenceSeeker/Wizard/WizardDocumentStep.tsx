@@ -53,7 +53,10 @@ const statusCopy: Record<
 const formatFileSize = (bytes: number): string => {
   if (!bytes) return "0 B";
   const units = ["B", "KB", "MB", "GB"];
-  const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length);
+  const index = Math.min(
+    Math.floor(Math.log(bytes) / Math.log(1024)),
+    units.length
+  );
   const value = bytes / 1024 ** index;
   return `${value.toFixed(1)} ${units[index]}`;
 };
@@ -85,7 +88,9 @@ export const WizardDocumentStep: React.FC<WizardDocumentStepProps> = ({
         if (error.code === "file-too-large") {
           setValidationError("File is too large. Maximum size is 10MB.");
         } else if (error.code === "file-invalid-type") {
-          setValidationError("Unsupported file format. Upload PDF or TXT files.");
+          setValidationError(
+            "Unsupported file format. Upload PDF or TXT files."
+          );
         } else {
           setValidationError(error.message);
         }
@@ -211,8 +216,8 @@ export const WizardDocumentStep: React.FC<WizardDocumentStepProps> = ({
 
       {skipAcknowledged && (
         <div className="rounded-lg border border-orange-200 bg-orange-50 p-4 text-sm text-orange-900">
-          You chose to finish setup without documents. Uploading at least one file
-          here will unlock Fact Check and Search tabs.
+          You chose to finish setup without documents. Uploading at least one
+          file here will unlock Fact Check and Search tabs.
         </div>
       )}
 
@@ -258,8 +263,8 @@ export const WizardDocumentStep: React.FC<WizardDocumentStepProps> = ({
                   Finish without documents?
                 </h4>
                 <p className="text-sm text-gray-600">
-                  Fact Check and Search remain disabled until you upload at least one
-                  document. You can come back any time.
+                  Fact Check and Search remain disabled until you upload at
+                  least one document. You can come back any time.
                 </p>
               </div>
             </div>

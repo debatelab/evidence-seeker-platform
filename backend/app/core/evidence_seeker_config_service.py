@@ -603,6 +603,9 @@ class EvidenceSeekerConfigService:
         overrides = overrides or {}
         settings_row = self.ensure_settings(db, seeker)
         hf_key = self._resolve_huggingface_key(db, settings_row)
+        api_key_name = f"EVSE_HF_API_KEY_{settings_row.id}"
+        if hf_key:
+            os.environ[api_key_name] = hf_key
 
         backend_type_raw = getattr(settings_row, "embed_backend_type", None)
         backend_type = (
@@ -634,9 +637,6 @@ class EvidenceSeekerConfigService:
         base_kwargs.update(self._build_postgres_kwargs())
 
         if backend_type in {"huggingface_inference_api", "tei"}:
-            api_key_name = f"EVSE_HF_API_KEY_{settings_row.id}"
-            if hf_key:
-                os.environ[api_key_name] = hf_key
             base_kwargs["api_key_name"] = api_key_name
             if backend_type == "huggingface_inference_api" and not hf_key:
                 raise ValueError(

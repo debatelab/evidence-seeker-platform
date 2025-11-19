@@ -77,17 +77,17 @@ export const RoleAssignmentForm: React.FC<RoleAssignmentFormProps> = ({
             placeholder="Search users by username..."
           />
           {selectedUser && (
-            <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-md">
+            <div className="mt-2 p-2 bg-primary-soft border border-primary-border rounded-md">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="font-medium text-blue-900">
+                  <div className="font-medium text-primary-strong">
                     {selectedUser.username}
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setSelectedUser(null)}
-                  className="text-blue-600 hover:text-blue-800"
+                  className="text-primary hover:text-primary-strong"
                 >
                   <svg
                     className="w-4 h-4"
@@ -116,7 +116,7 @@ export const RoleAssignmentForm: React.FC<RoleAssignmentFormProps> = ({
           <select
             value={selectedRole}
             onChange={(e) => setSelectedRole(e.target.value as PermissionRole)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
           >
             <option value={PermissionRole.EVSE_READER}>
               Reader - Can view and test
@@ -145,7 +145,7 @@ export const RoleAssignmentForm: React.FC<RoleAssignmentFormProps> = ({
           <button
             type="button"
             onClick={handleCancel}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
             disabled={isSubmitting}
           >
             Cancel
@@ -153,7 +153,7 @@ export const RoleAssignmentForm: React.FC<RoleAssignmentFormProps> = ({
           <button
             type="submit"
             disabled={!selectedUser || isSubmitting}
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="btn-primary px-4 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting ? (
               <div className="flex items-center">

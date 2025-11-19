@@ -43,6 +43,11 @@ class Settings(BaseSettings):
     max_file_size: int = 10 * 1024 * 1024  # 10MB in bytes
     allowed_extensions: list[str] = [".pdf", ".txt"]
 
+    # Public fact-check safeguards
+    public_run_rate_limit_requests: int = 3
+    public_run_rate_limit_window_seconds: int = 60
+    public_run_queue_limit_per_seeker: int = 10
+
     # Email settings
     smtp_server: str = "smtp.gmail.com"
     smtp_port: int = 587

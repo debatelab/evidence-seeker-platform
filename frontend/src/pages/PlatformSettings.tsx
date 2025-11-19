@@ -26,7 +26,7 @@ const PlatformSettings: React.FC = () => {
         <div className="mb-8">
           <div className="flex items-center space-x-3 mb-2">
             <Shield className="h-8 w-8 text-purple-600" />
-            <h1 className="text-2xl font-bold text-gray-900">
+            <h1 className="brand-title text-2xl text-gray-900">
               Platform Administration
             </h1>
           </div>

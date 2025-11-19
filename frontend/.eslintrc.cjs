@@ -34,6 +34,7 @@ module.exports = {
     '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
     // React specific tweaks
     'react/no-unescaped-entities': 'warn',
+    "@typescript-eslint/consistent-type-definitions": "off"
   },
   overrides: [
     {

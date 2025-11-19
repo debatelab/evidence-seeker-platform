@@ -42,6 +42,65 @@ def test_create_evidence_seeker_success(
     assert data["createdBy"] == test_user.id
 
 
+def test_create_evidence_seeker_allows_camel_case_visibility(
+    client: TestClient, test_user: User, db: Session
+) -> None:
+    """Creating via API should respect `isPublic` payload from the wizard."""
+    login_response = client.post(
+        "/api/v1/auth/jwt/login",
+        data={"username": test_user.email, "password": "testpassword"},
+    )
+    assert login_response.status_code == 200
+    token = login_response.json()["access_token"]
+
+    headers = {"Authorization": f"Bearer {token}"}
+    response = client.post(
+        "/api/v1/evidence-seekers/",
+        json={
+            "title": "Public Seeker",
+            "description": "Wizard payload",
+            "isPublic": True,
+        },
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["isPublic"] is True
+
+
+def test_update_evidence_seeker_allows_camel_case_visibility(
+    client: TestClient, test_user: User, db: Session
+) -> None:
+    """Updating via API should flip visibility when payload uses camelCase."""
+    seeker = EvidenceSeeker(
+        title="Needs Toggle",
+        description="",
+        is_public=False,
+        created_by=test_user.id,
+    )
+    db.add(seeker)
+    db.commit()
+
+    login_response = client.post(
+        "/api/v1/auth/jwt/login",
+        data={"username": test_user.email, "password": "testpassword"},
+    )
+    assert login_response.status_code == 200
+    token = login_response.json()["access_token"]
+
+    headers = {"Authorization": f"Bearer {token}"}
+    response = client.put(
+        f"/api/v1/evidence-seekers/{seeker.id}",
+        json={"isPublic": True},
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["isPublic"] is True
+
+
 def test_get_evidence_seekers_requires_auth(client: TestClient) -> None:
     """Test that getting evidence seekers requires authentication"""
     response = client.get("/api/v1/evidence-seekers/")

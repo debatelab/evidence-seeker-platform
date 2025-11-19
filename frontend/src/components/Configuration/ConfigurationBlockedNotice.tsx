@@ -10,7 +10,8 @@ interface ConfigurationBlockedNoticeProps {
 }
 
 const requirementCopy: Record<string, string> = {
-  CREDENTIALS: "Add inference credentials (Hugging Face key + billing, if required)",
+  CREDENTIALS:
+    "Add inference credentials (Hugging Face key + billing, if required)",
   DOCUMENTS: "Upload at least one document to finish setup",
 };
 
@@ -24,7 +25,7 @@ export const ConfigurationBlockedNotice: React.FC<
   const missing = status?.missingRequirements ?? [];
 
   return (
-    <div className="bg-white border border-amber-200 rounded-xl shadow-sm p-8 text-center space-y-4">
+    <div className="bg-white border border-amber-200 rounded-lg shadow-sm p-8 text-center space-y-4">
       <div className="inline-flex items-center justify-center rounded-full bg-amber-100 text-amber-700 h-12 w-12">
         <AlertCircle className="h-6 w-6" aria-hidden="true" />
       </div>
@@ -38,7 +39,8 @@ export const ConfigurationBlockedNotice: React.FC<
           <ul className="list-disc list-inside space-y-1">
             {missing.map((item) => (
               <li key={item}>
-                {requirementCopy[item] ?? item.replaceAll("_", " ").toLowerCase()}
+                {requirementCopy[item] ??
+                  item.replaceAll("_", " ").toLowerCase()}
               </li>
             ))}
           </ul>
@@ -47,7 +49,7 @@ export const ConfigurationBlockedNotice: React.FC<
       {onConfigure && (
         <button
           onClick={onConfigure}
-          className="inline-flex items-center justify-center bg-blue-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition"
+          className="btn-primary inline-flex px-5 py-2.5"
         >
           Open configuration
           <ArrowRight className="h-4 w-4 ml-2" />

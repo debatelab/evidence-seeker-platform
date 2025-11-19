@@ -89,6 +89,10 @@ This stack is chosen for rapid development, type safety, and operational simplic
 | **Development** | **Hybrid Approach** | Run **Postgres in Docker** for stability. Run the **FastAPI backend and React frontend locally** for fast hot-reloading. |
 | **Environment Management** | **.env files** | Secure configuration management with environment variables |
 
+## **🎨 Theme Color**
+
+The logo green (`#42BB83`) is defined once as the `--color-primary` CSS variable in `frontend/src/index.css`. Derived variables (hover, subtle background, border, and contrast text) use `color-mix` so they track the base color automatically. Tailwind maps those variables to the `primary` palette (`frontend/tailwind.config.js`), which powers utilities (`bg-primary`, `text-primary-strong`, `bg-primary-soft`, etc.) and reusable button classes (`btn-primary`, `btn-primary-outline`). Update `--color-primary` to recolor the entire UI.
+
 ## **� Runtime Requirements (Node & npm)**
 
 To avoid issues with optional native Rollup binaries (e.g. `@rollup/rollup-linux-x64-gnu` not resolving on CI), this repository standardizes on:

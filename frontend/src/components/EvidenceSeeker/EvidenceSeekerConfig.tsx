@@ -120,7 +120,8 @@ const EvidenceSeekerConfig: React.FC<EvidenceSeekerConfigProps> = ({
   const isReady = settings?.configurationState === "READY";
   const missingRequirements = settings?.missingRequirements ?? [];
   const requirementCopy: Record<string, string> = {
-    CREDENTIALS: "Add a Hugging Face API key and billing reference (if required)",
+    CREDENTIALS:
+      "Add a Hugging Face API key and billing reference (if required)",
     DOCUMENTS: "Upload at least one document to finish setup",
   };
 
@@ -180,13 +181,10 @@ const EvidenceSeekerConfig: React.FC<EvidenceSeekerConfigProps> = ({
         settings.trustRemoteCode === true
           ? "true"
           : settings.trustRemoteCode === false
-          ? "false"
-          : "",
+            ? "false"
+            : "",
       metadataFilters: stringifySafe(settings.metadataFilters ?? {}, "{}"),
-      pipelineOverrides: stringifySafe(
-        settings.pipelineOverrides ?? {},
-        "{}"
-      ),
+      pipelineOverrides: stringifySafe(settings.pipelineOverrides ?? {}, "{}"),
       huggingfaceApiKeyId:
         settings.huggingfaceApiKeyId !== null &&
         settings.huggingfaceApiKeyId !== undefined
@@ -359,7 +357,7 @@ const EvidenceSeekerConfig: React.FC<EvidenceSeekerConfigProps> = ({
   const testFeedback = useMemo(() => {
     if (testing) {
       return (
-        <div className="flex items-center text-sm text-blue-600">
+        <div className="flex items-center text-sm text-primary">
           <Loader2 className="h-4 w-4 animate-spin mr-2" />
           Validating configuration…
         </div>
@@ -407,7 +405,9 @@ const EvidenceSeekerConfig: React.FC<EvidenceSeekerConfigProps> = ({
               </ul>
             )}
           </div>
-          <ConfigurationStatusBadge state={settings?.configurationState ?? null} />
+          <ConfigurationStatusBadge
+            state={settings?.configurationState ?? null}
+          />
         </div>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-t border-gray-100 pt-4">
           <div className="text-sm text-gray-600">
@@ -419,12 +419,14 @@ const EvidenceSeekerConfig: React.FC<EvidenceSeekerConfigProps> = ({
             type="button"
             disabled={(!isReady && !expertModeEnabled) || modeUpdating}
             onClick={() =>
-              void handleSetupModeChange(expertModeEnabled ? "SIMPLE" : "EXPERT")
+              void handleSetupModeChange(
+                expertModeEnabled ? "SIMPLE" : "EXPERT"
+              )
             }
             className={`inline-flex items-center justify-center px-4 py-2 rounded-md text-sm font-medium border ${
               expertModeEnabled
                 ? "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
-                : "bg-blue-600 text-white border-blue-600 hover:bg-blue-700"
+                : "bg-primary text-white border-transparent hover:bg-primary-hover"
             } disabled:opacity-50`}
           >
             {modeUpdating ? (
@@ -443,8 +445,8 @@ const EvidenceSeekerConfig: React.FC<EvidenceSeekerConfigProps> = ({
       <section className="bg-white border border-gray-200 rounded-lg shadow-sm p-6 space-y-4">
         <header className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-              <Beaker className="h-5 w-5 text-blue-600" />
+            <h2 className="brand-title text-lg text-gray-900 flex items-center gap-2">
+              <Beaker className="h-5 w-5 text-primary" />
               EvidenceSeeker Pipeline Settings
             </h2>
             <p className="text-sm text-gray-600">
@@ -487,251 +489,251 @@ const EvidenceSeekerConfig: React.FC<EvidenceSeekerConfigProps> = ({
         {expertModeEnabled ? (
           <form className="space-y-4" onSubmit={handleSave}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Default model
-              </label>
-              <input
-                type="text"
-                name="defaultModel"
-                value={form.defaultModel}
-                onChange={handleInputChange}
-                placeholder="e.g. mistral-embed"
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Default model
+                </label>
+                <input
+                  type="text"
+                  name="defaultModel"
+                  value={form.defaultModel}
+                  onChange={handleInputChange}
+                  placeholder="e.g. mistral-embed"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Language
+                </label>
+                <input
+                  type="text"
+                  name="language"
+                  value={form.language}
+                  onChange={handleInputChange}
+                  placeholder="e.g. en"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Top K
+                </label>
+                <input
+                  type="number"
+                  name="topK"
+                  min={1}
+                  value={form.topK}
+                  onChange={handleInputChange}
+                  placeholder="Default"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Rerank K
+                </label>
+                <input
+                  type="number"
+                  name="rerankK"
+                  min={1}
+                  value={form.rerankK}
+                  onChange={handleInputChange}
+                  placeholder="Default"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Temperature
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  name="temperature"
+                  value={form.temperature}
+                  onChange={handleInputChange}
+                  placeholder="Default"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Max tokens
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  name="maxTokens"
+                  value={form.maxTokens}
+                  onChange={handleInputChange}
+                  placeholder="Default"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Language
-              </label>
-              <input
-                type="text"
-                name="language"
-                value={form.language}
-                onChange={handleInputChange}
-                placeholder="e.g. en"
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Top K
-              </label>
-              <input
-                type="number"
-                name="topK"
-                min={1}
-                value={form.topK}
-                onChange={handleInputChange}
-                placeholder="Default"
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Rerank K
-              </label>
-              <input
-                type="number"
-                name="rerankK"
-                min={1}
-                value={form.rerankK}
-                onChange={handleInputChange}
-                placeholder="Default"
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Temperature
-              </label>
-              <input
-                type="number"
-                step="0.1"
-                name="temperature"
-                value={form.temperature}
-                onChange={handleInputChange}
-                placeholder="Default"
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Max tokens
-              </label>
-              <input
-                type="number"
-                min={1}
-                name="maxTokens"
-                value={form.maxTokens}
-                onChange={handleInputChange}
-                placeholder="Default"
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Embedding backend
-              </label>
-              <select
-                name="embedBackendType"
-                value={form.embedBackendType}
-                onChange={handleInputChange}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-              >
-                {backendOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Embedding base URL
-              </label>
-              <input
-                type="text"
-                name="embedBaseUrl"
-                value={form.embedBaseUrl}
-                onChange={handleInputChange}
-                placeholder="https://api-inference.huggingface.co/models/..."
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Required for Hugging Face Inference API or TEI backends.
-              </p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Billing organisation (optional)
-              </label>
-              <input
-                type="text"
-                name="embedBillTo"
-                value={form.embedBillTo}
-                onChange={handleInputChange}
-                placeholder="hf_organisation"
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Hugging Face API key
-              </label>
-              <select
-                name="huggingfaceApiKeyId"
-                value={form.huggingfaceApiKeyId}
-                onChange={handleInputChange}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-              >
-                <option value="">None</option>
-                {huggingFaceKeys.map((key) => (
-                  <option
-                    key={key.id}
-                    value={key.id}
-                    disabled={!key.isActive}
-                  >
-                    {key.name}
-                    {!key.isActive ? " (inactive)" : ""}
-                  </option>
-                ))}
-              </select>
-              <p className="text-xs text-gray-500 mt-1">
-                Select a stored Hugging Face provider key. Manage keys in the
-                API Keys section below.
-              </p>
-              {apiKeysLoading && (
-                <p className="text-xs text-gray-500 mt-1">Loading keys…</p>
-              )}
-              {apiKeysError && (
-                <p className="text-xs text-red-600 mt-1">
-                  Failed to load API keys: {apiKeysError}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Embedding backend
+                </label>
+                <select
+                  name="embedBackendType"
+                  value={form.embedBackendType}
+                  onChange={handleInputChange}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white"
+                >
+                  {backendOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Embedding base URL
+                </label>
+                <input
+                  type="text"
+                  name="embedBaseUrl"
+                  value={form.embedBaseUrl}
+                  onChange={handleInputChange}
+                  placeholder="https://api-inference.huggingface.co/models/..."
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Required for Hugging Face Inference API or TEI backends.
                 </p>
-              )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Billing organisation (optional)
+                </label>
+                <input
+                  type="text"
+                  name="embedBillTo"
+                  value={form.embedBillTo}
+                  onChange={handleInputChange}
+                  placeholder="hf_organisation"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Hugging Face API key
+                </label>
+                <select
+                  name="huggingfaceApiKeyId"
+                  value={form.huggingfaceApiKeyId}
+                  onChange={handleInputChange}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white"
+                >
+                  <option value="">None</option>
+                  {huggingFaceKeys.map((key) => (
+                    <option
+                      key={key.id}
+                      value={key.id}
+                      disabled={!key.isActive}
+                    >
+                      {key.name}
+                      {!key.isActive ? " (inactive)" : ""}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Select a stored Hugging Face provider key. Manage keys in the
+                  API Keys section below.
+                </p>
+                {apiKeysLoading && (
+                  <p className="text-xs text-gray-500 mt-1">Loading keys…</p>
+                )}
+                {apiKeysError && (
+                  <p className="text-xs text-red-600 mt-1">
+                    Failed to load API keys: {apiKeysError}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Trust remote code
+                </label>
+                <select
+                  name="trustRemoteCode"
+                  value={form.trustRemoteCode}
+                  onChange={handleInputChange}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white"
+                >
+                  <option value="">Use model defaults</option>
+                  <option value="true">Enable</option>
+                  <option value="false">Disable</option>
+                </select>
+              </div>
             </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Trust remote code
+                Metadata filters (JSON)
               </label>
-              <select
-                name="trustRemoteCode"
-                value={form.trustRemoteCode}
+              <textarea
+                name="metadataFilters"
+                value={form.metadataFilters}
                 onChange={handleInputChange}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-              >
-                <option value="">Use model defaults</option>
-                <option value="true">Enable</option>
-                <option value="false">Disable</option>
-              </select>
+                rows={4}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary font-mono"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                These filters are applied to every retrieval request to scope
+                the index.
+              </p>
             </div>
-          </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Metadata filters (JSON)
-            </label>
-            <textarea
-              name="metadataFilters"
-              value={form.metadataFilters}
-              onChange={handleInputChange}
-              rows={4}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              These filters are applied to every retrieval request to scope the
-              index.
-            </p>
-          </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Pipeline overrides (JSON)
+              </label>
+              <textarea
+                name="pipelineOverrides"
+                value={form.pipelineOverrides}
+                onChange={handleInputChange}
+                rows={4}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary font-mono"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Advanced overrides forwarded to the EvidenceSeeker pipeline
+                factory.
+              </p>
+            </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Pipeline overrides (JSON)
-            </label>
-            <textarea
-              name="pipelineOverrides"
-              value={form.pipelineOverrides}
-              onChange={handleInputChange}
-              rows={4}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Advanced overrides forwarded to the EvidenceSeeker pipeline
-              factory.
-            </p>
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
-            <button
-              type="submit"
-              disabled={saving}
-              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
-            >
-              {saving ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Saving…
-                </>
-              ) : (
-                <>
-                  <Save className="h-4 w-4" />
-                  Save settings
-                </>
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={() => void handleTest()}
-              className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
-            >
-              <FlaskConical className="h-4 w-4" />
-              Test configuration
-            </button>
-            {testFeedback}
-          </div>
+            <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+              <button
+                type="submit"
+                disabled={saving}
+                className="btn-primary px-4 py-2 flex items-center gap-2 disabled:opacity-50"
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Saving…
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4" />
+                    Save settings
+                  </>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleTest()}
+                className="text-sm text-primary hover:text-primary-strong flex items-center gap-1"
+              >
+                <FlaskConical className="h-4 w-4" />
+                Test configuration
+              </button>
+              {testFeedback}
+            </div>
           </form>
         ) : (
           <div className="border border-dashed border-gray-300 rounded-lg p-6 bg-gray-50 text-sm text-gray-600">
@@ -739,9 +741,10 @@ const EvidenceSeekerConfig: React.FC<EvidenceSeekerConfigProps> = ({
               Expert mode is disabled
             </p>
             <p>
-              Advanced pipeline overrides are hidden while simple mode is active.
-              Use the API Keys section below to manage credentials. Enable expert
-              mode once setup is complete to edit retrieval parameters.
+              Advanced pipeline overrides are hidden while simple mode is
+              active. Use the API Keys section below to manage credentials.
+              Enable expert mode once setup is complete to edit retrieval
+              parameters.
             </p>
           </div>
         )}
@@ -749,8 +752,8 @@ const EvidenceSeekerConfig: React.FC<EvidenceSeekerConfigProps> = ({
 
       <section className="bg-white border border-gray-200 rounded-lg shadow-sm p-6 space-y-4">
         <header>
-          <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-            <Key className="h-5 w-5 text-blue-600" />
+          <h2 className="brand-title text-lg text-gray-900 flex items-center gap-2">
+            <Key className="h-5 w-5 text-primary" />
             API Keys
           </h2>
           <p className="text-sm text-gray-600">

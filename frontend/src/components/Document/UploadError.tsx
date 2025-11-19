@@ -92,7 +92,7 @@ const UploadError: React.FC<UploadErrorProps> = ({
           <div className="flex items-center space-x-3">
             <div className="text-2xl">❌</div>
             <div>
-              <h2 className="text-xl font-semibold text-gray-900">
+              <h2 className="brand-title text-xl text-gray-900">
                 {getErrorTitle(error)}
               </h2>
               <p className="text-sm text-gray-600 mt-1">
@@ -179,14 +179,14 @@ const UploadError: React.FC<UploadErrorProps> = ({
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <button
                 onClick={onRetry}
-                className="px-6 py-3 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                className="btn-primary px-6 py-3 text-sm"
               >
                 🔄 Try Again
               </button>
 
               <button
                 onClick={onChooseDifferent}
-                className="px-6 py-3 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                className="px-6 py-3 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
               >
                 📁 Choose Different File
               </button>
@@ -198,7 +198,7 @@ const UploadError: React.FC<UploadErrorProps> = ({
                 Still having trouble?{" "}
                 <a
                   href="#"
-                  className="text-blue-600 hover:text-blue-800 underline"
+                  className="text-primary hover:text-primary-strong underline"
                   onClick={(e) => {
                     e.preventDefault();
                     // Could open a support modal or navigate to help

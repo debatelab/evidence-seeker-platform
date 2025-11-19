@@ -44,13 +44,16 @@ class FactCheckEvidenceRead(BaseModel):
     evidence_text: str = Field(alias="evidenceText")
     stance: str
     score: float | None = None
-    metadata_payload: dict[str, Any] | None = Field(alias="metadata", default=None)
+    metadata: dict[str, Any] | None = Field(
+        default=None,
+        serialization_alias="metadata",
+        validation_alias="metadata_payload",
+    )
 
     class Config:
         alias_generator = to_camel
         populate_by_name = True
         from_attributes = True
-        fields = {"metadata_payload": "metadata"}
 
 
 class FactCheckResultRead(BaseModel):

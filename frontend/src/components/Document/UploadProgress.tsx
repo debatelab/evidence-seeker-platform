@@ -49,7 +49,7 @@ const UploadProgress: React.FC<UploadProgressProps> = ({
     <PageLayout variant="narrow">
       <div className="bg-white shadow-sm rounded-lg border border-gray-200">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">
+          <h2 className="brand-title text-xl text-gray-900">
             📤 Uploading Document
           </h2>
           <p className="text-sm text-gray-600 mt-1">
@@ -81,7 +81,7 @@ const UploadProgress: React.FC<UploadProgressProps> = ({
               </div>
               <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
                 <div
-                  className="bg-blue-600 h-full rounded-full transition-all duration-500 ease-out"
+                  className="bg-primary h-full rounded-full transition-all duration-500 ease-out"
                   style={{ width: `${animatedProgress}%` }}
                 />
               </div>
@@ -101,7 +101,7 @@ const UploadProgress: React.FC<UploadProgressProps> = ({
               <div className="flex justify-center">
                 <button
                   onClick={onCancel}
-                  className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
                 >
                   Cancel Upload
                 </button>

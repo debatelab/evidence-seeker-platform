@@ -50,7 +50,7 @@ export const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
       case "PENDING":
         return <Clock className="h-5 w-5 text-yellow-600" />;
       case "RUNNING":
-        return <Loader2 className="h-5 w-5 text-blue-600 animate-spin" />;
+        return <Loader2 className="h-5 w-5 text-primary animate-spin" />;
       case "COMPLETED":
         return <CheckCircle className="h-5 w-5 text-green-600" />;
       case "FAILED":
@@ -67,7 +67,7 @@ export const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
       case "PENDING":
         return "border-yellow-200 bg-yellow-50";
       case "RUNNING":
-        return "border-blue-200 bg-blue-50";
+        return "border-primary-border bg-primary-soft";
       case "COMPLETED":
         return "border-green-200 bg-green-50";
       case "FAILED":
@@ -82,7 +82,7 @@ export const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
   const getProgressColor = () => {
     switch (currentUpdate.status) {
       case "RUNNING":
-        return "bg-blue-600";
+        return "bg-primary";
       case "COMPLETED":
         return "bg-green-600";
       case "FAILED":

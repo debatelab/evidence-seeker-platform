@@ -27,6 +27,7 @@ import type {
   PublicFactCheckRunDetailResponse,
   PublicFactCheckRunsResponse,
 } from "../types/public";
+import { authEvents } from "./authEvents";
 
 // API base URL - will be replaced by environment variable in production
 const API_BASE_URL =
@@ -39,6 +40,20 @@ const apiClient: AxiosInstance = axios.create({
   validateStatus: (status) => status < 400, // Throw for 4xx/5xx responses
   // Remove default Content-Type to allow automatic setting for FormData
 });
+
+const shouldSkipUnauthorizedHandling = (
+  config?: InternalAxiosRequestConfig<any>
+): boolean => {
+  if (!config?.url) {
+    return false;
+  }
+  const url = config.url;
+  return (
+    url.includes("/auth/jwt/login") ||
+    url.includes("/auth/register") ||
+    url.includes("/auth/logout")
+  );
+};
 
 // Request interceptor to add auth token
 apiClient.interceptors.request.use(
@@ -63,10 +78,9 @@ apiClient.interceptors.response.use(
   },
   (error) => {
     if (error.response?.status === 401) {
-      // Clear token and redirect to login on unauthorized
-      localStorage.removeItem("access_token");
-      localStorage.removeItem("user");
-      window.location.href = "/login";
+      if (!shouldSkipUnauthorizedHandling(error.config)) {
+        authEvents.emitUnauthorized(error);
+      }
     } else if (error.response?.status === 403) {
       // Handle forbidden access - user doesn't have permission
       console.warn(

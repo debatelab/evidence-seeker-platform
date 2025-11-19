@@ -104,7 +104,7 @@ const UploadForm: React.FC<UploadFormProps> = ({ onStartUpload }) => {
     <PageLayout variant="narrow">
       <div className="bg-white shadow-sm rounded-lg border border-gray-200">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">
+          <h2 className="brand-title text-xl text-gray-900">
             Upload Document
           </h2>
           <p className="text-sm text-gray-600 mt-1">
@@ -173,7 +173,7 @@ const UploadForm: React.FC<UploadFormProps> = ({ onStartUpload }) => {
               name="title"
               value={formData.title}
               onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
               placeholder="Enter document title"
             />
           </div>
@@ -192,7 +192,7 @@ const UploadForm: React.FC<UploadFormProps> = ({ onStartUpload }) => {
               value={formData.description}
               onChange={handleInputChange}
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
               placeholder="Optional description of the document"
             />
           </div>
@@ -202,7 +202,7 @@ const UploadForm: React.FC<UploadFormProps> = ({ onStartUpload }) => {
             <button
               type="submit"
               disabled={!selectedFile}
-              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn-primary px-4 py-2 text-sm"
             >
               Upload Document
             </button>

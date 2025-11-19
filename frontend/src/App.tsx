@@ -33,6 +33,8 @@ import { EvidenceSeeker } from "./types/evidenceSeeker";
 import PublicHomePage from "./pages/public/PublicHomePage";
 import PublicEvidenceSeekerPage from "./pages/public/PublicEvidenceSeekerPage";
 import PublicFactCheckPage from "./pages/public/PublicFactCheckPage";
+import ReauthModal from "./components/Auth/ReauthModal";
+import Logo from "./components/Logo";
 
 // Wrapper component to provide Evidence Seeker UUID to tab components
 interface EvidenceSeekerUuidProp {
@@ -101,7 +103,7 @@ const App: React.FC = () => {
     <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
       <div className="px-4 py-6 sm:px-0">
         <div className="border-4 border-dashed border-gray-200 rounded-lg p-12 text-center">
-          <div className="h-16 w-16 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+          <div className="h-16 w-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-4">
             <svg
               className="h-8 w-8 text-white"
               fill="none"
@@ -118,7 +120,7 @@ const App: React.FC = () => {
             </svg>
           </div>
           <h3 className="text-lg font-medium text-gray-900 mb-2">
-            Welcome to Evidence Seeker Platform
+            Welcome to the Evidence Seeker Platform
           </h3>
           <p className="text-gray-500 mb-4">
             You are successfully authenticated! This is Iteration 4 of the
@@ -149,7 +151,7 @@ const App: React.FC = () => {
           <div className="mt-6">
             <Link
               to="/app/evidence-seekers"
-              className="bg-blue-600 text-white px-6 py-2 rounded-md text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              className="btn-primary inline-flex px-6 py-2"
             >
               Manage Evidence Seekers
             </Link>
@@ -169,27 +171,19 @@ const App: React.FC = () => {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center py-4">
               <div className="flex items-center space-x-8">
-                <div className="flex items-center">
-                  <div className="h-8 w-8 bg-blue-600 rounded-full flex items-center justify-center">
-                    <svg
-                      className="h-5 w-5 text-white"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-                      />
-                    </svg>
-                  </div>
-                  <h1 className="ml-3 text-xl font-bold text-gray-900">
-                    Evidence Seeker Platform
-                  </h1>
-                </div>
+                <Link
+                  to="/"
+                  className="flex items-center hover:opacity-90 transition"
+                  aria-label="Go to public homepage"
+                >
+                  <Logo
+                    className="flex items-center"
+                    iconClassName="h-10"
+                    textClassName="text-gray-900 text-xl"
+                    title="Evidence Seeker"
+                    subtitle="Admin"
+                  />
+                </Link>
                 <div className="flex space-x-4">
                   <Link
                     to="/app"
@@ -385,7 +379,10 @@ const App: React.FC = () => {
 
   return (
     <ErrorBoundary>
-      <RouterProvider router={router} />
+      <>
+        <RouterProvider router={router} />
+        <ReauthModal />
+      </>
     </ErrorBoundary>
   );
 };

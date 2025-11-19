@@ -137,7 +137,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
   return (
     <div className="w-full max-w-md mx-auto bg-white rounded-lg shadow-md p-6">
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-center text-gray-800">
+        <h2 className="brand-title text-2xl text-center text-gray-800">
           Create Account
         </h2>
         <p className="text-center text-gray-600 mt-2">
@@ -159,7 +159,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
             name="email"
             value={formData.email}
             onChange={handleInputChange}
-            className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+            className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary ${
               validationErrors.email ? "border-red-500" : "border-gray-300"
             }`}
             placeholder="Enter your email"
@@ -185,7 +185,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
             name="username"
             value={formData.username}
             onChange={handleInputChange}
-            className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+            className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary ${
               validationErrors.username ? "border-red-500" : "border-gray-300"
             }`}
             placeholder="Choose a username"
@@ -211,7 +211,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
             name="password"
             value={formData.password}
             onChange={handleInputChange}
-            className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+            className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary ${
               validationErrors.password ? "border-red-500" : "border-gray-300"
             }`}
             placeholder="Create a password"
@@ -237,7 +237,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
             name="confirmPassword"
             value={formData.confirmPassword}
             onChange={handleInputChange}
-            className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+            className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary ${
               validationErrors.confirmPassword
                 ? "border-red-500"
                 : "border-gray-300"
@@ -261,7 +261,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="btn-primary w-full"
         >
           {isLoading ? "Creating Account..." : "Create Account"}
         </button>
@@ -273,7 +273,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
           <button
             type="button"
             onClick={onSwitchToLogin}
-            className="text-blue-600 hover:text-blue-500 font-medium focus:outline-none focus:underline"
+            className="text-primary hover:text-primary-hover font-medium focus:outline-none focus:underline"
             disabled={isLoading}
           >
             Sign in

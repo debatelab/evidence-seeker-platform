@@ -105,7 +105,7 @@ const EmailVerification: React.FC<EmailVerificationProps> = ({
         <div className="max-w-md w-full space-y-8">
           <div className="text-center">
             <CheckCircle className="mx-auto h-16 w-16 text-green-500" />
-            <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
+            <h2 className="brand-title mt-6 text-3xl text-gray-900">
               Email Verified!
             </h2>
             <p className="mt-2 text-sm text-gray-600">
@@ -125,10 +125,10 @@ const EmailVerification: React.FC<EmailVerificationProps> = ({
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
-          <div className="mx-auto h-16 w-16 bg-blue-100 rounded-full flex items-center justify-center">
-            <AlertTriangle className="h-8 w-8 text-blue-600" />
+          <div className="mx-auto h-16 w-16 rounded-full flex items-center justify-center bg-primary-soft">
+            <AlertTriangle className="h-8 w-8 text-primary" />
           </div>
-          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
+          <h2 className="brand-title mt-6 text-3xl text-gray-900">
             Verify Your Email
           </h2>
           <p className="mt-2 text-sm text-gray-600">
@@ -144,11 +144,11 @@ const EmailVerification: React.FC<EmailVerificationProps> = ({
         </div>
 
         {isVerifying && (
-          <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+          <div className="bg-primary-soft border border-primary-border rounded-md p-4">
             <div className="flex">
-              <Loader2 className="h-5 w-5 text-blue-400 animate-spin" />
+              <Loader2 className="h-5 w-5 text-primary animate-spin" />
               <div className="ml-3">
-                <p className="text-sm font-medium text-blue-800">
+                <p className="text-sm font-medium text-primary-strong">
                   Verifying your email...
                 </p>
               </div>
@@ -192,7 +192,7 @@ const EmailVerification: React.FC<EmailVerificationProps> = ({
             <button
               onClick={handleResendVerification}
               disabled={isResending}
-              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn-primary w-full flex justify-center text-sm"
             >
               {isResending ? (
                 <>
@@ -209,7 +209,7 @@ const EmailVerification: React.FC<EmailVerificationProps> = ({
         <div className="text-center">
           <button
             onClick={() => navigate("/login")}
-            className="text-sm text-blue-600 hover:text-blue-500"
+            className="text-sm text-primary hover:text-primary-hover"
           >
             Back to Login
           </button>

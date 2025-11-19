@@ -8,6 +8,7 @@ import {
 } from "react";
 import { AuthState, LoginRequest, RegisterRequest } from "../types/auth";
 import { authAPI, permissionsAPI, apiUtils } from "../utils/api";
+import { authEvents } from "../utils/authEvents";
 
 // Polling configuration
 const PERMISSION_POLLING_CONFIG = {
@@ -28,6 +29,9 @@ interface AuthContextProps extends AuthState {
   clearError: () => void;
   checkAuthStatus: () => Promise<boolean>;
   refreshPermissions: () => Promise<boolean>;
+  sessionExpired: boolean;
+  reauthModalOpen: boolean;
+  dismissReauthPrompt: () => void;
 }
 
 const AuthContext = createContext<AuthContextProps | undefined>(undefined);
@@ -40,6 +44,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     isLoading: true,
     error: null,
   });
+  const [sessionExpired, setSessionExpired] = useState(false);
+  const [reauthModalOpen, setReauthModalOpen] = useState(false);
 
   // Initialize auth state from localStorage
   useEffect(() => {
@@ -96,6 +102,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         isLoading: false,
         error: null,
       });
+      setSessionExpired(false);
+      setReauthModalOpen(false);
 
       return { success: true, data: response };
     } catch (error: any) {
@@ -156,6 +164,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         isLoading: false,
         error: null,
       });
+      setSessionExpired(false);
+      setReauthModalOpen(false);
     }
     return { success: true };
   }, []);
@@ -203,9 +213,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [authState.isAuthenticated, authState.user]);
 
+  const handleUnauthorized = useCallback(() => {
+    apiUtils.removeToken();
+    setSessionExpired(true);
+    setReauthModalOpen(true);
+    setAuthState((prev) => ({
+      ...prev,
+      token: null,
+      error: "Session expired. Please sign in again.",
+    }));
+  }, []);
+
+  useEffect(() => {
+    authEvents.subscribe(handleUnauthorized);
+    return () => {
+      authEvents.unsubscribe(handleUnauthorized);
+    };
+  }, [handleUnauthorized]);
+
   // Permission polling effect
   useEffect(() => {
-    if (!PERMISSION_POLLING_CONFIG.enabled || !authState.isAuthenticated) {
+    if (
+      !PERMISSION_POLLING_CONFIG.enabled ||
+      !authState.isAuthenticated ||
+      sessionExpired
+    ) {
       return;
     }
 
@@ -239,7 +271,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       clearInterval(intervalId);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [authState.isAuthenticated, refreshPermissions]);
+  }, [authState.isAuthenticated, refreshPermissions, sessionExpired]);
+
+  const dismissReauthPrompt = useCallback(() => {
+    setReauthModalOpen(false);
+    setSessionExpired(false);
+    setAuthState((prev) => ({ ...prev, error: null }));
+  }, []);
 
   return (
     <AuthContext.Provider
@@ -251,6 +289,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         clearError,
         checkAuthStatus,
         refreshPermissions,
+        sessionExpired,
+        reauthModalOpen,
+        dismissReauthPrompt,
       }}
     >
       {children}

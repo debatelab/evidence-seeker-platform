@@ -3,6 +3,7 @@ import type { Document } from "../types/document";
 import type { IndexJob } from "../types/indexJob";
 import { useDocuments } from "./useDocument";
 import { useIndexJobs } from "./useIndexJobs";
+import { useAuth } from "./useAuth";
 
 export type UploadJobStatus =
   | "queued"
@@ -50,11 +51,41 @@ export const useDocumentUploadController = (
   } = useDocuments(evidenceSeekerUuid ?? "", {
     enabled: Boolean(evidenceSeekerUuid),
   });
-  const { jobs } = useIndexJobs(evidenceSeekerUuid, {
-    pollIntervalMs: evidenceSeekerUuid ? 5000 : undefined,
-  });
   const [queue, setQueue] = useState<UploadQueueItem[]>([]);
+  const [isPageHidden, setIsPageHidden] = useState<boolean>(() => {
+    if (typeof document === "undefined") {
+      return false;
+    }
+    return document.hidden;
+  });
+  const { sessionExpired } = useAuth();
   const onboardingToken = options.onboardingToken;
+
+  useEffect(() => {
+    if (typeof document === "undefined") {
+      return;
+    }
+    const onVisibilityChange = () => {
+      setIsPageHidden(document.hidden);
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, []);
+
+  const shouldPollJobs = useMemo(() => {
+    if (!evidenceSeekerUuid || sessionExpired || isPageHidden) {
+      return false;
+    }
+    return queue.some(
+      (item) => item.status === "uploading" || item.status === "embedding"
+    );
+  }, [evidenceSeekerUuid, queue, isPageHidden, sessionExpired]);
+
+  const { jobs } = useIndexJobs(evidenceSeekerUuid, {
+    pollIntervalMs: shouldPollJobs ? 5000 : undefined,
+  });
 
   // Seed queue with existing documents so returning users can see their uploads
   useEffect(() => {

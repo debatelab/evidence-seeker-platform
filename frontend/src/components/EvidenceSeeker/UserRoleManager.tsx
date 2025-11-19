@@ -89,7 +89,7 @@ export const UserRoleManager: React.FC<UserRoleManagerProps> = ({
       case "EVSE_ADMIN":
         return <Shield className="h-4 w-4 text-purple-600" />;
       case "EVSE_READER":
-        return <Eye className="h-4 w-4 text-blue-600" />;
+        return <Eye className="h-4 w-4 text-primary" />;
       default:
         return <Users className="h-4 w-4 text-gray-600" />;
     }
@@ -111,7 +111,7 @@ export const UserRoleManager: React.FC<UserRoleManagerProps> = ({
       case "EVSE_ADMIN":
         return "bg-purple-100 text-purple-800";
       case "EVSE_READER":
-        return "bg-blue-100 text-blue-800";
+        return "bg-primary-soft text-primary-strong";
       default:
         return "bg-gray-100 text-gray-800";
     }
@@ -136,7 +136,7 @@ export const UserRoleManager: React.FC<UserRoleManagerProps> = ({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <Users className="h-6 w-6 text-blue-600" />
+          <Users className="h-6 w-6 text-primary" />
           <div>
             <h3 className="text-lg font-semibold text-gray-900">
               User Management
@@ -153,7 +153,7 @@ export const UserRoleManager: React.FC<UserRoleManagerProps> = ({
         >
           <button
             onClick={() => setShowAddForm(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+            className="btn-primary px-4 py-2 flex items-center space-x-2"
           >
             <UserPlus className="h-4 w-4" />
             <span>Add User</span>
@@ -191,7 +191,7 @@ export const UserRoleManager: React.FC<UserRoleManagerProps> = ({
 
           {isLoading ? (
             <div className="flex justify-center items-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               <span className="ml-2 text-gray-600">Loading users...</span>
             </div>
           ) : users.length === 0 ? (
@@ -205,7 +205,7 @@ export const UserRoleManager: React.FC<UserRoleManagerProps> = ({
               </p>
               <button
                 onClick={() => setShowAddForm(true)}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+                className="btn-primary px-4 py-2 flex items-center space-x-2"
               >
                 <UserPlus className="h-4 w-4" />
                 <span>Add First User</span>
@@ -241,7 +241,7 @@ export const UserRoleManager: React.FC<UserRoleManagerProps> = ({
                     <div className="flex space-x-2">
                       <button
                         onClick={() => setEditingUser(user)}
-                        className="text-gray-400 hover:text-blue-600 p-1"
+                        className="text-gray-400 hover:text-primary p-1"
                         title="Edit role"
                       >
                         <Edit2 className="h-4 w-4" />
@@ -284,7 +284,7 @@ export const UserRoleManager: React.FC<UserRoleManagerProps> = ({
                         role: e.target.value as PermissionRole,
                       })
                     }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
                   >
                     <option value="EVSE_READER">
                       Reader - Can view and test
@@ -304,7 +304,7 @@ export const UserRoleManager: React.FC<UserRoleManagerProps> = ({
                     onClick={() =>
                       handleRoleUpdate(editingUser.id, editingUser.role)
                     }
-                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700"
+                    className="btn-primary px-4 py-2 text-sm"
                   >
                     Update Role
                   </button>

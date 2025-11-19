@@ -14,7 +14,10 @@ class EvidenceSeekerBase(BaseModel):
 
     title: str = Field(..., min_length=1, max_length=100)
     description: str | None = Field(None, max_length=500)
-    is_public: bool = Field(default=False)
+    is_public: bool = Field(default=False, alias="isPublic")
+
+    class Config:
+        populate_by_name = True
 
 
 class InitialConfiguration(BaseModel):
@@ -44,7 +47,10 @@ class EvidenceSeekerUpdate(BaseModel):
 
     title: str | None = Field(None, min_length=1, max_length=100)
     description: str | None = Field(None, max_length=500)
-    is_public: bool | None = None
+    is_public: bool | None = Field(None, alias="isPublic")
+
+    class Config:
+        populate_by_name = True
 
 
 class EvidenceSeekerRead(EvidenceSeekerBase):

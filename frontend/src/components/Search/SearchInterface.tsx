@@ -31,8 +31,11 @@ export const SearchInterface: React.FC<SearchInterfaceProps> = ({
   const [results, setResults] = useState<EvidenceSearchHit[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
 
-  const { search, loading: searchLoading, error: searchError } =
-    useEvidenceSearch(evidenceSeekerUuid);
+  const {
+    search,
+    loading: searchLoading,
+    error: searchError,
+  } = useEvidenceSearch(evidenceSeekerUuid);
   const { stats } = useSystemStatistics();
   const {
     status: configurationStatus,
@@ -110,7 +113,9 @@ export const SearchInterface: React.FC<SearchInterfaceProps> = ({
         <ConfigurationBlockedNotice
           status={configurationStatus}
           onConfigure={() =>
-            navigate(`/app/evidence-seekers/${evidenceSeekerUuid}/manage/config`)
+            navigate(
+              `/app/evidence-seekers/${evidenceSeekerUuid}/manage/config`
+            )
           }
           description="Connect your inference credentials before running semantic search."
         />
@@ -121,7 +126,7 @@ export const SearchInterface: React.FC<SearchInterfaceProps> = ({
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">
       <header className="text-center space-y-2">
-        <h1 className="text-3xl font-bold text-gray-900">
+        <h1 className="brand-title text-3xl text-gray-900">
           Evidence Search Console
         </h1>
         <p className="text-gray-600">
@@ -132,7 +137,11 @@ export const SearchInterface: React.FC<SearchInterfaceProps> = ({
       {stats && (
         <section className="bg-white rounded-lg shadow-sm border p-4">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <StatCard label="Documents" value={stats.totalDocuments} tone="blue" />
+            <StatCard
+              label="Documents"
+              value={stats.totalDocuments}
+              tone="blue"
+            />
             <StatCard
               label="Indexed Documents"
               value={stats.indexedDocuments}
@@ -143,7 +152,11 @@ export const SearchInterface: React.FC<SearchInterfaceProps> = ({
               value={stats.factCheckRuns}
               tone="purple"
             />
-            <StatCard label="API Keys" value={stats.totalApiKeys} tone="orange" />
+            <StatCard
+              label="API Keys"
+              value={stats.totalApiKeys}
+              tone="orange"
+            />
           </div>
         </section>
       )}
@@ -181,7 +194,7 @@ export const SearchInterface: React.FC<SearchInterfaceProps> = ({
           <button
             onClick={handleSearch}
             disabled={searchLoading || !query.trim()}
-            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+            className="btn-primary px-6 py-2 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {searchLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -247,7 +260,7 @@ export const SearchInterface: React.FC<SearchInterfaceProps> = ({
 
       <section className="bg-white rounded-lg shadow-sm border">
         <header className="p-4 border-b border-gray-200 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900">
+          <h2 className="brand-title text-lg text-gray-900">
             Results ({results.length})
           </h2>
           {results.length > 0 && (

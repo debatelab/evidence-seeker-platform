@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate } from "react-router";
 import { KeyRound, CheckCircle2 } from "lucide-react";
 import {
@@ -12,6 +12,7 @@ import PageLayout from "../PageLayout";
 import { useConfigurationStatus } from "../../hooks/useConfigurationStatus";
 import WizardDocumentStep from "./Wizard/WizardDocumentStep";
 import apiClient, { evidenceSeekerAPI } from "../../utils/api";
+import { useAuth } from "../../hooks/useAuth";
 
 interface EvidenceSeekerFormProps {
   onSuccess?: () => void;
@@ -27,17 +28,37 @@ const steps = [
 
 const WIZARD_API_KEY_NAME = "Onboarding key";
 
+interface WizardDraftStorage {
+  step: number;
+  details: {
+    title: string;
+    description: string;
+    isPublic: boolean;
+  };
+  credentialsBillTo?: string;
+  wizardSeeker: EvidenceSeeker | null;
+  onboardingToken: string | null;
+  skipAcknowledged: boolean;
+  documentRequirementMet: boolean;
+  appliedBillTo?: string;
+}
+
 const EvidenceSeekerForm: React.FC<EvidenceSeekerFormProps> = ({
   onSuccess,
   onCancel,
 }) => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const {
     createEvidenceSeeker,
     updateEvidenceSeeker,
     finishOnboarding: completeOnboarding,
     skipDocuments: acknowledgeSkip,
   } = useEvidenceSeekers();
+  const draftKey = useMemo(
+    () => (user ? `wizard-draft:${user.id}` : null),
+    [user?.id]
+  );
 
   const [step, setStep] = useState(0);
   const [provisioning, setProvisioning] = useState(false);
@@ -56,7 +77,9 @@ const EvidenceSeekerForm: React.FC<EvidenceSeekerFormProps> = ({
     billTo: "",
   });
   const [detailErrors, setDetailErrors] = useState<Record<string, string>>({});
-  const [credentialErrors, setCredentialErrors] = useState<Record<string, string>>({});
+  const [credentialErrors, setCredentialErrors] = useState<
+    Record<string, string>
+  >({});
   const [wizardSeeker, setWizardSeeker] = useState<EvidenceSeeker | null>(null);
   const [onboardingToken, setOnboardingToken] = useState<string | null>(null);
   const [documentRequirementMet, setDocumentRequirementMet] = useState(false);
@@ -66,6 +89,88 @@ const EvidenceSeekerForm: React.FC<EvidenceSeekerFormProps> = ({
     billTo: "",
   }));
   const { status: wizardStatus } = useConfigurationStatus(wizardSeeker?.uuid);
+  const clearDraft = useCallback(() => {
+    if (!draftKey || typeof window === "undefined") {
+      return;
+    }
+    window.sessionStorage.removeItem(draftKey);
+  }, [draftKey]);
+
+  useEffect(() => {
+    if (!draftKey || typeof window === "undefined") {
+      return;
+    }
+    const stored = window.sessionStorage.getItem(draftKey);
+    if (!stored) {
+      return;
+    }
+    try {
+      const parsed = JSON.parse(stored) as WizardDraftStorage;
+      if (typeof parsed.step === "number") {
+        setStep(Math.min(Math.max(parsed.step, 0), steps.length - 1));
+      }
+      if (parsed.details) {
+        setDetails(parsed.details);
+      }
+      if (typeof parsed.credentialsBillTo === "string") {
+        setCredentials((prev) => ({
+          ...prev,
+          billTo: parsed.credentialsBillTo,
+        }));
+      }
+      if (parsed.wizardSeeker) {
+        setWizardSeeker(parsed.wizardSeeker);
+      }
+      if (parsed.onboardingToken !== undefined) {
+        setOnboardingToken(parsed.onboardingToken);
+      }
+      if (typeof parsed.skipAcknowledged === "boolean") {
+        setSkipAcknowledged(parsed.skipAcknowledged);
+      }
+      if (typeof parsed.documentRequirementMet === "boolean") {
+        setDocumentRequirementMet(parsed.documentRequirementMet);
+      }
+      if (typeof parsed.appliedBillTo === "string") {
+        setAppliedCredentials({
+          apiKeyValue: "",
+          billTo: parsed.appliedBillTo,
+        });
+      }
+    } catch (err) {
+      console.warn("Failed to restore wizard draft", err);
+    }
+  }, [draftKey]);
+
+  useEffect(() => {
+    if (!draftKey || typeof window === "undefined") {
+      return;
+    }
+    const payload: WizardDraftStorage = {
+      step,
+      details,
+      credentialsBillTo: credentials.billTo,
+      wizardSeeker: wizardSeeker ?? null,
+      onboardingToken: onboardingToken ?? null,
+      skipAcknowledged,
+      documentRequirementMet,
+      appliedBillTo: appliedCredentials.billTo,
+    };
+    try {
+      window.sessionStorage.setItem(draftKey, JSON.stringify(payload));
+    } catch (err) {
+      console.warn("Failed to persist wizard draft", err);
+    }
+  }, [
+    draftKey,
+    step,
+    details,
+    credentials.billTo,
+    wizardSeeker,
+    onboardingToken,
+    skipAcknowledged,
+    documentRequirementMet,
+    appliedCredentials.billTo,
+  ]);
 
   useEffect(() => {
     if (wizardStatus?.documentSkipAcknowledged !== undefined) {
@@ -138,8 +243,8 @@ const EvidenceSeekerForm: React.FC<EvidenceSeekerFormProps> = ({
         value: skipAcknowledged
           ? "Will add later"
           : documentRequirementMet
-          ? "At least one uploaded"
-          : "Pending upload",
+            ? "At least one uploaded"
+            : "Pending upload",
       },
     ],
     [details, credentials, skipAcknowledged, documentRequirementMet]
@@ -155,10 +260,7 @@ const EvidenceSeekerForm: React.FC<EvidenceSeekerFormProps> = ({
     if (details.title.trim() && details.title.trim() !== seekerRecord.title) {
       updates.title = details.title.trim();
     }
-    if (
-      (details.description || "") !==
-      (seekerRecord.description ?? "")
-    ) {
+    if ((details.description || "") !== (seekerRecord.description ?? "")) {
       updates.description = details.description.trim();
     }
     if (details.isPublic !== seekerRecord.isPublic) {
@@ -172,7 +274,8 @@ const EvidenceSeekerForm: React.FC<EvidenceSeekerFormProps> = ({
   };
 
   const rotateCredentialsIfNeeded = async (seekerRecord: EvidenceSeeker) => {
-    const valueChanged = appliedCredentials.apiKeyValue !== credentials.apiKeyValue;
+    const valueChanged =
+      appliedCredentials.apiKeyValue !== credentials.apiKeyValue;
     const billToChanged = appliedCredentials.billTo !== credentials.billTo;
 
     if (!valueChanged && !billToChanged) {
@@ -218,10 +321,10 @@ const EvidenceSeekerForm: React.FC<EvidenceSeekerFormProps> = ({
           description: details.description.trim(),
           isPublic: details.isPublic,
           initialConfiguration: {
-        apiKeyName: WIZARD_API_KEY_NAME,
-        apiKeyValue: credentials.apiKeyValue.trim(),
-        billTo: credentials.billTo.trim() || undefined,
-        setupMode: "SIMPLE",
+            apiKeyName: WIZARD_API_KEY_NAME,
+            apiKeyValue: credentials.apiKeyValue.trim(),
+            billTo: credentials.billTo.trim() || undefined,
+            setupMode: "SIMPLE",
           },
         };
         const created = await createEvidenceSeeker(payload);
@@ -290,15 +393,19 @@ const EvidenceSeekerForm: React.FC<EvidenceSeekerFormProps> = ({
     setFinishLoading(true);
     try {
       await completeOnboarding(wizardSeeker.uuid);
+      clearDraft();
       if (skipAcknowledged) {
         navigate(`/app/evidence-seekers/${wizardSeeker.uuid}/manage/documents`);
         onSuccess?.();
         return;
       }
       await waitForReady();
-      navigate(`/app/evidence-seekers/${wizardSeeker.uuid}/manage/fact-checks`, {
-        state: { showOnboardingHint: true },
-      });
+      navigate(
+        `/app/evidence-seekers/${wizardSeeker.uuid}/manage/fact-checks`,
+        {
+          state: { showOnboardingHint: true },
+        }
+      );
       onSuccess?.();
     } catch (err: any) {
       setFinishError(err?.message ?? "Failed to finish onboarding.");
@@ -311,7 +418,7 @@ const EvidenceSeekerForm: React.FC<EvidenceSeekerFormProps> = ({
     <PageLayout variant="narrow">
       <div className="bg-white shadow-sm rounded-lg border border-gray-200">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">
+          <h2 className="brand-title text-xl text-gray-900">
             Guided Evidence Seeker setup
           </h2>
           <p className="text-sm text-gray-600">
@@ -326,17 +433,19 @@ const EvidenceSeekerForm: React.FC<EvidenceSeekerFormProps> = ({
                 <div
                   className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-medium ${
                     index === step
-                      ? "bg-blue-600 text-white"
+                      ? "bg-primary text-white"
                       : index < step
-                      ? "bg-blue-100 text-blue-700"
-                      : "bg-gray-100 text-gray-500"
+                        ? "bg-primary-soft text-primary-strong"
+                        : "bg-gray-100 text-gray-500"
                   }`}
                 >
                   {index + 1}
                 </div>
                 <span
                   className={`text-sm ${
-                    index === step ? "text-gray-900 font-medium" : "text-gray-500"
+                    index === step
+                      ? "text-gray-900 font-medium"
+                      : "text-gray-500"
                   }`}
                 >
                   {item.label}
@@ -375,13 +484,15 @@ const EvidenceSeekerForm: React.FC<EvidenceSeekerFormProps> = ({
                       title: event.target.value,
                     }))
                   }
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${
                     detailErrors.title ? "border-red-300" : "border-gray-300"
                   }`}
                   placeholder="e.g. Climate Policy Evidence Seeker"
                 />
                 {detailErrors.title && (
-                  <p className="text-sm text-red-600 mt-1">{detailErrors.title}</p>
+                  <p className="text-sm text-red-600 mt-1">
+                    {detailErrors.title}
+                  </p>
                 )}
                 <p className="text-xs text-gray-500 mt-1">
                   {details.title.length}/100 characters
@@ -405,7 +516,7 @@ const EvidenceSeekerForm: React.FC<EvidenceSeekerFormProps> = ({
                     }))
                   }
                   rows={4}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${
                     detailErrors.description
                       ? "border-red-300"
                       : "border-gray-300"
@@ -433,14 +544,18 @@ const EvidenceSeekerForm: React.FC<EvidenceSeekerFormProps> = ({
                       isPublic: event.target.checked,
                     }))
                   }
-                  className="mt-1 h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  className="mt-1 h-4 w-4 text-primary border-gray-300 rounded focus:ring-primary"
                 />
                 <div>
-                  <label htmlFor="isPublic" className="text-sm font-medium text-gray-900">
+                  <label
+                    htmlFor="isPublic"
+                    className="text-sm font-medium text-gray-900"
+                  >
                     Make this Evidence Seeker public
                   </label>
                   <p className="text-sm text-gray-600">
-                    Public seekers can be browsed and tested by anyone with the link.
+                    Public seekers can be browsed and tested by anyone with the
+                    link.
                   </p>
                 </div>
               </div>
@@ -449,13 +564,15 @@ const EvidenceSeekerForm: React.FC<EvidenceSeekerFormProps> = ({
 
           {step === 1 && (
             <section className="space-y-5">
-              <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-900 flex items-start gap-3">
+              <div className="rounded-lg border border-primary-border bg-primary-soft p-4 text-sm text-primary-strong flex items-start gap-3">
                 <KeyRound className="h-5 w-5 mt-1" />
                 <div>
-                  <p className="font-medium">Connect Hugging Face credentials</p>
+                  <p className="font-medium">
+                    Connect Hugging Face credentials
+                  </p>
                   <p>
-                    We store this key encrypted and use it to run embeddings and inference.
-                    You can rotate or remove it at any time.
+                    We store this key encrypted and use it to run embeddings and
+                    inference. You can rotate or remove it at any time.
                   </p>
                 </div>
               </div>
@@ -473,7 +590,7 @@ const EvidenceSeekerForm: React.FC<EvidenceSeekerFormProps> = ({
                       apiKeyValue: event.target.value,
                     }))
                   }
-                  className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 ${
+                  className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-primary ${
                     credentialErrors.apiKeyValue
                       ? "border-red-300"
                       : "border-gray-300"
@@ -503,7 +620,7 @@ const EvidenceSeekerForm: React.FC<EvidenceSeekerFormProps> = ({
                       billTo: event.target.value,
                     }))
                   }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary"
                   placeholder="hf_organisation"
                 />
                 <p className="text-xs text-gray-500 mt-1">
@@ -533,13 +650,14 @@ const EvidenceSeekerForm: React.FC<EvidenceSeekerFormProps> = ({
 
           {step === 3 && (
             <section className="space-y-4">
-              <div className="rounded-xl border border-green-100 bg-green-50 p-4 text-sm text-green-900 flex items-start gap-3">
+              <div className="rounded-lg border border-green-100 bg-green-50 p-4 text-sm text-green-900 flex items-start gap-3">
                 <CheckCircle2 className="h-5 w-5 mt-1" />
                 <div>
                   <p className="font-medium">Review & confirm</p>
                   <p>
-                    We will create the Evidence Seeker and store your API key securely. You can
-                    fine-tune settings later from the configuration tab.
+                    We will create the Evidence Seeker and store your API key
+                    securely. You can fine-tune settings later from the
+                    configuration tab.
                   </p>
                 </div>
               </div>
@@ -563,8 +681,8 @@ const EvidenceSeekerForm: React.FC<EvidenceSeekerFormProps> = ({
                       {skipAcknowledged
                         ? "Skipping for now"
                         : documentRequirementMet
-                        ? "At least one uploaded"
-                        : "Waiting for uploads"}
+                          ? "At least one uploaded"
+                          : "Waiting for uploads"}
                     </p>
                   </div>
                 </div>
@@ -578,7 +696,9 @@ const EvidenceSeekerForm: React.FC<EvidenceSeekerFormProps> = ({
                     <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">
                       {item.label}
                     </dt>
-                    <dd className="text-sm text-gray-900 mt-1">{item.value || "—"}</dd>
+                    <dd className="text-sm text-gray-900 mt-1">
+                      {item.value || "—"}
+                    </dd>
                   </div>
                 ))}
               </dl>
@@ -617,7 +737,7 @@ const EvidenceSeekerForm: React.FC<EvidenceSeekerFormProps> = ({
                     (step === 1 && provisioning) ||
                     (step === 2 && !documentRequirementMet && !skipAcknowledged)
                   }
-                  className="px-4 py-2 rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60"
+                  className="btn-primary px-4 py-2 text-sm disabled:opacity-60"
                 >
                   {step === 2 ? "Review setup" : "Continue"}
                 </button>
@@ -629,13 +749,13 @@ const EvidenceSeekerForm: React.FC<EvidenceSeekerFormProps> = ({
                     void handleFinish();
                   }}
                   disabled={finishLoading || statusPolling}
-                  className="px-4 py-2 rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+                  className="btn-primary px-4 py-2 text-sm disabled:opacity-50"
                 >
                   {finishLoading || statusPolling
                     ? "Finalizing…"
                     : skipAcknowledged
-                    ? "Finish with missing documents"
-                    : "Finish setup"}
+                      ? "Finish with missing documents"
+                      : "Finish setup"}
                 </button>
               )}
             </div>

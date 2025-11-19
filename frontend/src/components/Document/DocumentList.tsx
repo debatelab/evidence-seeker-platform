@@ -86,21 +86,20 @@ const DocumentList: React.FC<DocumentListProps> = ({
   };
 
   const statusClassName = useMemo(
-    () =>
-      (status: IndexJob["status"]) => {
-        switch (status) {
-          case "SUCCEEDED":
-            return "bg-green-100 text-green-800";
-          case "RUNNING":
-            return "bg-blue-100 text-blue-800";
-          case "FAILED":
-            return "bg-red-100 text-red-800";
-          case "CANCELLED":
-            return "bg-gray-100 text-gray-600";
-          default:
-            return "bg-yellow-100 text-yellow-800";
-        }
-      },
+    () => (status: IndexJob["status"]) => {
+      switch (status) {
+        case "SUCCEEDED":
+          return "bg-green-100 text-green-800";
+        case "RUNNING":
+          return "bg-primary-soft text-primary-strong";
+        case "FAILED":
+          return "bg-red-100 text-red-800";
+        case "CANCELLED":
+          return "bg-gray-100 text-gray-600";
+        default:
+          return "bg-yellow-100 text-yellow-800";
+      }
+    },
     []
   );
 
@@ -153,7 +152,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
           <div className="flex justify-center items-center p-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           </div>
         </div>
       </main>
@@ -166,7 +165,9 @@ const DocumentList: React.FC<DocumentListProps> = ({
         <ConfigurationBlockedNotice
           status={configurationStatus}
           onConfigure={() =>
-            navigate(`/app/evidence-seekers/${evidenceSeekerUuid}/manage/config`)
+            navigate(
+              `/app/evidence-seekers/${evidenceSeekerUuid}/manage/config`
+            )
           }
           description="Complete configuration before managing documents."
         />
@@ -217,13 +218,13 @@ const DocumentList: React.FC<DocumentListProps> = ({
               <button
                 onClick={handleReindex}
                 disabled={reindexing}
-                className="bg-white border border-blue-600 text-blue-600 px-4 py-2 rounded-md hover:bg-blue-50 disabled:opacity-60 text-sm"
+                className="btn-primary-outline text-sm disabled:opacity-60"
               >
                 {reindexing ? "Queuing…" : "Rebuild Index"}
               </button>
               <Link
                 to={`/app/evidence-seekers/${evidenceSeekerUuid}/documents/upload`}
-                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-sm text-center"
+                className="btn-primary text-sm"
               >
                 Upload Document
               </Link>
@@ -231,7 +232,8 @@ const DocumentList: React.FC<DocumentListProps> = ({
           </header>
           {statusState === "MISSING_DOCUMENTS" && (
             <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-              Upload at least one document to unlock Fact Check and Search workflows.
+              Upload at least one document to unlock Fact Check and Search
+              workflows.
             </div>
           )}
 
@@ -246,7 +248,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
               </p>
               <Link
                 to={`/app/evidence-seekers/${evidenceSeekerUuid}/documents/upload`}
-                className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700"
+                className="btn-primary px-6 py-2"
               >
                 Upload Document
               </Link>
@@ -328,9 +330,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
                   <span className="text-xs text-gray-500">Refreshing…</span>
                 )}
               </div>
-              {jobsError && (
-                <p className="text-xs text-red-600">{jobsError}</p>
-              )}
+              {jobsError && <p className="text-xs text-red-600">{jobsError}</p>}
               {jobs.length === 0 ? (
                 <p className="text-sm text-gray-500">
                   No indexing jobs found yet. Upload a document or trigger a

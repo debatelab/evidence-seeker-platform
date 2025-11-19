@@ -264,7 +264,21 @@ The repository now ships with `nginx/prod.conf`, configured for `b7233fdd-ac70-4
 
 The configuration expects your certificates to be available inside the project folder at `./ssl/fullchain.pem` and `./ssl/privkey.pem` (see the SSL section below for how to create symlinks). It also mounts `./backend/uploads` into the Nginx container to make uploaded files downloadable.
 
+To blunt basic DoS traffic, the default config now declares `limit_req_zone`/`limit_conn_zone` blocks (`api_rate_limit` and `api_conn_limit`) and applies them to `/api/`. Tune the rates/bursts in `nginx/prod.conf` if your deployment needs a different ceiling, then reload the stack so the container picks up the changes.
+
 If you make any edits, remember to reload the stack with `docker compose -f docker-compose.prod.yml up -d --remove-orphans` so the new configuration is picked up.
+
+### 3.3 Backend throttle settings
+
+Anonymous public fact checks are also rate limited inside the FastAPI app. Override these defaults via environment variables in `.env.prod` if needed:
+
+```bash
+PUBLIC_RUN_RATE_LIMIT_REQUESTS=3          # allowed hits per window per IP
+PUBLIC_RUN_RATE_LIMIT_WINDOW_SECONDS=60  # window size in seconds
+PUBLIC_RUN_QUEUE_LIMIT_PER_SEEKER=10     # max pending/running public runs per seeker
+```
+
+All three values take effect without code changes on the next deploy/restart.
 
 ## Step 4: Email Service Configuration
 

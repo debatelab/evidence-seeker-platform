@@ -92,7 +92,7 @@ const ResetPassword: React.FC = () => {
         <div className="max-w-md w-full space-y-8">
           <div className="text-center">
             <CheckCircle className="mx-auto h-16 w-16 text-green-500" />
-            <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
+            <h2 className="brand-title mt-6 text-3xl text-gray-900">
               Password Reset Successful!
             </h2>
             <p className="mt-2 text-sm text-gray-600">{message}</p>
@@ -109,10 +109,10 @@ const ResetPassword: React.FC = () => {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
-          <div className="mx-auto h-16 w-16 bg-blue-100 rounded-full flex items-center justify-center">
-            <Lock className="h-8 w-8 text-blue-600" />
+          <div className="mx-auto h-16 w-16 rounded-full flex items-center justify-center bg-primary-soft">
+            <Lock className="h-8 w-8 text-primary" />
           </div>
-          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
+          <h2 className="brand-title mt-6 text-3xl text-gray-900">
             Reset Your Password
           </h2>
           <p className="mt-2 text-sm text-gray-600">
@@ -133,7 +133,7 @@ const ResetPassword: React.FC = () => {
               id="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
               placeholder="Enter new password"
               required
               disabled={isSubmitting}
@@ -152,7 +152,7 @@ const ResetPassword: React.FC = () => {
               id="confirmPassword"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
               placeholder="Confirm new password"
               required
               disabled={isSubmitting}
@@ -179,7 +179,7 @@ const ResetPassword: React.FC = () => {
             disabled={
               isSubmitting || !password.trim() || !confirmPassword.trim()
             }
-            className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="btn-primary w-full"
           >
             {isSubmitting ? "Resetting Password..." : "Reset Password"}
           </button>
@@ -188,7 +188,7 @@ const ResetPassword: React.FC = () => {
         <div className="text-center">
           <button
             onClick={() => navigate("/login")}
-            className="text-sm text-blue-600 hover:text-blue-500"
+            className="text-sm text-primary hover:text-primary-hover"
           >
             Back to Login
           </button>

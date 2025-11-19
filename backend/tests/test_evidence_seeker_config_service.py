@@ -147,6 +147,41 @@ def test_build_retrieval_bundle_hf_inference_sets_env_var(
     os.environ.pop(env_name, None)
 
 
+def test_build_retrieval_bundle_sets_env_var_for_preprocessing_models(
+    service: EvidenceSeekerConfigService,
+    seeker: SimpleNamespace,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Preprocessing/confirmation configs expect the key env var regardless of backend."""
+    settings_row = _build_settings(seeker)
+    settings_row.id = 5
+    settings_row.embed_backend_type = "huggingface"  # uses default embedding backend
+    db = MagicMock()
+    monkeypatch.setattr(service, "ensure_settings", lambda *_: settings_row)
+    monkeypatch.setattr(
+        service,
+        "_resolve_huggingface_key",
+        lambda *_: "hf-internal-" + str(settings_row.id),
+    )
+
+    class DummyRetrievalConfig:
+        def __init__(self, **kwargs: object) -> None:
+            self.kwargs = kwargs
+
+    monkeypatch.setattr(
+        "app.core.evidence_seeker_config_service._RuntimeRetrievalConfig",
+        DummyRetrievalConfig,
+    )
+
+    env_name = f"EVSE_HF_API_KEY_{settings_row.id}"
+    os.environ.pop(env_name, None)
+
+    service.build_retrieval_bundle(db=db, seeker=seeker)
+
+    assert os.environ[env_name] == f"hf-internal-{settings_row.id}"
+    os.environ.pop(env_name, None)
+
+
 def test_build_retrieval_bundle_hf_inference_requires_key(
     service: EvidenceSeekerConfigService,
     seeker: SimpleNamespace,

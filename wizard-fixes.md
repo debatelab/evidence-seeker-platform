@@ -57,10 +57,5 @@ While testing the three-step setup wizard we discovered that the UI frequently r
   - Index-job polling pauses when queue is empty and resumes when new files are added.
 - Add Cypress (or Playwright) end-to-end scenario: start wizard, wait 70 minutes (or simulate token expiry by clearing cookies), validate that the wizard prompts for login but keeps form fields intact.
 
-## Rollout Plan
 
-1. Implement client changes (Sections 1–4) behind a feature flag `WIZARD_STATE_GUARDS` for quick rollback.
-2. Deploy backend adjustments (Section 5) with feature flag alignment (`ENABLE_TOKEN_REFRESH` etc.).
-3. Release to staging; run regression tests; simulate session expiry to verify modals and persistence.
-4. Monitor production logs for `sessionExpired` events and wizard completion rates to ensure improvement.
 
