@@ -25,6 +25,7 @@ class EvidenceSeeker(Base):
     """Evidence Seeker SQLAlchemy model"""
 
     __tablename__ = "evidence_seekers"
+    __allow_unmapped__ = True
     _onboarding_token: str | None
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)

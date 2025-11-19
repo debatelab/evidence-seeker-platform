@@ -22,13 +22,13 @@ beforeEach(() => {
       this.method = init.method ?? "GET";
       this.headers = init.headers;
       this.body = init.body;
-      this.signal = init.signal;
+      this.signal = init.signal ?? undefined;
       this.url =
         typeof input === "string"
           ? input
           : input instanceof URL
             ? input.toString()
-            : input.url ?? "";
+            : (input.url ?? "");
     }
 
     clone(): MockRequest {

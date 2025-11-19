@@ -72,7 +72,10 @@ const EvidenceSeekerForm: React.FC<EvidenceSeekerFormProps> = ({
     description: "",
     isPublic: false,
   });
-  const [credentials, setCredentials] = useState({
+  const [credentials, setCredentials] = useState<{
+    apiKeyValue: string;
+    billTo: string | undefined;
+  }>({
     apiKeyValue: "",
     billTo: "",
   });
@@ -84,7 +87,10 @@ const EvidenceSeekerForm: React.FC<EvidenceSeekerFormProps> = ({
   const [onboardingToken, setOnboardingToken] = useState<string | null>(null);
   const [documentRequirementMet, setDocumentRequirementMet] = useState(false);
   const [skipAcknowledged, setSkipAcknowledged] = useState(false);
-  const [appliedCredentials, setAppliedCredentials] = useState(() => ({
+  const [appliedCredentials, setAppliedCredentials] = useState<{
+    apiKeyValue: string;
+    billTo: string | undefined;
+  }>(() => ({
     apiKeyValue: "",
     billTo: "",
   }));
@@ -298,11 +304,11 @@ const EvidenceSeekerForm: React.FC<EvidenceSeekerFormProps> = ({
       }
       await evidenceSeekerAPI.updateSettings(seekerRecord.uuid, {
         huggingfaceApiKeyId: keyId,
-        embedBillTo: credentials.billTo.trim() || undefined,
+        embedBillTo: credentials.billTo?.trim() || undefined,
       });
     } else if (billToChanged) {
       await evidenceSeekerAPI.updateSettings(seekerRecord.uuid, {
-        embedBillTo: credentials.billTo.trim() || undefined,
+        embedBillTo: credentials.billTo?.trim() || undefined,
       });
     }
     setAppliedCredentials(snapshotCredentials());
@@ -323,7 +329,7 @@ const EvidenceSeekerForm: React.FC<EvidenceSeekerFormProps> = ({
           initialConfiguration: {
             apiKeyName: WIZARD_API_KEY_NAME,
             apiKeyValue: credentials.apiKeyValue.trim(),
-            billTo: credentials.billTo.trim() || undefined,
+            billTo: credentials.billTo?.trim() || undefined,
             setupMode: "SIMPLE",
           },
         };
