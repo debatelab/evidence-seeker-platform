@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from typing import cast
 from uuid import uuid4
 
 from jose import JWTError, jwt
@@ -28,9 +29,9 @@ class OnboardingTokenService:
         owner_user_id: int,
     ) -> str:
         """Generate a signed token and persist its metadata on the settings row."""
-        settings_row = seeker.settings or EvidenceSeekerSettings(
-            evidence_seeker_id=seeker.id,
-        )
+        settings_row = seeker.settings or EvidenceSeekerSettings()
+        if settings_row.evidence_seeker_id is None:
+            settings_row.evidence_seeker_id = int(seeker.id)
         if seeker.settings is None:
             db.add(settings_row)
             db.commit()
@@ -44,7 +45,7 @@ class OnboardingTokenService:
             "jti": jti,
             "exp": expires_at,
         }
-        token = jwt.encode(payload, self._secret, algorithm=self._algorithm)
+        token = cast(str, jwt.encode(payload, self._secret, algorithm=self._algorithm))
 
         settings_row.onboarding_token_jti = jti
         settings_row.onboarding_token_owner_id = owner_user_id

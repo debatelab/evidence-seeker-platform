@@ -6,13 +6,19 @@ from app.core.config import settings
 from app.core.evidence_seeker_config_service import evidence_seeker_config_service
 from app.core.evidence_seeker_pipeline import EvidenceSeekerPipelineManager
 from app.core.rate_limiter import reset_public_run_rate_limiter
-from app.models.evidence_seeker import EvidenceSeeker
-from app.models.fact_check import FactCheckRun, FactCheckRunStatus
+from app.models.evidence_seeker import EvidenceSeeker, build_evidence_seeker
+from app.models.fact_check import (
+    FactCheckRun,
+    FactCheckRunStatus,
+    build_fact_check_run,
+)
 from app.models.user import User
 
 
 def _make_public_seeker(db: Session, owner: User) -> EvidenceSeeker:
-    seeker = EvidenceSeeker(title="Public Seeker", created_by=owner.id, is_public=True)
+    seeker = build_evidence_seeker(
+        title="Public Seeker", created_by=owner.id, is_public=True
+    )
     db.add(seeker)
     db.commit()
     db.refresh(seeker)
@@ -30,7 +36,7 @@ def _stub_pipeline(monkeypatch: pytest.MonkeyPatch) -> None:
         *,
         public_run: bool = False,
     ) -> FactCheckRun:
-        run = FactCheckRun(
+        run = build_fact_check_run(
             evidence_seeker_id=seeker.id,
             statement=statement,
             status=FactCheckRunStatus.PENDING,
@@ -110,7 +116,7 @@ def test_public_fact_check_queue_limit_blocks_when_pending_runs_exist(
 
     seeker = _make_public_seeker(db, test_user)
 
-    existing_run = FactCheckRun(
+    existing_run = build_fact_check_run(
         evidence_seeker_id=seeker.id,
         statement="Already running",
         status=FactCheckRunStatus.PENDING,

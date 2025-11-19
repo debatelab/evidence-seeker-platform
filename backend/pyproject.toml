@@ -116,6 +116,7 @@ check_untyped_defs = true
 warn_redundant_casts = true
 warn_unused_ignores = true
 show_error_codes = true
+plugins = ["sqlalchemy.ext.mypy.plugin"]
 # Avoid namespace package mode; treat 'app' as a regular package with __init__.py
 # (CI had trouble resolving modules when namespace_packages was enabled.)
 # namespace_packages = true
@@ -127,6 +128,8 @@ show_error_codes = true
 module = [
     "fastapi_users.*",
     "loguru",
+    "evidence_seeker.*",
+    "jose.*",
 ]
 ignore_missing_imports = true
 

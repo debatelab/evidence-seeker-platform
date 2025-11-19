@@ -1,8 +1,8 @@
 import asyncio
 import logging
 import os
-from collections.abc import Awaitable, Sequence
-from typing import cast
+from collections.abc import Coroutine, Sequence
+from typing import Any
 from uuid import UUID
 
 from fastapi import (
@@ -34,6 +34,7 @@ from ..models.document import Document
 from ..models.evidence_seeker import EvidenceSeeker
 from ..models.index_job import IndexJob
 from ..models.permission import UserRole
+from ..models.user import ensure_user_id
 from ..schemas.document import DocumentIngestionResponse, DocumentRead
 
 router = APIRouter()
@@ -47,7 +48,7 @@ def _config_guard_detail(exc: ConfigurationNotReadyError) -> dict[str, object]:
     return payload
 
 
-def _run_async_task(coro: Awaitable[None]) -> None:
+def _run_async_task(coro: Coroutine[Any, Any, None]) -> None:
     try:
         loop = asyncio.get_running_loop()
     except RuntimeError:
@@ -99,7 +100,7 @@ def _process_index_delete(job_id: int, document_ids: list[int]) -> None:
 
             await evidence_seeker_index_service.run_delete(db, job, seeker, documents)
             for document in documents:
-                delete_file(cast(str, document.file_path))
+                delete_file(document.file_path)
                 db.delete(document)
             db.commit()
         except Exception:  # pragma: no cover - defensive logging
@@ -120,7 +121,7 @@ def upload_document(
     onboarding_token: str | None = Header(default=None, alias="X-Onboarding-Token"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> DocumentRead:
+) -> DocumentIngestionResponse:
     """Upload a new document - requires admin permissions for the evidence seeker"""
     # Validate file
     if not validate_file(file):
@@ -142,9 +143,10 @@ def upload_document(
 
     # Check admin permissions for the evidence seeker
     # Extract scalar seeker_id value
-    seeker_id = cast(int, seeker.id)
+    seeker_id = int(seeker.id)
+    current_user_id = ensure_user_id(current_user)
     if not check_evidence_seeker_permission(
-        int(current_user.id), seeker_id, UserRole.EVSE_ADMIN, db
+        current_user_id, seeker_id, UserRole.EVSE_ADMIN, db
     ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -155,7 +157,7 @@ def upload_document(
         allow_onboarding_upload = onboarding_token_service.verify_token(
             onboarding_token,
             seeker,
-            int(current_user.id),
+            current_user_id,
         )
 
     try:
@@ -202,16 +204,15 @@ def upload_document(
     original_filename = file.filename or "unnamed_file"
 
     # Create document with all required fields
-    db_document = Document(
-        title=title,
-        description=description,
-        file_path=file_path,
-        original_filename=original_filename,
-        file_size=max(file_size, 0),  # Ensure non-negative
-        mime_type=mime_type,
-        evidence_seeker_id=seeker_id,  # Use internal integer ID
-        evidence_seeker_uuid=evidence_seeker_uuid,  # Use provided UUID
-    )
+    db_document = Document()
+    db_document.title = title
+    db_document.description = description
+    db_document.file_path = file_path
+    db_document.original_filename = original_filename
+    db_document.file_size = max(file_size, 0)
+    db_document.mime_type = mime_type
+    db_document.evidence_seeker_id = seeker_id
+    db_document.evidence_seeker_uuid = uuid_obj
     db.add(db_document)
     db.commit()
     db.refresh(db_document)
@@ -226,18 +227,20 @@ def upload_document(
     background_tasks.add_task(
         _process_index_update,
         job.id,
-        [cast(int, db_document.id)],
+        [int(db_document.id)],
     )
 
-    response_payload = {
-        "document": db_document,
-        "jobUuid": job.uuid,
-        "operationId": job.operation_id,
-    }
+    response_payload = DocumentIngestionResponse.model_validate(
+        {
+            "document": db_document,
+            "job_uuid": job.uuid,
+            "operation_id": job.operation_id,
+        }
+    )
     if allow_onboarding_upload:
         progress_tracker.record_event(
             "evse_onboarding_document_uploaded",
-            user_id=int(current_user.id),
+            user_id=current_user_id,
             evidence_seeker_id=seeker_id,
             metadata={"document_uuid": str(db_document.uuid)},
         )
@@ -266,11 +269,12 @@ def get_documents(
         raise HTTPException(status_code=404, detail="Evidence Seeker not found")
 
     # Extract scalar seeker_id value
-    seeker_id = cast(int, seeker.id)
+    seeker_id = int(seeker.id)
+    user_id = ensure_user_id(current_user)
 
     # Check reader permissions
     if not check_evidence_seeker_permission(
-        int(current_user.id), seeker_id, UserRole.EVSE_READER, db
+        user_id, seeker_id, UserRole.EVSE_READER, db
     ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -301,11 +305,11 @@ def require_document_reader(
         raise HTTPException(status_code=404, detail="Document not found")
 
     # Extract scalar evidence_seeker_id value
-    evidence_seeker_id = cast(int, document.evidence_seeker_id)
+    evidence_seeker_id = int(document.evidence_seeker_id)
 
     # Check if user has read access to the evidence seeker
     if not check_evidence_seeker_permission(
-        int(current_user.id), evidence_seeker_id, UserRole.EVSE_READER, db
+        ensure_user_id(current_user), evidence_seeker_id, UserRole.EVSE_READER, db
     ):
         raise HTTPException(
             status_code=403, detail="Not authorized to access this document"
@@ -333,9 +337,9 @@ def download_document(
         raise HTTPException(status_code=404, detail="Document not found")
 
     # Extract scalar values for FileResponse
-    file_path = cast(str, document.file_path)
-    media_type = cast(str, document.mime_type)
-    original_filename = cast(str, document.original_filename)
+    file_path = document.file_path
+    media_type = document.mime_type
+    original_filename = document.original_filename
 
     # Check if file exists
     if not os.path.exists(file_path):
@@ -368,9 +372,9 @@ def require_document_admin(
 
     # Check if user has admin access to the evidence seeker
     # Extract scalar evidence_seeker_id value
-    evidence_seeker_id = cast(int, document.evidence_seeker_id)
+    evidence_seeker_id = int(document.evidence_seeker_id)
     if not check_evidence_seeker_permission(
-        int(current_user.id), evidence_seeker_id, UserRole.EVSE_ADMIN, db
+        ensure_user_id(current_user), evidence_seeker_id, UserRole.EVSE_ADMIN, db
     ):
         raise HTTPException(
             status_code=403, detail="Not authorized to delete this document"
@@ -400,17 +404,18 @@ def delete_document(
     if seeker is None:
         raise HTTPException(status_code=404, detail="Evidence Seeker not found")
 
+    user_id = ensure_user_id(current_user)
     job = evidence_seeker_index_service.queue_delete(
         db=db,
         seeker=seeker,
-        user_id=int(current_user.id),
+        user_id=user_id,
         documents=[document],
     )
 
     background_tasks.add_task(
         _process_index_delete,
         job.id,
-        [cast(int, document.id)],
+        [int(document.id)],
     )
 
     return {

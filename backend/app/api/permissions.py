@@ -1,5 +1,3 @@
-from typing import cast
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import and_
@@ -14,7 +12,7 @@ from app.core.permissions import (
 )
 from app.models.evidence_seeker import EvidenceSeeker
 from app.models.permission import Permission, UserRole
-from app.models.user import User
+from app.models.user import User, ensure_user_id
 from app.schemas.permission import (
     PermissionCreate,
     PermissionRead,
@@ -63,22 +61,21 @@ async def get_my_permissions(
     Get all permissions for the current authenticated user.
     Any authenticated user can view their own permissions.
     """
+    current_user_id = ensure_user_id(current_user)
     try:
-        permissions = get_user_permissions(int(current_user.id), db)
+        permissions = get_user_permissions(current_user_id, db)
         permission_reads = [PermissionRead.model_validate(perm) for perm in permissions]
 
-        return UserPermissions(
-            userId=int(current_user.id), permissions=permission_reads
-        )
+        return UserPermissions(userId=current_user_id, permissions=permission_reads)
     except Exception as e:
         # Log the error for debugging
         import logging
 
         logging.error(
-            f"Error fetching permissions for user {current_user.id}: {str(e)}"
+            f"Error fetching permissions for user {current_user_id}: {str(e)}"
         )
         # Return empty permissions instead of crashing
-        return UserPermissions(userId=int(current_user.id), permissions=[])
+        return UserPermissions(userId=current_user_id, permissions=[])
 
 
 @router.post("/", response_model=PermissionRead)
@@ -92,7 +89,7 @@ async def create_permission(
     Only platform admins can create permissions.
     """
     # Check if user exists
-    user = db.query(User).filter(User.id == permission.user_id).first()
+    user = db.get(User, permission.user_id)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
@@ -127,11 +124,10 @@ async def create_permission(
         )
 
     # Create new permission
-    db_permission = Permission(
-        user_id=permission.user_id,
-        evidence_seeker_id=permission.evidence_seeker_id,
-        role=UserRole(permission.role.value),
-    )
+    db_permission = Permission()
+    db_permission.user_id = permission.user_id
+    db_permission.evidence_seeker_id = permission.evidence_seeker_id
+    db_permission.role = UserRole(permission.role.value)
     db.add(db_permission)
     db.commit()
     db.refresh(db_permission)
@@ -179,7 +175,7 @@ async def update_permission(
     if permission_update.role is not None:
         # SQLAlchemy models declare columns at class level; mypy sees Column[Any].
         # At runtime this is a UserRole enum on instances.
-        permission.role = UserRole(permission_update.role.value)  # type: ignore[assignment]
+        permission.role = UserRole(permission_update.role.value)
 
     db.commit()
     db.refresh(permission)
@@ -220,7 +216,7 @@ async def get_user_permissions_endpoint(
     Only platform admins can view user permissions.
     """
     # Check if user exists
-    user = db.query(User).filter(User.id == user_id).first()
+    user = db.get(User, user_id)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
@@ -301,13 +297,14 @@ async def get_evidence_seeker_users(
     # Build response with user details (usernames only)
     result = []
     for perm in permissions:
-        user = db.query(User).filter(User.id == perm.user_id).first()
+        user = db.get(User, perm.user_id)
         if user:
+            user_id = ensure_user_id(user)
             result.append(
                 EvidenceSeekerUser(
-                    id=int(user.id),
-                    username=cast(str, user.username),
-                    role=cast(UserRole, perm.role),
+                    id=user_id,
+                    username=str(user.username),
+                    role=perm.role,
                 )
             )
 
@@ -353,7 +350,7 @@ async def assign_evidence_seeker_role(
         )
 
     # Verify target user exists
-    target_user = db.query(User).filter(User.id == request.user_id).first()
+    target_user = db.get(User, request.user_id)
     if not target_user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Target user not found"
@@ -374,16 +371,15 @@ async def assign_evidence_seeker_role(
     if existing_permission:
         # Update existing permission
         # Mypy considers the attribute type Column[Any] due to SQLAlchemy; safe at runtime.
-        existing_permission.role = request.role  # type: ignore[assignment]
+        existing_permission.role = request.role
         db.commit()
         return {"message": "Role updated successfully"}
     else:
         # Create new permission
-        new_permission = Permission(
-            user_id=request.user_id,
-            evidence_seeker_id=int(evidence_seeker.id),
-            role=request.role,
-        )
+        new_permission = Permission()
+        new_permission.user_id = request.user_id
+        new_permission.evidence_seeker_id = int(evidence_seeker.id)
+        new_permission.role = request.role
         db.add(new_permission)
         db.commit()
         return {"message": "Role assigned successfully"}
@@ -465,7 +461,7 @@ async def grant_platform_admin(
     Only platform admins can grant platform admin access.
     """
     # Check if target user exists
-    target_user = db.query(User).filter(User.id == user_id).first()
+    target_user = db.get(User, user_id)
     if not target_user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
@@ -490,11 +486,10 @@ async def grant_platform_admin(
         )
 
     # Create new platform admin permission
-    new_permission = Permission(
-        user_id=user_id,
-        evidence_seeker_id=None,  # Platform admin has no specific evidence seeker
-        role=UserRole.PLATFORM_ADMIN,
-    )
+    new_permission = Permission()
+    new_permission.user_id = user_id
+    new_permission.evidence_seeker_id = None
+    new_permission.role = UserRole.PLATFORM_ADMIN
     db.add(new_permission)
     db.commit()
 
@@ -512,14 +507,15 @@ async def revoke_platform_admin(
     Only platform admins can revoke platform admin access.
     """
     # Prevent revoking own platform admin access
-    if user_id == current_user.id:
+    current_user_id = ensure_user_id(current_user)
+    if user_id == current_user_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot revoke your own platform admin access",
         )
 
     # Check if target user exists
-    target_user = db.query(User).filter(User.id == user_id).first()
+    target_user = db.get(User, user_id)
     if not target_user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="User not found"

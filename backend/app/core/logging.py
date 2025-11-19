@@ -1,7 +1,11 @@
 """Logging configuration using Loguru with module-specific filtering."""
 
+from __future__ import annotations
+
 import logging
 import sys
+from types import FrameType
+from typing import Any
 
 from loguru import logger
 
@@ -37,7 +41,7 @@ def setup_logging() -> None:
             logging.getLogger(module_prefix).setLevel(getattr(logging, level))
 
     # Add custom filter function
-    def log_filter(record: dict) -> bool:
+    def log_filter(record: Any) -> bool:
         """Filter logs based on module-specific or global log level.
 
         Args:
@@ -72,13 +76,14 @@ def setup_logging() -> None:
         def emit(self, record: logging.LogRecord) -> None:
             # Get corresponding Loguru level if it exists
             try:
-                level = logger.level(record.levelname).name
+                level: str | int = logger.level(record.levelname).name
             except ValueError:
                 level = record.levelno
 
             # Find caller from where originated the logged message
-            frame, depth = logging.currentframe(), 2
-            while frame.f_code.co_filename == logging.__file__:
+            frame: FrameType | None = logging.currentframe()
+            depth = 2
+            while frame is not None and frame.f_code.co_filename == logging.__file__:
                 frame = frame.f_back
                 depth += 1
 

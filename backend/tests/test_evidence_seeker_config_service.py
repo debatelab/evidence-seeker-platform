@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 import uuid
-from types import SimpleNamespace
+from collections.abc import Iterator
 from unittest.mock import MagicMock
 
 import pytest
@@ -11,11 +11,15 @@ from app.core.evidence_seeker_config_service import (
     ConfigurationNotReadyError,
     EvidenceSeekerConfigService,
 )
-from app.models import EvidenceSeekerSettings
+from app.models.evidence_seeker import EvidenceSeeker, build_evidence_seeker
+from app.models.evidence_seeker_settings import (
+    EvidenceSeekerSettings,
+    build_evidence_seeker_settings,
+)
 
 
 @pytest.fixture(autouse=True)
-def _auto_clean_db() -> None:  # type: ignore[override]
+def _auto_clean_db() -> Iterator[None]:
     """Disable integration DB cleanup for fast unit tests."""
     yield
 
@@ -26,12 +30,15 @@ def service() -> EvidenceSeekerConfigService:
 
 
 @pytest.fixture()
-def seeker() -> SimpleNamespace:
-    return SimpleNamespace(id=1, uuid=uuid.uuid4())
+def seeker() -> EvidenceSeeker:
+    evse = build_evidence_seeker(title="Fixture Seeker", created_by=1)
+    evse.id = 1
+    evse.uuid = uuid.uuid4()
+    return evse
 
 
-def _build_settings(seeker: SimpleNamespace) -> EvidenceSeekerSettings:
-    return EvidenceSeekerSettings(
+def _build_settings(seeker: EvidenceSeeker) -> EvidenceSeekerSettings:
+    return build_evidence_seeker_settings(
         evidence_seeker_id=seeker.id,
         default_model="test-model",
         metadata_filters={},
@@ -44,7 +51,7 @@ def _build_settings(seeker: SimpleNamespace) -> EvidenceSeekerSettings:
 
 def test_upsert_settings_normalises_payload(
     service: EvidenceSeekerConfigService,
-    seeker: SimpleNamespace,
+    seeker: EvidenceSeeker,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     settings_row = _build_settings(seeker)
@@ -73,7 +80,7 @@ def test_upsert_settings_normalises_payload(
 
 def test_upsert_settings_rejects_invalid_values(
     service: EvidenceSeekerConfigService,
-    seeker: SimpleNamespace,
+    seeker: EvidenceSeeker,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     settings_row = _build_settings(seeker)
@@ -91,7 +98,7 @@ def test_upsert_settings_rejects_invalid_values(
 
 def test_build_retrieval_bundle_injects_metadata(
     service: EvidenceSeekerConfigService,
-    seeker: SimpleNamespace,
+    seeker: EvidenceSeeker,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     settings_row = _build_settings(seeker)
@@ -121,7 +128,7 @@ def test_build_retrieval_bundle_injects_metadata(
 
 def test_build_retrieval_bundle_hf_inference_sets_env_var(
     service: EvidenceSeekerConfigService,
-    seeker: SimpleNamespace,
+    seeker: EvidenceSeeker,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     settings_row = _build_settings(seeker)
@@ -161,7 +168,7 @@ def test_build_retrieval_bundle_hf_inference_sets_env_var(
 
 def test_build_retrieval_bundle_sets_env_var_for_preprocessing_models(
     service: EvidenceSeekerConfigService,
-    seeker: SimpleNamespace,
+    seeker: EvidenceSeeker,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Preprocessing/confirmation configs expect the key env var regardless of backend."""
@@ -196,7 +203,7 @@ def test_build_retrieval_bundle_sets_env_var_for_preprocessing_models(
 
 def test_build_retrieval_bundle_hf_inference_requires_key(
     service: EvidenceSeekerConfigService,
-    seeker: SimpleNamespace,
+    seeker: EvidenceSeeker,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     settings_row = _build_settings(seeker)
@@ -224,7 +231,7 @@ def test_build_retrieval_bundle_hf_inference_requires_key(
 
 def test_require_ready_detects_missing_key(
     service: EvidenceSeekerConfigService,
-    seeker: SimpleNamespace,
+    seeker: EvidenceSeeker,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     settings_row = _build_settings(seeker)
@@ -237,7 +244,7 @@ def test_require_ready_detects_missing_key(
 
 def test_require_ready_passes_when_key_attached(
     service: EvidenceSeekerConfigService,
-    seeker: SimpleNamespace,
+    seeker: EvidenceSeeker,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     settings_row = _build_settings(seeker)

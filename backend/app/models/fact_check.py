@@ -1,11 +1,15 @@
 """Fact-checking models for EvidenceSeeker integration."""
 
+from __future__ import annotations
+
 import enum
+from datetime import datetime
+from typing import TYPE_CHECKING, Any, TypeAlias
+from uuid import UUID as UUIDType
 from uuid import uuid4
 
 from sqlalchemy import (
     Boolean,
-    Column,
     DateTime,
     Enum,
     Float,
@@ -16,9 +20,14 @@ from sqlalchemy import (
     func,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
+
+if TYPE_CHECKING:
+    from app.models.document import Document
+    from app.models.evidence_seeker import EvidenceSeeker
+    from app.models.user import User
 
 # Import enums from evidence-seeker library
 try:
@@ -41,7 +50,7 @@ except ImportError:
 
 
 # Alias for backward compatibility in our codebase
-InterpretationType = StatementType
+InterpretationType: TypeAlias = StatementType  # noqa: UP040
 
 
 class FactCheckRunStatus(str, enum.Enum):
@@ -67,34 +76,42 @@ class FactCheckRun(Base):
 
     __tablename__ = "fact_check_runs"
 
-    id = Column(Integer, primary_key=True, index=True)
-    uuid = Column(UUID(as_uuid=True), unique=True, nullable=False, default=uuid4)
-    evidence_seeker_id = Column(
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    uuid: Mapped[UUIDType] = mapped_column(
+        UUID(as_uuid=True), unique=True, nullable=False, default=uuid4
+    )
+    evidence_seeker_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("evidence_seekers.id"), nullable=False
     )
-    submitted_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    submitted_by: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("users.id"), nullable=True
+    )
 
-    statement = Column(Text, nullable=False)
-    status = Column(
+    statement: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[FactCheckRunStatus] = mapped_column(
         Enum(FactCheckRunStatus, name="fact_check_run_status"),
         nullable=False,
         default=FactCheckRunStatus.PENDING,
     )
-    error_message = Column(Text, nullable=True)
-    operation_id = Column(String(64), nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    operation_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
-    config_snapshot = Column(JSONB, nullable=True)
-    metrics = Column(JSONB, nullable=True)
-    is_public = Column(Boolean, nullable=False, default=False)
-    published_at = Column(DateTime(timezone=True), nullable=True)
+    config_snapshot: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    metrics: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    is_public: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    published_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
-    created_at = Column(DateTime, server_default=func.now())
-    began_at = Column(DateTime, nullable=True)
-    completed_at = Column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    began_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
-    evidence_seeker = relationship("EvidenceSeeker", back_populates="fact_check_runs")
-    submitter = relationship("User")
-    results = relationship(
+    evidence_seeker: Mapped[EvidenceSeeker] = relationship(
+        "EvidenceSeeker", back_populates="fact_check_runs"
+    )
+    submitter: Mapped[User] = relationship("User")
+    results: Mapped[list[FactCheckResult]] = relationship(
         "FactCheckResult",
         back_populates="run",
         cascade="all, delete-orphan",
@@ -109,11 +126,13 @@ class FactCheckResult(Base):
 
     __tablename__ = "fact_check_results"
 
-    id = Column(Integer, primary_key=True, index=True)
-    run_id = Column(Integer, ForeignKey("fact_check_runs.id"), nullable=False)
-    interpretation_index = Column(Integer, nullable=False)
-    interpretation_text = Column(Text, nullable=False)
-    interpretation_type = Column(
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    run_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("fact_check_runs.id"), nullable=False
+    )
+    interpretation_index: Mapped[int] = mapped_column(Integer, nullable=False)
+    interpretation_text: Mapped[str] = mapped_column(Text, nullable=False)
+    interpretation_type: Mapped[InterpretationType] = mapped_column(
         Enum(
             InterpretationType,
             name="fact_check_interpretation_type",
@@ -121,7 +140,7 @@ class FactCheckResult(Base):
         ),
         nullable=False,
     )
-    confirmation_level = Column(
+    confirmation_level: Mapped[ConfirmationLevel | None] = mapped_column(
         Enum(
             ConfirmationLevel,
             name="fact_check_confirmation_level",
@@ -129,12 +148,12 @@ class FactCheckResult(Base):
         ),
         nullable=True,
     )
-    confidence_score = Column(Float, nullable=True)
-    summary = Column(Text, nullable=True)
-    raw_payload = Column(JSONB, nullable=True)
+    confidence_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    raw_payload: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
 
-    run = relationship("FactCheckRun", back_populates="results")
-    evidence = relationship(
+    run: Mapped[FactCheckRun] = relationship("FactCheckRun", back_populates="results")
+    evidence: Mapped[list[FactCheckEvidence]] = relationship(
         "FactCheckEvidence",
         back_populates="result",
         cascade="all, delete-orphan",
@@ -149,24 +168,52 @@ class FactCheckEvidence(Base):
 
     __tablename__ = "fact_check_evidence"
 
-    id = Column(Integer, primary_key=True, index=True)
-    result_id = Column(Integer, ForeignKey("fact_check_results.id"), nullable=False)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    result_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("fact_check_results.id"), nullable=False
+    )
 
-    library_node_id = Column(String(100), nullable=True)
-    document_uuid = Column(UUID(as_uuid=True), nullable=True)
-    document_id = Column(Integer, ForeignKey("documents.id"), nullable=True)
-    chunk_label = Column(String(255), nullable=True)
-    evidence_text = Column(Text, nullable=False)
-    stance = Column(
+    library_node_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    document_uuid: Mapped[UUIDType | None] = mapped_column(
+        UUID(as_uuid=True), nullable=True
+    )
+    document_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("documents.id"), nullable=True
+    )
+    chunk_label: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    evidence_text: Mapped[str] = mapped_column(Text, nullable=False)
+    stance: Mapped[EvidenceStance] = mapped_column(
         Enum(EvidenceStance, name="fact_check_evidence_stance"),
         nullable=False,
         default=EvidenceStance.SUPPORTS,
     )
-    score = Column(Float, nullable=True)
-    metadata_payload = Column("metadata", JSONB, nullable=True)
+    score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    metadata_payload: Mapped[dict[str, Any] | None] = mapped_column(
+        "metadata", JSONB, nullable=True
+    )
 
-    result = relationship("FactCheckResult", back_populates="evidence")
-    document = relationship("Document")
+    result: Mapped[FactCheckResult] = relationship(
+        "FactCheckResult", back_populates="evidence"
+    )
+    document: Mapped[Document] = relationship("Document")
 
     def __repr__(self) -> str:
         return f"<FactCheckEvidence(result_id={self.result_id}, stance={self.stance})>"
+
+
+def build_fact_check_run(
+    *,
+    evidence_seeker_id: int,
+    statement: str,
+    status: FactCheckRunStatus = FactCheckRunStatus.PENDING,
+    submitted_by: int | None = None,
+    is_public: bool = False,
+) -> FactCheckRun:
+    """Construct a FactCheckRun instance with explicit, type-checked parameters."""
+    run = FactCheckRun()
+    run.evidence_seeker_id = evidence_seeker_id
+    run.statement = statement
+    run.status = status
+    run.submitted_by = submitted_by
+    run.is_public = is_public
+    return run

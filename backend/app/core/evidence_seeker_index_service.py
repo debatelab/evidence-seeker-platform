@@ -9,7 +9,7 @@ import logging
 from collections.abc import Callable, Iterable, Sequence
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from sqlalchemy.orm import Session
 
@@ -23,9 +23,11 @@ from app.models import Document, EvidenceSeeker, IndexJob, IndexJobStatus
 logger = logging.getLogger(__name__)
 
 try:  # pragma: no cover - optional dependency during tests
-    from evidence_seeker.retrieval.index_builder import IndexBuilder
+    from evidence_seeker.retrieval.index_builder import IndexBuilder as _IndexBuilder
 except ImportError:  # pragma: no cover
-    IndexBuilder = None  # type: ignore[assignment]
+    IndexBuilder = None
+else:
+    IndexBuilder = cast(type[Any], _IndexBuilder)
 
 
 class EvidenceSeekerIndexService:
@@ -45,13 +47,12 @@ class EvidenceSeekerIndexService:
         job_type: str,
         payload: dict[str, Any] | None = None,
     ) -> IndexJob:
-        job = IndexJob(
-            evidence_seeker_id=seeker.id,
-            submitted_by=user_id,
-            job_type=job_type,
-            payload=payload or {},
-            status=IndexJobStatus.QUEUED,
-        )
+        job = IndexJob()
+        job.evidence_seeker_id = int(seeker.id)
+        job.submitted_by = user_id
+        job.job_type = job_type
+        job.payload = payload or {}
+        job.status = IndexJobStatus.QUEUED
         db.add(job)
         db.commit()
         db.refresh(job)
@@ -97,21 +98,23 @@ class EvidenceSeekerIndexService:
         if not job.operation_id:
             return
 
+        operation_id = job.operation_id
+
         if status == IndexJobStatus.SUCCEEDED:
             progress_tracker.complete_operation(
-                job.operation_id,
+                operation_id,
                 message=message,
                 metadata={"job_uuid": str(job.uuid)},
             )
         elif status == IndexJobStatus.FAILED:
             progress_tracker.fail_operation(
-                job.operation_id,
+                operation_id,
                 error_message=error or message,
                 metadata={"job_uuid": str(job.uuid)},
             )
         elif status == IndexJobStatus.RUNNING:
             progress_tracker.update_progress(
-                job.operation_id,
+                operation_id,
                 progress=5.0,
                 message=message,
                 metadata={"job_uuid": str(job.uuid)},
@@ -127,7 +130,8 @@ class EvidenceSeekerIndexService:
             stage: str | None = None,
             **kwargs: Any,
         ) -> None:
-            if not job.operation_id:
+            operation_id = job.operation_id
+            if not operation_id:
                 return
 
             extra_metadata: dict[str, Any] = {}
@@ -157,7 +161,7 @@ class EvidenceSeekerIndexService:
             }
 
             progress_tracker.update_progress(
-                job.operation_id,
+                operation_id,
                 progress=pct,
                 message=message or stage or "Processing",
                 metadata=metadata,
@@ -176,7 +180,7 @@ class EvidenceSeekerIndexService:
         self,
         bundle: RetrievalConfigBundle,
         job: IndexJob,
-        action: Callable[[IndexBuilder], Any],
+        action: Callable[[Any], Any],
     ) -> None:
         if IndexBuilder is None:  # pragma: no cover
             raise RuntimeError(
@@ -208,12 +212,13 @@ class EvidenceSeekerIndexService:
             job_type="update",
             payload=payload,
         )
-        progress_tracker.update_progress(
-            job.operation_id,
-            progress=1.0,
-            message="Queued document ingestion",
-            metadata={"job_uuid": str(job.uuid)},
-        )
+        if job.operation_id:
+            progress_tracker.update_progress(
+                job.operation_id,
+                progress=1.0,
+                message="Queued document ingestion",
+                metadata={"job_uuid": str(job.uuid)},
+            )
         return job
 
     def queue_delete(
@@ -231,12 +236,13 @@ class EvidenceSeekerIndexService:
             job_type="delete",
             payload=payload,
         )
-        progress_tracker.update_progress(
-            job.operation_id,
-            progress=1.0,
-            message="Queued document removal",
-            metadata={"job_uuid": str(job.uuid)},
-        )
+        if job.operation_id:
+            progress_tracker.update_progress(
+                job.operation_id,
+                progress=1.0,
+                message="Queued document removal",
+                metadata={"job_uuid": str(job.uuid)},
+            )
         return job
 
     async def run_update(
@@ -251,18 +257,19 @@ class EvidenceSeekerIndexService:
         try:
             bundle = evidence_seeker_config_service.build_retrieval_bundle(db, seeker)
             file_paths = self._materialise_paths(doc.file_path for doc in documents)
-            metadata_payload = []
+            metadata_payload: list[dict[str, Any]] = []
             metadata_by_name: dict[str, dict[str, Any]] = {}
             for doc in documents:
+                file_name = Path(doc.file_path).name
                 payload = {
                     "evidence_seeker_id": str(seeker.uuid),
                     "document_uuid": str(doc.uuid),
                     "document_id": doc.id,
                     "document_title": doc.title,
-                    "file_name": Path(doc.file_path).name,
+                    "file_name": file_name,
                 }
                 metadata_payload.append(payload)
-                metadata_by_name[payload["file_name"]] = payload
+                metadata_by_name[file_name] = payload
 
             def metadata_func(file_name: str) -> dict[str, Any] | None:
                 """Return metadata for the requested file name."""
@@ -275,7 +282,7 @@ class EvidenceSeekerIndexService:
                     return None
                 return metadata
 
-            async def _update(builder: IndexBuilder) -> Any:
+            async def _update(builder: Any) -> Any:
                 return await builder.aupdate_files(
                     document_input_files=[str(path) for path in file_paths],
                     metadata_func=metadata_func,
@@ -283,7 +290,7 @@ class EvidenceSeekerIndexService:
 
             await self._execute_index_builder(bundle, job, _update)
             for doc, metadata in zip(documents, metadata_payload, strict=False):
-                doc.index_file_key = metadata["file_name"]
+                doc.index_file_key = str(metadata["file_name"])
             db.commit()
         except Exception as exc:  # pragma: no cover - runtime failure path
             logger.exception("Failed to update index for job %s", job.uuid)
@@ -318,7 +325,7 @@ class EvidenceSeekerIndexService:
                 doc.index_file_key or Path(doc.file_path).name for doc in documents
             ]
 
-            async def _delete(builder: IndexBuilder) -> Any:
+            async def _delete(builder: Any) -> Any:
                 return await builder.adelete_files(file_keys)
 
             await self._execute_index_builder(bundle, job, _delete)

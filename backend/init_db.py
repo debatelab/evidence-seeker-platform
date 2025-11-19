@@ -8,11 +8,12 @@ import logging
 from typing import Any, cast
 
 from passlib.context import CryptContext
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import async_engine
-from app.models.permission import Permission, UserRole
-from app.models.user import User
+from app.models.permission import Permission, UserRole, build_permission
+from app.models.user import User, build_user, ensure_user_id
 
 # Suppress the bcrypt version warning from passlib
 logging.getLogger("passlib").setLevel(logging.ERROR)
@@ -20,12 +21,10 @@ logging.getLogger("passlib").setLevel(logging.ERROR)
 
 async def create_test_user() -> None:
     """Create a test user for development"""
-    from sqlalchemy import select
-
     pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
     hashed_password = pwd_context.hash("evidence123")
 
-    test_user = User(
+    test_user = build_user(
         email="test@example.com",
         username="testuser",
         hashed_password=hashed_password,
@@ -36,8 +35,9 @@ async def create_test_user() -> None:
 
     async with AsyncSession(async_engine) as session:
         # Check if user already exists using proper ORM query
+        user_email_column = User.__table__.c.email
         existing_user = await session.execute(
-            select(User).where(User.email == "test@example.com")
+            select(User).where(user_email_column == "test@example.com")
         )
         user_exists = existing_user.scalar_one_or_none()
 
@@ -62,8 +62,8 @@ async def create_test_user() -> None:
                 return
             else:
                 # Create platform admin permission for existing user
-                platform_admin_permission = Permission(
-                    user_id=user_exists.id,
+                platform_admin_permission = build_permission(
+                    user_id=ensure_user_id(user_exists),
                     evidence_seeker_id=None,
                     role=UserRole.PLATFORM_ADMIN,
                 )
@@ -81,8 +81,8 @@ async def create_test_user() -> None:
         user_id = test_user.id
 
         # Create platform admin permission for the test user
-        platform_admin_permission = Permission(
-            user_id=user_id,
+        platform_admin_permission = build_permission(
+            user_id=ensure_user_id(test_user),
             evidence_seeker_id=None,  # Platform admin doesn't need specific evidence seeker
             role=UserRole.PLATFORM_ADMIN,
         )

@@ -8,7 +8,18 @@ from app.core.auth import get_current_user
 from app.core.database import get_db
 from app.models.evidence_seeker import EvidenceSeeker
 from app.models.permission import Permission, UserRole
-from app.models.user import User
+from app.models.user import User, ensure_user_id
+
+
+def _require_user_id(user: User) -> int:
+    """Extract a concrete user ID, raising if the ORM object is incomplete."""
+    try:
+        return ensure_user_id(user)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authenticated user has no ID",
+        ) from exc
 
 
 def check_evidence_seeker_permission(
@@ -131,7 +142,10 @@ class RequireEvidenceSeekerAdmin:
             HTTPException: If user doesn't have admin access
         """
         if not check_evidence_seeker_permission(
-            int(current_user.id), self.evidence_seeker_id, UserRole.EVSE_ADMIN, db
+            _require_user_id(current_user),
+            self.evidence_seeker_id,
+            UserRole.EVSE_ADMIN,
+            db,
         ):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -165,7 +179,7 @@ def require_evidence_seeker_admin(
         return RequireEvidenceSeekerAdmin(evidence_seeker_id)
 
     if not check_evidence_seeker_permission(
-        int(current_user.id), evidence_seeker_id, UserRole.EVSE_ADMIN, db
+        _require_user_id(current_user), evidence_seeker_id, UserRole.EVSE_ADMIN, db
     ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -194,7 +208,7 @@ def require_evidence_seeker_reader(
         HTTPException: If user doesn't have read access
     """
     if not check_evidence_seeker_permission(
-        int(current_user.id), evidence_seeker_id, UserRole.EVSE_READER, db
+        _require_user_id(current_user), evidence_seeker_id, UserRole.EVSE_READER, db
     ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -220,7 +234,7 @@ def require_platform_admin(
         HTTPException: If user is not a platform admin
     """
     if not check_evidence_seeker_permission(
-        int(current_user.id),
+        _require_user_id(current_user),
         0,
         UserRole.PLATFORM_ADMIN,
         db,  # evidence_seeker_id not needed for platform admin
@@ -291,12 +305,15 @@ class RequireEvidenceSeekerAdminByIdentifier:
 
         # Check if user is a platform admin (has global access)
         platform_admin_check = check_evidence_seeker_permission(
-            int(current_user.id), 0, UserRole.PLATFORM_ADMIN, db
+            _require_user_id(current_user), 0, UserRole.PLATFORM_ADMIN, db
         )
         if not platform_admin_check:
             # If not a platform admin, check for evidence seeker specific admin access
             if not check_evidence_seeker_permission(
-                int(current_user.id), int(evidence_seeker.id), UserRole.EVSE_ADMIN, db
+                _require_user_id(current_user),
+                int(evidence_seeker.id),
+                UserRole.EVSE_ADMIN,
+                db,
             ):
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,

@@ -2,6 +2,7 @@ import logging
 import shutil
 from datetime import datetime
 from pathlib import Path
+from typing import Any, cast
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
@@ -35,7 +36,7 @@ from ..models.fact_check import (
 )
 from ..models.index_job import IndexJob
 from ..models.permission import UserRole
-from ..models.user import User
+from ..models.user import User, ensure_user_id
 from ..schemas.evidence_seeker import (
     EvidenceSeekerCreate,
     EvidenceSeekerRead,
@@ -101,12 +102,20 @@ def _apply_initial_configuration(
     )
 
 
+CheckedClaim: type[Any] | None
+DocumentRetriever: type[Any] | None
+
 try:  # pragma: no cover - optional dependency during tests
-    from evidence_seeker import CheckedClaim
-    from evidence_seeker.retrieval.document_retriever import DocumentRetriever
+    from evidence_seeker import CheckedClaim as _CheckedClaim
+    from evidence_seeker.retrieval.document_retriever import (
+        DocumentRetriever as _DocumentRetriever,
+    )
 except ImportError:  # pragma: no cover
-    CheckedClaim = None  # type: ignore[assignment]
-    DocumentRetriever = None  # type: ignore[assignment]
+    CheckedClaim = None
+    DocumentRetriever = None
+else:
+    CheckedClaim = cast(type[Any], _CheckedClaim)
+    DocumentRetriever = cast(type[Any], _DocumentRetriever)
 
 
 def _ensure_admin(user_id: int, seeker: EvidenceSeeker, db: Session) -> None:
@@ -203,7 +212,10 @@ def create_evidence_seeker(
     seeker_payload = seeker.model_dump(
         exclude={"initial_configuration"}, exclude_none=True
     )
-    db_seeker = EvidenceSeeker(**seeker_payload, created_by=current_user.id)
+    db_seeker = EvidenceSeeker()
+    for key, value in seeker_payload.items():
+        setattr(db_seeker, key, value)
+    db_seeker.created_by = ensure_user_id(current_user)
     db.add(db_seeker)
     db.commit()
     db.refresh(db_seeker)
@@ -218,7 +230,7 @@ def create_evidence_seeker(
     onboarding_token = onboarding_token_service.issue_token(
         db=db,
         seeker=db_seeker,
-        owner_user_id=int(current_user.id),
+        owner_user_id=ensure_user_id(current_user),
     )
     db.refresh(settings_row)
     db_seeker.onboarding_token = onboarding_token
@@ -233,7 +245,7 @@ def get_evidence_seekers(
     current_user: User = Depends(get_current_user),
 ) -> list[EvidenceSeeker]:
     """Get all Evidence Seekers accessible to the current user"""
-    seekers = get_accessible_evidence_seekers(int(current_user.id), db)
+    seekers = get_accessible_evidence_seekers(ensure_user_id(current_user), db)
     return seekers[skip : skip + limit]
 
 
@@ -244,7 +256,9 @@ def get_evidence_seeker(
     current_user: User = Depends(get_current_user),
 ) -> EvidenceSeeker:
     """Get a specific Evidence Seeker by ID or UUID"""
-    return get_evidence_seeker_by_identifier(seeker_id, db, int(current_user.id))
+    return get_evidence_seeker_by_identifier(
+        seeker_id, db, ensure_user_id(current_user)
+    )
 
 
 @router.get(
@@ -258,11 +272,11 @@ def get_configuration_status(
 ) -> ConfigurationStatusRead:
     """Return configuration status for readers and admins."""
     seeker = get_evidence_seeker_by_identifier(
-        seeker_identifier, db, int(current_user.id)
+        seeker_identifier, db, ensure_user_id(current_user)
     )
     status = evidence_seeker_config_service.get_configuration_status(db, seeker)
     payload = evidence_seeker_config_service.serialise_status(status)
-    return ConfigurationStatusRead(**payload)
+    return ConfigurationStatusRead.model_validate(payload)
 
 
 @router.post(
@@ -276,9 +290,9 @@ def acknowledge_document_skip(
 ) -> ConfigurationStatusRead:
     """Record that the admin chose to defer document uploads."""
     seeker = get_evidence_seeker_by_identifier(
-        seeker_identifier, db, int(current_user.id)
+        seeker_identifier, db, ensure_user_id(current_user)
     )
-    _ensure_admin(int(current_user.id), seeker, db)
+    _ensure_admin(ensure_user_id(current_user), seeker, db)
     evidence_seeker_config_service.acknowledge_document_skip(
         db=db,
         seeker=seeker,
@@ -287,11 +301,11 @@ def acknowledge_document_skip(
     status = evidence_seeker_config_service.get_configuration_status(db, seeker)
     progress_tracker.record_event(
         "evse_onboarding_skip_documents",
-        user_id=int(current_user.id),
+        user_id=ensure_user_id(current_user),
         evidence_seeker_id=int(seeker.id),
     )
-    return ConfigurationStatusRead(
-        **evidence_seeker_config_service.serialise_status(status)
+    return ConfigurationStatusRead.model_validate(
+        evidence_seeker_config_service.serialise_status(status)
     )
 
 
@@ -306,14 +320,14 @@ def finish_onboarding(
 ) -> ConfigurationStatusRead:
     """Finalize onboarding by revoking the wizard token and returning status."""
     seeker = get_evidence_seeker_by_identifier(
-        seeker_identifier, db, int(current_user.id)
+        seeker_identifier, db, ensure_user_id(current_user)
     )
-    _ensure_admin(int(current_user.id), seeker, db)
+    _ensure_admin(ensure_user_id(current_user), seeker, db)
     settings_row = evidence_seeker_config_service.ensure_settings(db, seeker)
     onboarding_token_service.revoke_token(db, settings_row)
     status = evidence_seeker_config_service.get_configuration_status(db, seeker)
-    return ConfigurationStatusRead(
-        **evidence_seeker_config_service.serialise_status(status)
+    return ConfigurationStatusRead.model_validate(
+        evidence_seeker_config_service.serialise_status(status)
     )
 
 
@@ -345,7 +359,7 @@ def update_evidence_seeker(
 
     # Check admin permissions
     if not check_evidence_seeker_permission(
-        int(current_user.id), int(seeker.id), UserRole.EVSE_ADMIN, db
+        ensure_user_id(current_user), int(seeker.id), UserRole.EVSE_ADMIN, db
     ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -405,7 +419,7 @@ def delete_evidence_seeker(
 
     # Check admin permissions
     if not check_evidence_seeker_permission(
-        int(current_user.id), int(seeker.id), UserRole.EVSE_ADMIN, db
+        ensure_user_id(current_user), int(seeker.id), UserRole.EVSE_ADMIN, db
     ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -413,10 +427,9 @@ def delete_evidence_seeker(
         )
 
     # Delete all associated documents and their files
-    result = db.execute(
-        select(Document).where(Document.evidence_seeker_id == seeker.id)
+    documents = (
+        db.query(Document).filter(Document.evidence_seeker_id == seeker.id).all()
     )
-    documents = result.scalars().all()
 
     for document in documents:
         # Delete the actual file from disk
@@ -446,9 +459,9 @@ def get_evidence_seeker_settings(
     current_user: User = Depends(get_current_user),
 ) -> EvidenceSeekerSettings:
     seeker = get_evidence_seeker_by_identifier(
-        seeker_identifier, db, int(current_user.id)
+        seeker_identifier, db, ensure_user_id(current_user)
     )
-    _ensure_admin(int(current_user.id), seeker, db)
+    _ensure_admin(ensure_user_id(current_user), seeker, db)
     settings_row = evidence_seeker_config_service.ensure_settings(db, seeker)
     evidence_seeker_config_service.get_configuration_status(db, seeker)
     db.refresh(settings_row)
@@ -463,15 +476,15 @@ def update_evidence_seeker_settings(
     current_user: User = Depends(get_current_user),
 ) -> EvidenceSeekerSettings:
     seeker = get_evidence_seeker_by_identifier(
-        seeker_identifier, db, int(current_user.id)
+        seeker_identifier, db, ensure_user_id(current_user)
     )
-    _ensure_admin(int(current_user.id), seeker, db)
+    _ensure_admin(ensure_user_id(current_user), seeker, db)
     try:
         settings_row = evidence_seeker_config_service.upsert_settings(
             db=db,
             seeker=seeker,
             payload=payload.model_dump(exclude_unset=True),
-            updated_by=int(current_user.id),
+            updated_by=ensure_user_id(current_user),
         )
     except ValueError as exc:
         raise HTTPException(
@@ -491,9 +504,9 @@ def test_evidence_seeker_settings(
     current_user: User = Depends(get_current_user),
 ) -> dict[str, object]:
     seeker = get_evidence_seeker_by_identifier(
-        seeker_identifier, db, int(current_user.id)
+        seeker_identifier, db, ensure_user_id(current_user)
     )
-    _ensure_admin(int(current_user.id), seeker, db)
+    _ensure_admin(ensure_user_id(current_user), seeker, db)
 
     if DocumentRetriever is None:  # pragma: no cover
         raise HTTPException(
@@ -538,9 +551,9 @@ def reindex_documents(
     current_user: User = Depends(get_current_user),
 ) -> IndexJob:
     seeker = get_evidence_seeker_by_identifier(
-        seeker_identifier, db, int(current_user.id)
+        seeker_identifier, db, ensure_user_id(current_user)
     )
-    _ensure_admin(int(current_user.id), seeker, db)
+    _ensure_admin(ensure_user_id(current_user), seeker, db)
     try:
         evidence_seeker_config_service.require_ready(db, seeker)
     except ConfigurationNotReadyError as exc:
@@ -558,7 +571,7 @@ def reindex_documents(
     job = evidence_seeker_index_service.queue_update(
         db=db,
         seeker=seeker,
-        user_id=int(current_user.id),
+        user_id=ensure_user_id(current_user),
         documents=documents,
     )
 
@@ -581,9 +594,9 @@ def list_index_jobs(
     current_user: User = Depends(get_current_user),
 ) -> list[IndexJob]:
     seeker = get_evidence_seeker_by_identifier(
-        seeker_identifier, db, int(current_user.id)
+        seeker_identifier, db, ensure_user_id(current_user)
     )
-    _ensure_admin(int(current_user.id), seeker, db)
+    _ensure_admin(ensure_user_id(current_user), seeker, db)
 
     jobs = (
         db.query(IndexJob)
@@ -606,7 +619,7 @@ async def search_evidence(
     current_user: User = Depends(get_current_user),
 ) -> EvidenceSearchResponse:
     seeker = get_evidence_seeker_by_identifier(
-        seeker_identifier, db, int(current_user.id)
+        seeker_identifier, db, ensure_user_id(current_user)
     )
     try:
         evidence_seeker_config_service.require_ready(db, seeker)
@@ -622,14 +635,18 @@ async def search_evidence(
             detail="EvidenceSeeker library is not installed on the server",
         )
 
-    overrides: dict[str, object] = {}
+    overrides: dict[str, Any] = {}
     if request.top_k is not None:
         overrides["top_k"] = request.top_k
+    metadata_filters: dict[str, Any] = {}
     if request.metadata_filters:
-        overrides.setdefault("metadata_filters", {}).update(request.metadata_filters)
+        metadata_filters.update(request.metadata_filters)
     if request.document_uuids:
-        filters = overrides.setdefault("metadata_filters", {})
-        filters["document_uuid"] = [str(uuid) for uuid in request.document_uuids]
+        metadata_filters["document_uuid"] = [
+            str(uuid) for uuid in request.document_uuids
+        ]
+    if metadata_filters:
+        overrides["metadata_filters"] = metadata_filters
 
     bundle = evidence_seeker_config_service.build_retrieval_bundle(
         db=db,
@@ -656,12 +673,14 @@ async def search_evidence(
     for doc in documents[:limit]:
         metadata = getattr(doc, "metadata", {}) or {}
         hits.append(
-            EvidenceSearchHit(
-                score=float(getattr(doc, "score", metadata.get("score", 0.0))),
-                text=getattr(doc, "text", metadata.get("text", "")),
-                document_uuid=metadata.get("document_uuid"),
-                document_id=metadata.get("document_id"),
-                metadata=metadata,
+            EvidenceSearchHit.model_validate(
+                {
+                    "score": float(getattr(doc, "score", metadata.get("score", 0.0))),
+                    "text": getattr(doc, "text", metadata.get("text", "")),
+                    "document_uuid": metadata.get("document_uuid"),
+                    "document_id": metadata.get("document_id"),
+                    "metadata": metadata,
+                }
             )
         )
 
@@ -680,7 +699,7 @@ def list_fact_check_runs(
     current_user: User = Depends(get_current_user),
 ) -> list[FactCheckRun]:
     seeker = get_evidence_seeker_by_identifier(
-        seeker_identifier, db, int(current_user.id)
+        seeker_identifier, db, ensure_user_id(current_user)
     )
     # Readers can examine runs
     runs = (
@@ -715,9 +734,9 @@ async def create_fact_check_run(
     via the operation_id to track completion.
     """
     seeker = get_evidence_seeker_by_identifier(
-        seeker_identifier, db, int(current_user.id)
+        seeker_identifier, db, ensure_user_id(current_user)
     )
-    _ensure_admin(int(current_user.id), seeker, db)
+    _ensure_admin(ensure_user_id(current_user), seeker, db)
     try:
         evidence_seeker_config_service.require_ready(db, seeker)
     except ConfigurationNotReadyError as exc:
@@ -730,7 +749,7 @@ async def create_fact_check_run(
         db=db,
         seeker=seeker,
         statement=request.statement,
-        user_id=int(current_user.id),
+        user_id=ensure_user_id(current_user),
         overrides=request.overrides,
     )
 
@@ -755,7 +774,7 @@ def get_fact_check_run(
     current_user: User = Depends(get_current_user),
 ) -> FactCheckRun:
     seeker = get_evidence_seeker_by_identifier(
-        seeker_identifier, db, int(current_user.id)
+        seeker_identifier, db, ensure_user_id(current_user)
     )
 
     run = (
@@ -781,7 +800,7 @@ def get_fact_check_results(
     current_user: User = Depends(get_current_user),
 ) -> list[FactCheckResult]:
     seeker = get_evidence_seeker_by_identifier(
-        seeker_identifier, db, int(current_user.id)
+        seeker_identifier, db, ensure_user_id(current_user)
     )
 
     run = (
@@ -843,9 +862,9 @@ async def rerun_fact_check(
     current_user: User = Depends(get_current_user),
 ) -> FactCheckRun:
     seeker = get_evidence_seeker_by_identifier(
-        seeker_identifier, db, int(current_user.id)
+        seeker_identifier, db, ensure_user_id(current_user)
     )
-    _ensure_admin(int(current_user.id), seeker, db)
+    _ensure_admin(ensure_user_id(current_user), seeker, db)
     try:
         evidence_seeker_config_service.require_ready(db, seeker)
     except ConfigurationNotReadyError as exc:
@@ -868,11 +887,11 @@ async def rerun_fact_check(
     if not overrides and run.config_snapshot:
         overrides = run.config_snapshot.get("overrides") or {}
 
-    new_run = await evidence_seeker_pipeline_manager.create_fact_check_run(
+    new_run = evidence_seeker_pipeline_manager.create_fact_check_run(
         db=db,
         seeker=seeker,
         statement=run.statement,
-        user_id=int(current_user.id),
+        user_id=ensure_user_id(current_user),
         overrides=overrides,
     )
 
@@ -896,9 +915,9 @@ def cancel_fact_check_run(
     current_user: User = Depends(get_current_user),
 ) -> dict[str, str]:
     seeker = get_evidence_seeker_by_identifier(
-        seeker_identifier, db, int(current_user.id)
+        seeker_identifier, db, ensure_user_id(current_user)
     )
-    _ensure_admin(int(current_user.id), seeker, db)
+    _ensure_admin(ensure_user_id(current_user), seeker, db)
 
     run = (
         db.query(FactCheckRun)

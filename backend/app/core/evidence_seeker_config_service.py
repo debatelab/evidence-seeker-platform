@@ -9,7 +9,7 @@ import os
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, TypedDict
+from typing import TYPE_CHECKING, Any, Literal, TypedDict
 
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session
@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 try:  # pragma: no cover - optional dependency during tests
     from evidence_seeker import RetrievalConfig as _RuntimeRetrievalConfig
 except ImportError:  # pragma: no cover
-    _RuntimeRetrievalConfig = None  # type: ignore[assignment]
+    _RuntimeRetrievalConfig = None
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from evidence_seeker import RetrievalConfig as RetrievalConfigType
@@ -44,7 +44,7 @@ try:  # pragma: no cover - optional dependency during tests
         EmbedBackendType as _RuntimeEmbedBackendType,
     )
 except ImportError:  # pragma: no cover
-    _RuntimeEmbedBackendType = None  # type: ignore[assignment]
+    _RuntimeEmbedBackendType = None
 
 if _RuntimeEmbedBackendType is not None:
     _VALID_BACKEND_TYPES = {member.value for member in _RuntimeEmbedBackendType}
@@ -453,16 +453,15 @@ class EvidenceSeekerConfigService:
             seeker, {"evidence_seeker_id": str(seeker.uuid)}, strict=False
         )
 
-        settings_row = EvidenceSeekerSettings(
-            evidence_seeker_id=seeker.id,
-            default_model=settings.evse_default_model,
-            embed_backend_type=settings.evse_default_backend,
-            embed_base_url=settings.evse_default_embed_base_url,
-            metadata_filters=default_metadata,
-            setup_mode=SetupMode.SIMPLE.value,
-            configuration_state=ConfigurationState.UNCONFIGURED.value,
-            missing_requirements=["CREDENTIALS"],
-        )
+        settings_row = EvidenceSeekerSettings()
+        settings_row.evidence_seeker_id = int(seeker.id)
+        settings_row.default_model = settings.evse_default_model
+        settings_row.embed_backend_type = settings.evse_default_backend
+        settings_row.embed_base_url = settings.evse_default_embed_base_url
+        settings_row.metadata_filters = default_metadata
+        settings_row.setup_mode = SetupMode.SIMPLE.value
+        settings_row.configuration_state = ConfigurationState.UNCONFIGURED.value
+        settings_row.missing_requirements = ["CREDENTIALS"]
         db.add(settings_row)
         db.commit()
         db.refresh(settings_row)
@@ -655,15 +654,51 @@ class EvidenceSeekerConfigService:
             base_kwargs["top_k"] = int(top_k_value)
 
         bundle_overrides: PipelineOverrides = PipelineOverrides()
-        if isinstance(settings_row.pipeline_overrides, dict):
-            for key, value in settings_row.pipeline_overrides.items():
-                if value is not None:
-                    bundle_overrides[key] = value  # type: ignore[index]
 
-        for key in ("temperature", "rerank_k", "max_tokens", "language"):
-            value = overrides.get(key, getattr(settings_row, key))
-            if value is not None:
-                bundle_overrides[key] = value  # type: ignore[index]
+        def _assign_override(
+            key: Literal[
+                "temperature",
+                "top_k",
+                "rerank_k",
+                "max_tokens",
+                "language",
+                "metadata_filters",
+            ],
+            raw_value: Any,
+        ) -> None:
+            if raw_value is not None:
+                bundle_overrides[key] = raw_value
+
+        if isinstance(settings_row.pipeline_overrides, dict):
+            _assign_override(
+                "temperature", settings_row.pipeline_overrides.get("temperature")
+            )
+            _assign_override("top_k", settings_row.pipeline_overrides.get("top_k"))
+            _assign_override(
+                "rerank_k", settings_row.pipeline_overrides.get("rerank_k")
+            )
+            _assign_override(
+                "max_tokens", settings_row.pipeline_overrides.get("max_tokens")
+            )
+            _assign_override(
+                "language", settings_row.pipeline_overrides.get("language")
+            )
+            _assign_override(
+                "metadata_filters",
+                settings_row.pipeline_overrides.get("metadata_filters"),
+            )
+
+        temp_value = overrides.get("temperature", settings_row.temperature)
+        _assign_override("temperature", temp_value)
+
+        rerank_value = overrides.get("rerank_k", settings_row.rerank_k)
+        _assign_override("rerank_k", rerank_value)
+
+        max_tokens_value = overrides.get("max_tokens", settings_row.max_tokens)
+        _assign_override("max_tokens", max_tokens_value)
+
+        language_value = overrides.get("language", settings_row.language)
+        _assign_override("language", language_value)
 
         metadata_filters = self._normalise_metadata_filters(
             seeker, settings_row.metadata_filters, strict=False
@@ -676,7 +711,7 @@ class EvidenceSeekerConfigService:
                 {str(k): v for k, v in override_filters.items() if v is not None}
             )
 
-        bundle_overrides["metadata_filters"] = metadata_filters
+        _assign_override("metadata_filters", metadata_filters)
 
         if _RuntimeRetrievalConfig is None:  # pragma: no cover - runtime guard
             raise RuntimeError(

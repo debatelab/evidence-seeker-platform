@@ -1,9 +1,9 @@
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from app.models.evidence_seeker import EvidenceSeeker
-from app.models.permission import Permission, UserRole
-from app.models.user import User
+from app.models.evidence_seeker import build_evidence_seeker
+from app.models.permission import Permission, UserRole, build_permission
+from app.models.user import User, build_user
 
 
 def test_create_evidence_seeker_requires_auth(client: TestClient) -> None:
@@ -73,7 +73,7 @@ def test_update_evidence_seeker_allows_camel_case_visibility(
     client: TestClient, test_user: User, db: Session
 ) -> None:
     """Updating via API should flip visibility when payload uses camelCase."""
-    seeker = EvidenceSeeker(
+    seeker = build_evidence_seeker(
         title="Needs Toggle",
         description="",
         is_public=False,
@@ -112,11 +112,11 @@ def test_get_evidence_seekers_shows_owned_and_public(
 ) -> None:
     """Test that users can see evidence seekers they own or have access to"""
     # Create some evidence seekers
-    seeker1 = EvidenceSeeker(title="Owned Seeker", created_by=test_user.id)
-    seeker2 = EvidenceSeeker(
+    seeker1 = build_evidence_seeker(title="Owned Seeker", created_by=test_user.id)
+    seeker2 = build_evidence_seeker(
         title="Public Seeker", is_public=True, created_by=other_user.id
     )
-    seeker3 = EvidenceSeeker(
+    seeker3 = build_evidence_seeker(
         title="Private Seeker", is_public=False, created_by=other_user.id
     )
 
@@ -150,14 +150,14 @@ def test_get_evidence_seekers_with_permissions(
 ) -> None:
     """Test that users can see evidence seekers they have permissions for"""
     # Create a private evidence seeker
-    private_seeker = EvidenceSeeker(
+    private_seeker = build_evidence_seeker(
         title="Private Seeker", is_public=False, created_by=other_user.id
     )
     db.add(private_seeker)
     db.commit()
 
     # Give user reader permission
-    permission = Permission(
+    permission = build_permission(
         user_id=test_user.id,
         evidence_seeker_id=private_seeker.id,
         role=UserRole.EVSE_READER,
@@ -188,7 +188,7 @@ def test_get_specific_evidence_seeker_requires_access(
 ) -> None:
     """Test that getting specific evidence seeker requires proper access"""
     # Create a private evidence seeker
-    private_seeker = EvidenceSeeker(
+    private_seeker = build_evidence_seeker(
         title="Private Seeker", is_public=False, created_by=other_user.id
     )
     db.add(private_seeker)
@@ -220,14 +220,14 @@ def test_get_specific_evidence_seeker_with_permission(
 ):
     """Test that users can access evidence seekers they have permission for"""
     # Create a private evidence seeker
-    private_seeker = EvidenceSeeker(
+    private_seeker = build_evidence_seeker(
         title="Private Seeker", is_public=False, created_by=other_user.id
     )
     db.add(private_seeker)
     db.commit()
 
     # Give user reader permission
-    permission = Permission(
+    permission = build_permission(
         user_id=test_user.id,
         evidence_seeker_id=private_seeker.id,
         role=UserRole.EVSE_READER,
@@ -265,7 +265,7 @@ def test_update_evidence_seeker_requires_admin_permission(
 ):
     """Test that updating evidence seeker requires admin permission"""
     # Create an evidence seeker owned by someone else
-    other_seeker = EvidenceSeeker(title="Other Seeker", created_by=other_user.id)
+    other_seeker = build_evidence_seeker(title="Other Seeker", created_by=other_user.id)
     db.add(other_seeker)
     db.commit()
 
@@ -286,7 +286,7 @@ def test_update_evidence_seeker_requires_admin_permission(
     assert response.status_code == 403
 
     # Give admin permission
-    permission = Permission(
+    permission = build_permission(
         user_id=test_user.id,
         evidence_seeker_id=other_seeker.id,
         role=UserRole.EVSE_ADMIN,
@@ -310,7 +310,7 @@ def test_delete_evidence_seeker_requires_admin_permission(
 ) -> None:
     """Test that deleting evidence seeker requires admin permission"""
     # Create an evidence seeker owned by someone else
-    other_seeker = EvidenceSeeker(title="Other Seeker", created_by=other_user.id)
+    other_seeker = build_evidence_seeker(title="Other Seeker", created_by=other_user.id)
     db.add(other_seeker)
     db.commit()
 
@@ -329,7 +329,7 @@ def test_delete_evidence_seeker_requires_admin_permission(
     assert response.status_code == 403
 
     # Give admin permission
-    permission = Permission(
+    permission = build_permission(
         user_id=test_user.id,
         evidence_seeker_id=other_seeker.id,
         role=UserRole.EVSE_ADMIN,
@@ -350,14 +350,14 @@ def test_platform_admin_has_full_access(
 ) -> None:
     """Test that platform admins have access to all evidence seekers"""
     # Create evidence seekers owned by others
-    seeker1 = EvidenceSeeker(title="Seeker 1", created_by=other_user.id)
-    seeker2 = EvidenceSeeker(title="Seeker 2", created_by=other_user.id)
+    seeker1 = build_evidence_seeker(title="Seeker 1", created_by=other_user.id)
+    seeker2 = build_evidence_seeker(title="Seeker 2", created_by=other_user.id)
     db.add(seeker1)
     db.add(seeker2)
     db.commit()
 
     # Make user a platform admin
-    platform_perm = Permission(
+    platform_perm = build_permission(
         user_id=test_user.id,
         evidence_seeker_id=seeker1.id,  # associate with an existing seeker to satisfy FK
         role=UserRole.PLATFORM_ADMIN,
@@ -402,7 +402,7 @@ def test_get_evidence_seeker_users_requires_admin_permission(
 ) -> None:
     """Test that getting evidence seeker users requires admin permission"""
     # Create an evidence seeker owned by someone else
-    other_seeker = EvidenceSeeker(title="Other Seeker", created_by=other_user.id)
+    other_seeker = build_evidence_seeker(title="Other Seeker", created_by=other_user.id)
     db.add(other_seeker)
     db.commit()
 
@@ -427,12 +427,12 @@ def test_get_evidence_seeker_users_success(
 ) -> None:
     """Test getting users for an evidence seeker with admin permission"""
     # Create an evidence seeker
-    seeker = EvidenceSeeker(title="Test Seeker", created_by=test_user.id)
+    seeker = build_evidence_seeker(title="Test Seeker", created_by=test_user.id)
     db.add(seeker)
     db.commit()
 
     # Create another user
-    other_user = User(
+    other_user = build_user(
         email="other@example.com",
         username="otheruser",
         hashed_password="hashed",
@@ -442,7 +442,7 @@ def test_get_evidence_seeker_users_success(
     db.commit()
 
     # Give other user reader permission
-    permission = Permission(
+    permission = build_permission(
         user_id=other_user.id,
         evidence_seeker_id=seeker.id,
         role=UserRole.EVSE_READER,
@@ -480,12 +480,12 @@ def test_assign_evidence_seeker_role_requires_admin_permission(
 ) -> None:
     """Test that assigning roles requires admin permission"""
     # Create an evidence seeker owned by someone else
-    other_seeker = EvidenceSeeker(title="Other Seeker", created_by=other_user.id)
+    other_seeker = build_evidence_seeker(title="Other Seeker", created_by=other_user.id)
     db.add(other_seeker)
     db.commit()
 
     # Create another user
-    target_user = User(
+    target_user = build_user(
         email="target@example.com",
         username="targetuser",
         hashed_password="hashed",
@@ -516,12 +516,12 @@ def test_assign_evidence_seeker_role_success(
 ) -> None:
     """Test successful role assignment"""
     # Create an evidence seeker
-    seeker = EvidenceSeeker(title="Test Seeker", created_by=test_user.id)
+    seeker = build_evidence_seeker(title="Test Seeker", created_by=test_user.id)
     db.add(seeker)
     db.commit()
 
     # Create another user
-    target_user = User(
+    target_user = build_user(
         email="target@example.com",
         username="targetuser",
         hashed_password="hashed",
@@ -564,12 +564,12 @@ def test_assign_evidence_seeker_role_update_existing(
 ) -> None:
     """Test updating existing role assignment"""
     # Create an evidence seeker
-    seeker = EvidenceSeeker(title="Test Seeker", created_by=test_user.id)
+    seeker = build_evidence_seeker(title="Test Seeker", created_by=test_user.id)
     db.add(seeker)
     db.commit()
 
     # Create another user
-    target_user = User(
+    target_user = build_user(
         email="target@example.com",
         username="targetuser",
         hashed_password="hashed",
@@ -579,7 +579,7 @@ def test_assign_evidence_seeker_role_update_existing(
     db.commit()
 
     # Create existing permission
-    existing_perm = Permission(
+    existing_perm = build_permission(
         user_id=target_user.id,
         evidence_seeker_id=seeker.id,
         role=UserRole.EVSE_READER,
@@ -613,12 +613,12 @@ def test_remove_evidence_seeker_user_requires_admin_permission(
 ) -> None:
     """Test that removing users requires admin permission"""
     # Create an evidence seeker owned by someone else
-    other_seeker = EvidenceSeeker(title="Other Seeker", created_by=other_user.id)
+    other_seeker = build_evidence_seeker(title="Other Seeker", created_by=other_user.id)
     db.add(other_seeker)
     db.commit()
 
     # Create another user
-    target_user = User(
+    target_user = build_user(
         email="target@example.com",
         username="targetuser",
         hashed_password="hashed",
@@ -628,7 +628,7 @@ def test_remove_evidence_seeker_user_requires_admin_permission(
     db.commit()
 
     # Give target user permission
-    permission = Permission(
+    permission = build_permission(
         user_id=target_user.id,
         evidence_seeker_id=other_seeker.id,
         role=UserRole.EVSE_READER,
@@ -657,12 +657,12 @@ def test_remove_evidence_seeker_user_success(
 ) -> None:
     """Test successful user removal"""
     # Create an evidence seeker
-    seeker = EvidenceSeeker(title="Test Seeker", created_by=test_user.id)
+    seeker = build_evidence_seeker(title="Test Seeker", created_by=test_user.id)
     db.add(seeker)
     db.commit()
 
     # Create another user
-    target_user = User(
+    target_user = build_user(
         email="target@example.com",
         username="targetuser",
         hashed_password="hashed",
@@ -672,7 +672,7 @@ def test_remove_evidence_seeker_user_success(
     db.commit()
 
     # Give target user permission
-    permission = Permission(
+    permission = build_permission(
         user_id=target_user.id,
         evidence_seeker_id=seeker.id,
         role=UserRole.EVSE_READER,
@@ -718,19 +718,19 @@ def test_user_search_for_assignment_success(
 ) -> None:
     """Test successful user search for assignment"""
     # Create some test users
-    user1 = User(
+    user1 = build_user(
         email="alice@example.com",
         username="alice",
         hashed_password="hashed",
         is_active=True,
     )
-    user2 = User(
+    user2 = build_user(
         email="bob@example.com",
         username="bob",
         hashed_password="hashed",
         is_active=True,
     )
-    user3 = User(
+    user3 = build_user(
         email="charlie@example.com",
         username="charlie",
         hashed_password="hashed",

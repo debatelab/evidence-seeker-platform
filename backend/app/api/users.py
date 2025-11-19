@@ -1,20 +1,23 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi_users import FastAPIUsers
 from loguru import logger
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import auth_backend, get_user_manager
 from app.core.database import get_async_db
 from app.core.permissions import require_platform_admin
 from app.models.permission import UserRole
-from app.models.user import User
+from app.models.user import FastAPIUser, User, ensure_user_id
 from app.schemas.user import UserRead, UserSearchResult, UserUpdate
+
+UserModel: type[User] = User
 
 # Create router
 router = APIRouter()
 
 # Initialize FastAPI Users
-fastapi_users = FastAPIUsers[User, int](get_user_manager, [auth_backend])
+fastapi_users = FastAPIUsers[FastAPIUser, int](get_user_manager, [auth_backend])
 
 
 # Include user management routes from fastapi-users
@@ -27,26 +30,26 @@ router.include_router(
 
 @router.get("/me", response_model=UserRead)
 async def get_current_user(
-    user: User = Depends(fastapi_users.current_user()),
+    user: FastAPIUser = Depends(fastapi_users.current_user()),
 ) -> UserRead:
     """Get current authenticated user information"""
-    return user
+    return UserRead.model_validate(user)
 
 
 @router.put("/me", response_model=UserRead)
 async def update_current_user(
     user_update: UserUpdate,
-    user: User = Depends(fastapi_users.current_user()),
+    user: FastAPIUser = Depends(fastapi_users.current_user()),
     session: AsyncSession = Depends(get_async_db),
 ) -> UserRead:
     """Update current user information"""
     # This would be handled by fastapi-users, but we can add custom logic here
-    return user
+    return UserRead.model_validate(user)
 
 
 @router.delete("/me")
 async def delete_current_user(
-    user: User = Depends(fastapi_users.current_user()),
+    user: FastAPIUser = Depends(fastapi_users.current_user()),
 ) -> dict[str, str]:
     """Delete current user account"""
     # This would be handled by fastapi-users
@@ -63,19 +66,17 @@ async def delete_user(
     Delete a user account. Only platform admins can delete users.
     """
     try:
-        # Check if user exists
-        from sqlalchemy import select
-
-        stmt = select(User).where(User.id == user_id)
-        result = await session.execute(stmt)
-        user_to_delete = result.scalar_one_or_none()
+        user_to_delete = await session.get(UserModel, user_id)
         if not user_to_delete:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
             )
 
+        current_user_id = ensure_user_id(current_user)
+        user_to_delete_id = ensure_user_id(user_to_delete)
+
         # Prevent deleting the current user
-        if user_to_delete.id == current_user.id:
+        if user_to_delete_id == current_user_id:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Cannot delete your own account",
@@ -101,7 +102,7 @@ async def delete_user(
 @router.get("/search-for-assignment", response_model=list[UserSearchResult])
 async def search_users_for_assignment(
     q: str,
-    current_user: User = Depends(fastapi_users.current_user()),
+    current_user: FastAPIUser = Depends(fastapi_users.current_user()),
     session: AsyncSession = Depends(get_async_db),
 ) -> list[UserSearchResult]:
     """
@@ -111,7 +112,11 @@ async def search_users_for_assignment(
     """
     try:
         # Log the incoming request for debugging
-        logger.info(f"User search request: q='{q}', user_id={current_user.id}")
+        logger.info(
+            "User search request: q='%s', user_id=%s",
+            q,
+            ensure_user_id(current_user),
+        )
         if not q or len(q.strip()) < 2:
             logger.info("Search query too short, returning empty results")
             return []
@@ -119,21 +124,22 @@ async def search_users_for_assignment(
         search_term = f"%{q.strip()}%"
 
         # Search by username only (GDPR compliance - no email exposure)
-        from sqlalchemy import select
 
         logger.info(f"Executing search query with term: '{search_term}'")
 
         # Use ORM query instead of raw SQL for better async handling
         # Match by username OR email, but return only id and username to avoid email exposure
-        from sqlalchemy import or_
 
+        user_table = User.__table__
+        username_col = user_table.c.username
+        email_col = user_table.c.email
         stmt = (
-            select(User.id, User.username)
+            select(user_table.c.id, username_col)
             .where(
-                or_(User.username.ilike(search_term), User.email.ilike(search_term)),
-                User.is_active,
+                or_(username_col.ilike(search_term), email_col.ilike(search_term)),
+                user_table.c.is_active.is_(True),
             )
-            .order_by(User.username)
+            .order_by(username_col)
             .limit(20)
         )
 
@@ -168,17 +174,15 @@ async def get_all_users(
     """
     try:
         # Get all users with full info for platform admins
-        from sqlalchemy import func, select
-
         from app.models.permission import Permission
 
         # Get all users
-        users_stmt = select(User).order_by(User.username)
+        users_stmt = select(UserModel).order_by(UserModel.username)
         users_result = await session.execute(users_stmt)
         users = users_result.scalars().all()
 
         # Get permission summaries for each user
-        user_summaries = []
+        user_summaries: list[dict[str, object]] = []
         for user in users:
             # Check if user has PLATFORM_ADMIN role
             platform_admin_stmt = select(func.count(Permission.id)).where(
@@ -210,12 +214,13 @@ async def get_all_users(
                 display_role = "NO_ACCESS"
                 role_summary = "No roles assigned"
 
+            user_id = ensure_user_id(user)
             user_summaries.append(
                 {
-                    "id": user.id,
-                    "username": user.username,
-                    "email": user.email,  # Include email for platform admins
-                    "isActive": user.is_active,
+                    "id": user_id,
+                    "username": str(user.username),
+                    "email": str(user.email),  # Include email for platform admins
+                    "isActive": bool(user.is_active),
                     "displayRole": display_role,
                     "roleSummary": role_summary,
                     "hasPlatformAdmin": has_platform_admin,

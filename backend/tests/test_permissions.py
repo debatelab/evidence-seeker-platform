@@ -9,8 +9,8 @@ from app.core.permissions import (
     require_evidence_seeker_reader,
     require_platform_admin,
 )
-from app.models.evidence_seeker import EvidenceSeeker
-from app.models.permission import Permission, UserRole
+from app.models.evidence_seeker import EvidenceSeeker, build_evidence_seeker
+from app.models.permission import UserRole, build_permission
 from app.models.user import User
 
 
@@ -19,7 +19,7 @@ def test_check_evidence_seeker_permission_platform_admin(
 ):
     """Test platform admin has access to all evidence seekers"""
     # Create platform admin permission
-    platform_admin_perm = Permission(
+    platform_admin_perm = build_permission(
         user_id=test_user.id,
         evidence_seeker_id=test_evidence_seeker.id,  # associate with an existing seeker to satisfy FK
         role=UserRole.PLATFORM_ADMIN,
@@ -44,7 +44,7 @@ def test_check_evidence_seeker_permission_evse_admin(
 ):
     """Test evidence seeker admin permissions"""
     # Create admin permission for specific evidence seeker
-    admin_perm = Permission(
+    admin_perm = build_permission(
         user_id=test_user.id,
         evidence_seeker_id=test_evidence_seeker.id,
         role=UserRole.EVSE_ADMIN,
@@ -71,12 +71,14 @@ def test_check_evidence_seeker_permission_evse_reader(
 ):
     """Test evidence seeker reader permissions"""
     # Use a seeker not owned by test_user to avoid owner-as-admin
-    foreign_seeker = EvidenceSeeker(title="Foreign Seeker", created_by=other_user.id)
+    foreign_seeker = build_evidence_seeker(
+        title="Foreign Seeker", created_by=other_user.id
+    )
     db.add(foreign_seeker)
     db.commit()
 
     # Create reader permission for specific evidence seeker
-    reader_perm = Permission(
+    reader_perm = build_permission(
         user_id=test_user.id,
         evidence_seeker_id=foreign_seeker.id,
         role=UserRole.EVSE_READER,
@@ -93,7 +95,7 @@ def test_check_evidence_seeker_permission_evse_reader(
     )
 
     # Reader should not have access to other evidence seekers
-    other_seeker = EvidenceSeeker(title="Other Seeker", created_by=other_user.id)
+    other_seeker = build_evidence_seeker(title="Other Seeker", created_by=other_user.id)
     db.add(other_seeker)
     db.commit()
     assert not check_evidence_seeker_permission(
@@ -106,7 +108,9 @@ def test_check_evidence_seeker_permission_no_permission(
 ):
     """Test user without permissions has no access"""
     # User has no permissions and does not own this seeker
-    foreign_seeker = EvidenceSeeker(title="Foreign Seeker", created_by=other_user.id)
+    foreign_seeker = build_evidence_seeker(
+        title="Foreign Seeker", created_by=other_user.id
+    )
     db.add(foreign_seeker)
     db.commit()
     assert not check_evidence_seeker_permission(
@@ -122,16 +126,16 @@ def test_get_user_permissions(
 ):
     """Test getting all permissions for a user"""
     # Create multiple permissions
-    perm1 = Permission(
+    perm1 = build_permission(
         user_id=test_user.id,
         evidence_seeker_id=test_evidence_seeker.id,
         role=UserRole.EVSE_ADMIN,
     )
     # Create another seeker to attach second permission
-    other_seeker = EvidenceSeeker(title="Other Seeker", created_by=test_user.id)
+    other_seeker = build_evidence_seeker(title="Other Seeker", created_by=test_user.id)
     db.add(other_seeker)
     db.commit()
-    perm2 = Permission(
+    perm2 = build_permission(
         user_id=test_user.id,
         evidence_seeker_id=other_seeker.id,
         role=UserRole.EVSE_READER,
@@ -152,7 +156,7 @@ def test_require_evidence_seeker_admin_success(
 ):
     """Test require_evidence_seeker_admin dependency with valid permissions"""
     # Create admin permission
-    admin_perm = Permission(
+    admin_perm = build_permission(
         user_id=test_user.id,
         evidence_seeker_id=test_evidence_seeker.id,
         role=UserRole.EVSE_ADMIN,
@@ -170,7 +174,9 @@ def test_require_evidence_seeker_admin_failure(
 ):
     """Test require_evidence_seeker_admin dependency with insufficient permissions"""
     # Use a seeker not owned by test_user and with no permissions
-    foreign_seeker = EvidenceSeeker(title="Foreign Seeker", created_by=other_user.id)
+    foreign_seeker = build_evidence_seeker(
+        title="Foreign Seeker", created_by=other_user.id
+    )
     db.add(foreign_seeker)
     db.commit()
     with pytest.raises(HTTPException) as exc_info:
@@ -185,7 +191,7 @@ def test_require_evidence_seeker_reader_success(
 ):
     """Test require_evidence_seeker_reader dependency with valid permissions"""
     # Create reader permission
-    reader_perm = Permission(
+    reader_perm = build_permission(
         user_id=test_user.id,
         evidence_seeker_id=test_evidence_seeker.id,
         role=UserRole.EVSE_READER,
@@ -203,7 +209,9 @@ def test_require_evidence_seeker_reader_failure(
 ):
     """Test require_evidence_seeker_reader dependency with insufficient permissions"""
     # Use a seeker not owned by test_user and with no permissions
-    foreign_seeker = EvidenceSeeker(title="Foreign Seeker", created_by=other_user.id)
+    foreign_seeker = build_evidence_seeker(
+        title="Foreign Seeker", created_by=other_user.id
+    )
     db.add(foreign_seeker)
     db.commit()
     with pytest.raises(HTTPException) as exc_info:
@@ -218,7 +226,7 @@ def test_require_platform_admin_success(
 ):
     """Test require_platform_admin dependency with platform admin permissions"""
     # Create platform admin permission
-    platform_admin_perm = Permission(
+    platform_admin_perm = build_permission(
         user_id=test_user.id,
         evidence_seeker_id=test_evidence_seeker.id,  # associate with existing seeker
         role=UserRole.PLATFORM_ADMIN,
@@ -245,7 +253,7 @@ def test_role_hierarchy(
 ):
     """Test that role hierarchy works correctly (PLATFORM_ADMIN > EVSE_ADMIN > EVSE_READER)"""
     # Test platform admin has all access levels
-    platform_perm = Permission(
+    platform_perm = build_permission(
         user_id=test_user.id,
         evidence_seeker_id=test_evidence_seeker.id,
         role=UserRole.PLATFORM_ADMIN,
@@ -262,7 +270,7 @@ def test_role_hierarchy(
 
     # Clean up and test admin hierarchy
     db.delete(platform_perm)
-    admin_perm = Permission(
+    admin_perm = build_permission(
         user_id=test_user.id,
         evidence_seeker_id=test_evidence_seeker.id,
         role=UserRole.EVSE_ADMIN,
@@ -279,10 +287,12 @@ def test_role_hierarchy(
 
     # Clean up and test reader has only reader access (on a non-owned seeker)
     db.delete(admin_perm)
-    foreign_seeker = EvidenceSeeker(title="Foreign Seeker", created_by=other_user.id)
+    foreign_seeker = build_evidence_seeker(
+        title="Foreign Seeker", created_by=other_user.id
+    )
     db.add(foreign_seeker)
     db.commit()
-    reader_perm = Permission(
+    reader_perm = build_permission(
         user_id=test_user.id,
         evidence_seeker_id=foreign_seeker.id,
         role=UserRole.EVSE_READER,

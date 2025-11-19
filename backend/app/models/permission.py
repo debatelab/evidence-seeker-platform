@@ -1,10 +1,17 @@
-import enum
-from typing import cast
+from __future__ import annotations
 
-from sqlalchemy import Column, DateTime, Enum, ForeignKey, Integer, func
-from sqlalchemy.orm import relationship
+import enum
+from datetime import datetime
+from typing import TYPE_CHECKING, cast
+
+from sqlalchemy import DateTime, Enum, ForeignKey, Integer, func
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
+
+if TYPE_CHECKING:
+    from app.models.evidence_seeker import EvidenceSeeker
+    from app.models.user import User
 
 
 class UserRole(enum.Enum):
@@ -20,21 +27,24 @@ class Permission(Base):
 
     __tablename__ = "permissions"
 
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    evidence_seeker_id = Column(
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id"), nullable=False
+    )
+    evidence_seeker_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("evidence_seekers.id"), nullable=True
     )
-    # Note: SQLAlchemy Column typing doesn't align with var annotations; define Column and add a typed property for mypy.
-    role = Column(  # type: ignore[var-annotated]
+    role: Mapped[UserRole] = mapped_column(
         Enum(UserRole), nullable=False, default=UserRole.EVSE_READER
     )
-    created_at = Column(DateTime, server_default=func.now())
-    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
 
     # Relationships
-    user = relationship("User", back_populates="permissions")
-    evidence_seeker = relationship(
+    user: Mapped[User] = relationship("User", back_populates="permissions")
+    evidence_seeker: Mapped[EvidenceSeeker | None] = relationship(
         "EvidenceSeeker", back_populates="permissions", lazy="joined"
     )
 
@@ -59,3 +69,17 @@ class Permission(Base):
                 return UserRole(rv.value)
             except Exception:
                 return cast(UserRole, rv)
+
+
+def build_permission(
+    *,
+    user_id: int,
+    role: UserRole,
+    evidence_seeker_id: int | None = None,
+) -> Permission:
+    """Construct a Permission instance with type-checked arguments."""
+    permission = Permission()
+    permission.user_id = user_id
+    permission.role = role
+    permission.evidence_seeker_id = evidence_seeker_id
+    return permission

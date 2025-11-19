@@ -14,10 +14,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.database import get_async_db
 from app.core.email_service import EmailService
-from app.models.user import User
+from app.models.user import FastAPIUser, User
 
 
-class UserManager(IntegerIDMixin, BaseUserManager[User, int]):
+class UserManager(IntegerIDMixin, BaseUserManager[FastAPIUser, int]):
     """Custom user manager for fastapi-users"""
 
     reset_password_token_secret = settings.secret_key
@@ -53,7 +53,7 @@ class UserManager(IntegerIDMixin, BaseUserManager[User, int]):
         user_create: schemas.UC,
         safe: bool = False,
         request: Request | None = None,
-    ) -> User:
+    ) -> FastAPIUser:
         """Create a new user with username validation"""
         # Validate username uniqueness before creating user
         if hasattr(user_create, "username"):
@@ -63,13 +63,13 @@ class UserManager(IntegerIDMixin, BaseUserManager[User, int]):
         return await super().create(user_create, safe, request)
 
     async def on_after_register(
-        self, user: User, request: Request | None = None
+        self, user: FastAPIUser, request: Request | None = None
     ) -> None:
         """Hook called after user registration"""
         print(f"User {user.id} has registered.")
 
     async def on_after_forgot_password(
-        self, user: User, token: str, request: Request | None = None
+        self, user: FastAPIUser, token: str, request: Request | None = None
     ) -> None:
         """Hook called after forgot password request - sends password reset email"""
         try:
@@ -82,7 +82,7 @@ class UserManager(IntegerIDMixin, BaseUserManager[User, int]):
             print(f"Failed to send password reset email to {user.email}: {e}")
 
     async def on_after_request_verify(
-        self, user: User, token: str, request: Request | None = None
+        self, user: FastAPIUser, token: str, request: Request | None = None
     ) -> None:
         """Hook called after verification request - sends verification email"""
         try:
@@ -95,7 +95,7 @@ class UserManager(IntegerIDMixin, BaseUserManager[User, int]):
             print(f"Failed to send verification email to {user.email}: {e}")
 
     async def validate_password(
-        self, password: str, user: schemas.UC | User | None = None
+        self, password: str, user: schemas.UC | FastAPIUser | None = None
     ) -> None:
         """Enforce a minimal password policy for registrations and updates.
 
@@ -161,7 +161,7 @@ auth_backend = AuthenticationBackend(
 )
 
 # FastAPI Users instance
-fastapi_users = FastAPIUsers[User, int](get_user_manager, [auth_backend])
+fastapi_users = FastAPIUsers[FastAPIUser, int](get_user_manager, [auth_backend])
 
 
 # Dependency to get current user

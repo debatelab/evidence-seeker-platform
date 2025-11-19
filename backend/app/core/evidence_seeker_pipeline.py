@@ -10,7 +10,7 @@ import json
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 from uuid import UUID
 
 from loguru import logger
@@ -33,23 +33,42 @@ from app.models import (
     InterpretationType,
 )
 
+DocumentRetriever: type[Any] | None
+EvidenceSeekerPipeline: type[Any] | None
+RetrievalConfig: type[Any] | None
+ClaimPreprocessingConfig: type[Any] | None
+ConfirmationAnalyzerConfig: type[Any] | None
+
 try:  # pragma: no cover - optional runtime dependency
-    from evidence_seeker.retrieval.document_retriever import DocumentRetriever
+    from evidence_seeker.retrieval.document_retriever import (
+        DocumentRetriever as _DocumentRetriever,
+    )
 except ImportError:  # pragma: no cover
-    DocumentRetriever = None  # type: ignore[assignment]
+    DocumentRetriever = None
+else:
+    DocumentRetriever = cast(type[Any], _DocumentRetriever)
 
 try:  # pragma: no cover - pipeline is optional during unit tests
     from evidence_seeker import (
-        ClaimPreprocessingConfig,
-        ConfirmationAnalyzerConfig,
-        RetrievalConfig,
+        ClaimPreprocessingConfig as _ClaimPreprocessingConfig,
     )
-    from evidence_seeker import EvidenceSeeker as EvidenceSeekerPipeline
+    from evidence_seeker import (
+        ConfirmationAnalyzerConfig as _ConfirmationAnalyzerConfig,
+    )
+    from evidence_seeker import EvidenceSeeker as _EvidenceSeekerPipeline
+    from evidence_seeker import (
+        RetrievalConfig as _RetrievalConfig,
+    )
 except ImportError:  # pragma: no cover
-    EvidenceSeekerPipeline = None  # type: ignore[assignment]
-    RetrievalConfig = None  # type: ignore[assignment]
-    ClaimPreprocessingConfig = None  # type: ignore[assignment]
-    ConfirmationAnalyzerConfig = None  # type: ignore[assignment]
+    EvidenceSeekerPipeline = None
+    RetrievalConfig = None
+    ClaimPreprocessingConfig = None
+    ConfirmationAnalyzerConfig = None
+else:
+    EvidenceSeekerPipeline = cast(type[Any], _EvidenceSeekerPipeline)
+    RetrievalConfig = cast(type[Any], _RetrievalConfig)
+    ClaimPreprocessingConfig = cast(type[Any], _ClaimPreprocessingConfig)
+    ConfirmationAnalyzerConfig = cast(type[Any], _ConfirmationAnalyzerConfig)
 
 
 def _hash_config(bundle: RetrievalConfigBundle) -> str:
@@ -108,14 +127,12 @@ class EvidenceSeekerPipelineManager:
             db, seeker, overrides
         )
 
-        run = FactCheckRun(
-            evidence_seeker_id=seeker.id,
-            submitted_by=user_id,
+        run = _build_fact_check_run(
+            seeker=seeker,
             statement=statement,
-            status=FactCheckRunStatus.PENDING,
-            config_snapshot=_serialise_config(bundle),
-            is_public=public_run,
-            published_at=datetime.utcnow() if public_run else None,
+            user_id=user_id,
+            bundle=bundle,
+            public_run=public_run,
         )
         db.add(run)
         db.commit()
@@ -338,14 +355,12 @@ class EvidenceSeekerPipelineManager:
             db, seeker, overrides
         )
 
-        run = FactCheckRun(
-            evidence_seeker_id=seeker.id,
-            submitted_by=user_id,
+        run = _build_fact_check_run(
+            seeker=seeker,
             statement=statement,
-            status=FactCheckRunStatus.PENDING,
-            config_snapshot=_serialise_config(bundle),
-            is_public=public_run,
-            published_at=datetime.utcnow() if public_run else None,
+            user_id=user_id,
+            bundle=bundle,
+            public_run=public_run,
         )
         db.add(run)
         db.commit()
@@ -640,33 +655,30 @@ class EvidenceSeekerPipelineManager:
             # Convert raw payload to JSON-serializable format
             json_serializable_raw = _make_json_serializable(interpretation.raw)
 
-            result_row = FactCheckResult(
-                run_id=run.id,
-                interpretation_index=interpretation.index,
-                interpretation_text=interpretation.text,
-                interpretation_type=interpretation.type,
-                confirmation_level=interpretation.confirmation,
-                confidence_score=_to_python_float(interpretation.confidence),
-                summary=interpretation.summary,
-                raw_payload=json_serializable_raw,
-            )
+            result_row = FactCheckResult()
+            result_row.run_id = int(run.id)
+            result_row.interpretation_index = interpretation.index
+            result_row.interpretation_text = interpretation.text
+            result_row.interpretation_type = interpretation.type
+            result_row.confirmation_level = interpretation.confirmation
+            result_row.confidence_score = _to_python_float(interpretation.confidence)
+            result_row.summary = interpretation.summary
+            result_row.raw_payload = json_serializable_raw
             db.add(result_row)
             db.flush()
 
             for evidence in interpretation.evidence:
-                db.add(
-                    FactCheckEvidence(
-                        result_id=result_row.id,
-                        library_node_id=evidence.node_id,
-                        document_uuid=evidence.document_uuid,
-                        document_id=evidence.document_id,
-                        chunk_label=evidence.label,
-                        evidence_text=evidence.text,
-                        stance=evidence.stance,
-                        score=_to_python_float(evidence.score),
-                        metadata_payload=evidence.metadata,
-                    )
-                )
+                evidence_row = FactCheckEvidence()
+                evidence_row.result_id = int(result_row.id)
+                evidence_row.library_node_id = evidence.node_id
+                evidence_row.document_uuid = evidence.document_uuid
+                evidence_row.document_id = evidence.document_id
+                evidence_row.chunk_label = evidence.label
+                evidence_row.evidence_text = evidence.text
+                evidence_row.stance = evidence.stance
+                evidence_row.score = _to_python_float(evidence.score)
+                evidence_row.metadata_payload = evidence.metadata
+                db.add(evidence_row)
 
         db.commit()
 
@@ -742,13 +754,19 @@ def _make_json_serializable(obj: Any) -> Any:
 
 
 def _pipeline_config_fields(config_cls: Any) -> Iterable[str]:
-    if hasattr(config_cls, "__annotations__"):
-        return config_cls.__annotations__.keys()
-    if hasattr(config_cls, "model_fields"):
-        return config_cls.model_fields.keys()  # type: ignore[attr-defined]
-    if hasattr(config_cls, "schema"):
-        schema = config_cls.schema()  # type: ignore[call-arg]
-        return schema.get("properties", {}).keys()
+    annotations = getattr(config_cls, "__annotations__", None)
+    if isinstance(annotations, dict):
+        return annotations.keys()
+    model_fields = getattr(config_cls, "model_fields", None)
+    if isinstance(model_fields, dict):
+        return model_fields.keys()
+    schema_callable = getattr(config_cls, "schema", None)
+    if callable(schema_callable):
+        schema = schema_callable()
+        if isinstance(schema, dict):
+            properties = schema.get("properties", {})
+            if isinstance(properties, dict):
+                return properties.keys()
     return []
 
 
@@ -757,6 +775,25 @@ def _serialise_config(bundle: RetrievalConfigBundle) -> dict[str, Any]:
         "retrieval_config": getattr(bundle.config, "__dict__", str(bundle.config)),
         "overrides": bundle.overrides,
     }
+
+
+def _build_fact_check_run(
+    seeker: EvidenceSeeker,
+    statement: str,
+    user_id: int | None,
+    bundle: RetrievalConfigBundle,
+    public_run: bool,
+) -> FactCheckRun:
+    """Create a FactCheckRun instance without relying on SQLAlchemy kwargs."""
+    run = FactCheckRun()
+    run.evidence_seeker_id = int(seeker.id)
+    run.submitted_by = user_id
+    run.statement = statement
+    run.status = FactCheckRunStatus.PENDING
+    run.config_snapshot = _serialise_config(bundle)
+    run.is_public = public_run
+    run.published_at = datetime.utcnow() if public_run else None
+    return run
 
 
 def _extract_metrics(result: Any) -> dict[str, Any]:
@@ -934,14 +971,10 @@ def _extract_interpretations(result: Any) -> list[ParsedInterpretation]:
 
 def _coerce_interpretation_type(value: Any) -> InterpretationType:
     """Convert value to InterpretationType enum."""
-    if isinstance(value, InterpretationType):
-        return value
-
     # StatementType and InterpretationType are the same now
-    from evidence_seeker.models import StatementType
-
-    if isinstance(value, StatementType):
-        return value
+    statement_cls = getattr(value, "__class__", None)
+    if statement_cls is not None and statement_cls.__name__ == "StatementType":
+        return InterpretationType(getattr(value, "value", value))
 
     # Handle string values
     if isinstance(value, str):

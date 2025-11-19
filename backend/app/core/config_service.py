@@ -105,16 +105,15 @@ class ConfigService:
                 expires_at = datetime.utcnow() + timedelta(days=expires_in_days)
 
             # Create API key record
-            api_key_record = APIKey(
-                evidence_seeker_id=evidence_seeker_id,
-                evidence_seeker_uuid=evidence_seeker.uuid,
-                encrypted_key=encrypted_key,
-                key_hash=key_hash,
-                provider=provider,
-                name=name,
-                description=description,
-                expires_at=expires_at,
-            )
+            api_key_record = APIKey()
+            api_key_record.evidence_seeker_id = evidence_seeker_id
+            api_key_record.evidence_seeker_uuid = evidence_seeker.uuid
+            api_key_record.encrypted_key = encrypted_key
+            api_key_record.key_hash = key_hash
+            api_key_record.provider = provider
+            api_key_record.name = name
+            api_key_record.description = description
+            api_key_record.expires_at = expires_at
 
             db.add(api_key_record)
             db.commit()

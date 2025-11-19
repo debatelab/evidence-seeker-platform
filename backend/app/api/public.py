@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from datetime import datetime
+from typing import Any, TypeVar
 from uuid import UUID
 
 from fastapi import (
@@ -14,6 +15,7 @@ from fastapi import (
     Request,
     status,
 )
+from pydantic import BaseModel
 from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session, selectinload
 
@@ -33,7 +35,9 @@ from app.models.fact_check import (
     FactCheckRunStatus,
 )
 from app.schemas.fact_check import (
+    FactCheckResultRead,
     FactCheckRunCreate,
+    FactCheckRunDetail,
     FactCheckRunRead,
 )
 from app.schemas.public import (
@@ -47,6 +51,14 @@ from app.schemas.public import (
     PublicFactCheckRunSummary,
 )
 
+TModel = TypeVar("TModel", bound=BaseModel)
+
+
+def _model_validate(model_cls: type[TModel], data: Mapping[str, Any]) -> TModel:
+    """Helper to satisfy type checking when instantiating Pydantic models."""
+    return model_cls.model_validate(data)
+
+
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
@@ -57,14 +69,17 @@ def _build_summary(
     document_count: int,
     latest_fact_check_at: datetime | None,
 ) -> PublicEvidenceSeekerSummary:
-    return PublicEvidenceSeekerSummary(
-        uuid=seeker.uuid,
-        title=seeker.title,
-        description=seeker.description,
-        logo_url=seeker.logo_url,
-        published_at=seeker.published_at,
-        document_count=document_count,
-        latest_fact_check_at=latest_fact_check_at,
+    return _model_validate(
+        PublicEvidenceSeekerSummary,
+        {
+            "uuid": seeker.uuid,
+            "title": seeker.title,
+            "description": seeker.description,
+            "logo_url": seeker.logo_url,
+            "published_at": seeker.published_at,
+            "document_count": document_count,
+            "latest_fact_check_at": latest_fact_check_at,
+        },
     )
 
 
@@ -150,11 +165,14 @@ def list_public_evidence_seekers(
         for seeker in seekers
     ]
 
-    return PaginatedPublicEvidenceSeekers(
-        items=summaries,
-        total=total,
-        page=page,
-        page_size=page_size,
+    return _model_validate(
+        PaginatedPublicEvidenceSeekers,
+        {
+            "items": summaries,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+        },
     )
 
 
@@ -210,13 +228,16 @@ def get_public_evidence_seeker(
     )
 
     doc_models = [
-        PublicDocumentRead(
-            uuid=document.uuid,
-            title=document.title,
-            description=document.description,
-            original_filename=document.original_filename,
-            created_at=document.created_at,
-            updated_at=document.updated_at,
+        _model_validate(
+            PublicDocumentRead,
+            {
+                "uuid": document.uuid,
+                "title": document.title,
+                "description": document.description,
+                "original_filename": document.original_filename,
+                "created_at": document.created_at,
+                "updated_at": document.updated_at,
+            },
         )
         for document in documents
     ]
@@ -228,38 +249,49 @@ def get_public_evidence_seeker(
             latest_fact_check_at = latest
 
     recent_fact_checks = [
-        PublicFactCheckRunSummary(
-            uuid=run.uuid,
-            statement=run.statement,
-            status=(
-                run.status.value if hasattr(run.status, "value") else str(run.status)
-            ),
-            completed_at=run.completed_at,
-            published_at=run.published_at,
-            evidence_seeker_uuid=seeker.uuid,
-            evidence_seeker_id=seeker.id,
-            evidence_seeker_title=seeker.title,
+        _model_validate(
+            PublicFactCheckRunSummary,
+            {
+                "uuid": run.uuid,
+                "statement": run.statement,
+                "status": (
+                    run.status.value
+                    if hasattr(run.status, "value")
+                    else str(run.status)
+                ),
+                "completed_at": run.completed_at,
+                "published_at": run.published_at,
+                "evidence_seeker_uuid": seeker.uuid,
+                "evidence_seeker_id": seeker.id,
+                "evidence_seeker_title": seeker.title,
+            },
         )
         for run in recent_runs
     ]
 
-    detail = PublicEvidenceSeekerDetail(
-        uuid=seeker.uuid,
-        title=seeker.title,
-        description=seeker.description,
-        logo_url=seeker.logo_url,
-        published_at=seeker.published_at,
-        document_count=len(documents),
-        latest_fact_check_at=latest_fact_check_at,
-        created_at=seeker.created_at,
-        updated_at=seeker.updated_at,
-        is_public=True,
+    detail = _model_validate(
+        PublicEvidenceSeekerDetail,
+        {
+            "uuid": seeker.uuid,
+            "title": seeker.title,
+            "description": seeker.description,
+            "logo_url": seeker.logo_url,
+            "published_at": seeker.published_at,
+            "document_count": len(documents),
+            "latest_fact_check_at": latest_fact_check_at,
+            "created_at": seeker.created_at,
+            "updated_at": seeker.updated_at,
+            "is_public": True,
+        },
     )
 
-    return PublicEvidenceSeekerDetailResponse(
-        seeker=detail,
-        documents=doc_models,
-        recent_fact_checks=recent_fact_checks,
+    return _model_validate(
+        PublicEvidenceSeekerDetailResponse,
+        {
+            "seeker": detail,
+            "documents": doc_models,
+            "recent_fact_checks": recent_fact_checks,
+        },
     )
 
 
@@ -391,26 +423,34 @@ def list_public_fact_checks(
     ).all()
 
     items = [
-        PublicFactCheckRunSummary(
-            uuid=run.uuid,
-            statement=run.statement,
-            status=(
-                run.status.value if hasattr(run.status, "value") else str(run.status)
-            ),
-            completed_at=run.completed_at,
-            published_at=run.published_at,
-            evidence_seeker_uuid=seeker.uuid,
-            evidence_seeker_id=seeker.id,
-            evidence_seeker_title=seeker.title,
+        _model_validate(
+            PublicFactCheckRunSummary,
+            {
+                "uuid": run.uuid,
+                "statement": run.statement,
+                "status": (
+                    run.status.value
+                    if hasattr(run.status, "value")
+                    else str(run.status)
+                ),
+                "completed_at": run.completed_at,
+                "published_at": run.published_at,
+                "evidence_seeker_uuid": seeker.uuid,
+                "evidence_seeker_id": seeker.id,
+                "evidence_seeker_title": seeker.title,
+            },
         )
         for run, seeker in rows
     ]
 
-    return PublicFactCheckRunsResponse(
-        items=items,
-        total=total,
-        page=page,
-        page_size=page_size,
+    return _model_validate(
+        PublicFactCheckRunsResponse,
+        {
+            "items": items,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+        },
     )
 
 
@@ -471,10 +511,16 @@ def get_public_fact_check(
         latest_fact_check_at=run.completed_at,
     )
 
-    return PublicFactCheckRunDetailResponse(
-        run=run,
-        seeker=summary,
-        results=results,
+    run_schema = FactCheckRunDetail.model_validate(run)
+    result_models = [FactCheckResultRead.model_validate(result) for result in results]
+
+    return _model_validate(
+        PublicFactCheckRunDetailResponse,
+        {
+            "run": run_schema,
+            "seeker": summary,
+            "results": result_models,
+        },
     )
 
 

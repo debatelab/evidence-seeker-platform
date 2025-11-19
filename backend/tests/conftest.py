@@ -304,13 +304,13 @@ def test_user(db: Session):
     """Create test user (sync)"""
     from passlib.context import CryptContext
 
-    from app.models.user import User as UserModel
+    from app.models.user import build_user
 
     pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
     # Match the password used across tests when logging in
     hashed_password = pwd_context.hash("testpassword")
 
-    user = UserModel(
+    user = build_user(
         email="test@example.com",
         username="testuser",
         hashed_password=hashed_password,
@@ -329,9 +329,9 @@ def test_user(db: Session):
 @pytest.fixture(scope="function")
 def test_evidence_seeker(db: Session, test_user: "User"):
     """Create a basic evidence seeker owned by test_user."""
-    from app.models.evidence_seeker import EvidenceSeeker
+    from app.models.evidence_seeker import build_evidence_seeker
 
-    seeker = EvidenceSeeker(title="Test Seeker", created_by=test_user.id)
+    seeker = build_evidence_seeker(title="Test Seeker", created_by=test_user.id)
     db.add(seeker)
     db.commit()
     db.refresh(seeker)
@@ -355,12 +355,12 @@ def other_user(db: Session):
     """Create a second user to represent a different owner (for FK correctness)."""
     from passlib.context import CryptContext
 
-    from app.models.user import User as UserModel
+    from app.models.user import build_user
 
     pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
     hashed_password = pwd_context.hash("otherpassword")
 
-    user = UserModel(
+    user = build_user(
         email="other@example.com",
         username="otheruser",
         hashed_password=hashed_password,

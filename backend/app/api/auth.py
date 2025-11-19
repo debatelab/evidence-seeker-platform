@@ -3,14 +3,14 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi_users import FastAPIUsers
 
 from app.core.auth import UserManager, auth_backend, get_user_manager
-from app.models.user import User
+from app.models.user import FastAPIUser
 from app.schemas.user import UserCreate, UserRead
 
 # Create router
 router = APIRouter()
 
 # Initialize FastAPI Users
-fastapi_users = FastAPIUsers[User, int](get_user_manager, [auth_backend])
+fastapi_users = FastAPIUsers[FastAPIUser, int](get_user_manager, [auth_backend])
 
 # Security scheme for documentation
 security = HTTPBearer()
@@ -45,16 +45,18 @@ async def logout(
 
 
 @router.get("/auth/me", response_model=UserRead)
-async def get_current_user(user: User = Depends(fastapi_users.current_user())) -> User:
+async def get_current_user(
+    user: FastAPIUser = Depends(fastapi_users.current_user()),
+) -> UserRead:
     """Get current authenticated user"""
-    return user
+    return UserRead.model_validate(user)
 
 
 @router.post("/auth/resend-verification")
 async def resend_verification(
     request: Request,
     user_manager: UserManager = Depends(get_user_manager),
-    current_user: User = Depends(fastapi_users.current_user()),
+    current_user: FastAPIUser = Depends(fastapi_users.current_user()),
 ) -> dict[str, str]:
     """Resend verification email to current user"""
     try:
