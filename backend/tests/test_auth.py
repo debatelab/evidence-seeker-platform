@@ -116,9 +116,7 @@ class TestAuthEndpoints:
 
     def test_login_user_invalid_credentials(self, test_client: TestClient):
         """Test login with invalid credentials"""
-        response = login_user(
-            test_client, "nonexistent@example.com", "wrongpassword"
-        )
+        response = login_user(test_client, "nonexistent@example.com", "wrongpassword")
 
         assert response.status_code == 400
 

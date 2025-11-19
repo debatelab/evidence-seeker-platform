@@ -17,7 +17,7 @@ class AuthEvents {
       try {
         handler(error);
       } catch (err) {
-        // eslint-disable-next-line no-console
+         
         console.error("Unauthorized handler failed", err);
       }
     });
