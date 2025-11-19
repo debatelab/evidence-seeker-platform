@@ -169,7 +169,6 @@ def _auto_clean_db() -> None:
 def test_app():
     """Create test application with DB dependency overrides bound to test engines."""
     # Defer heavy import until the fixture is actually used
-    from sqlalchemy import text
 
     # Ensure DB is ready and pgvector extension is enabled before app startup creates tables
     _wait_for_db()
