@@ -1,8 +1,8 @@
 import asyncio
 import logging
 import os
-from collections.abc import Sequence
-from typing import Awaitable, cast
+from collections.abc import Awaitable, Sequence
+from typing import cast
 from uuid import UUID
 
 from fastapi import (
@@ -28,8 +28,8 @@ from ..core.evidence_seeker_config_service import (
 from ..core.evidence_seeker_index_service import evidence_seeker_index_service
 from ..core.file_utils import delete_file, save_upload_file, validate_file
 from ..core.onboarding_tokens import onboarding_token_service
-from ..core.progress_tracker import progress_tracker
 from ..core.permissions import check_evidence_seeker_permission
+from ..core.progress_tracker import progress_tracker
 from ..models.document import Document
 from ..models.evidence_seeker import EvidenceSeeker
 from ..models.index_job import IndexJob
@@ -68,16 +68,12 @@ def _process_index_update(job_id: int, document_ids: list[int]) -> None:
             seeker = db.get(EvidenceSeeker, job.evidence_seeker_id)
             if seeker is None:
                 return
-            documents = (
-                db.query(Document)
-                .filter(Document.id.in_(document_ids))
-                .all()
-            )
+            documents = db.query(Document).filter(Document.id.in_(document_ids)).all()
             if not documents:
                 return
 
             await evidence_seeker_index_service.run_update(db, job, seeker, documents)
-        except Exception as exc:  # pragma: no cover - defensive logging
+        except Exception:  # pragma: no cover - defensive logging
             logger.exception("Index update job %s failed", job_id)
         finally:
             db.close()
@@ -97,11 +93,7 @@ def _process_index_delete(job_id: int, document_ids: list[int]) -> None:
             seeker = db.get(EvidenceSeeker, job.evidence_seeker_id)
             if seeker is None:
                 return
-            documents = (
-                db.query(Document)
-                .filter(Document.id.in_(document_ids))
-                .all()
-            )
+            documents = db.query(Document).filter(Document.id.in_(document_ids)).all()
             if not documents:
                 return
 
@@ -110,7 +102,7 @@ def _process_index_delete(job_id: int, document_ids: list[int]) -> None:
                 delete_file(cast(str, document.file_path))
                 db.delete(document)
             db.commit()
-        except Exception as exc:  # pragma: no cover - defensive logging
+        except Exception:  # pragma: no cover - defensive logging
             logger.exception("Index delete job %s failed", job_id)
         finally:
             db.close()
@@ -125,9 +117,7 @@ def upload_document(
     title: str = Form(...),
     description: str | None = Form(None),
     evidence_seeker_uuid: str = Form(...),  # Use UUID for external API
-    onboarding_token: str | None = Header(
-        default=None, alias="X-Onboarding-Token"
-    ),
+    onboarding_token: str | None = Header(default=None, alias="X-Onboarding-Token"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> DocumentRead:

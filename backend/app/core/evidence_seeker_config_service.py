@@ -9,7 +9,7 @@ import os
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, TYPE_CHECKING, TypedDict
+from typing import TYPE_CHECKING, Any, TypedDict
 
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session
@@ -132,7 +132,10 @@ class EvidenceSeekerConfigService:
         require_hf_key = False
         if setup_mode == SetupMode.SIMPLE:
             require_hf_key = True
-        elif backend_type in {"huggingface_inference_api", "huggingface_instruct_prefix"}:
+        elif backend_type in {
+            "huggingface_inference_api",
+            "huggingface_instruct_prefix",
+        }:
             require_hf_key = True
 
         if require_hf_key and not settings_row.huggingface_api_key_id:
@@ -222,9 +225,9 @@ class EvidenceSeekerConfigService:
             "state": status.state.value,
             "missingRequirements": status.missing_requirements,
             "setupMode": status.setup_mode.value,
-            "configuredAt": status.configured_at.isoformat()
-            if status.configured_at
-            else None,
+            "configuredAt": (
+                status.configured_at.isoformat() if status.configured_at else None
+            ),
             "isReady": status.is_ready,
             "documentSkipAcknowledged": status.document_skip_acknowledged,
         }
@@ -281,9 +284,7 @@ class EvidenceSeekerConfigService:
             metadata_dict: dict[str, Any] = {}
         elif isinstance(metadata, Mapping):
             metadata_dict = {
-                str(key): value
-                for key, value in metadata.items()
-                if value is not None
+                str(key): value for key, value in metadata.items() if value is not None
             }
         else:
             if strict:
@@ -420,7 +421,9 @@ class EvidenceSeekerConfigService:
                 try:
                     clean["huggingface_api_key_id"] = int(value)
                 except (TypeError, ValueError) as exc:
-                    raise ValueError("huggingface_api_key_id must be an integer") from exc
+                    raise ValueError(
+                        "huggingface_api_key_id must be an integer"
+                    ) from exc
 
         if "setup_mode" in payload:
             value = payload.get("setup_mode")

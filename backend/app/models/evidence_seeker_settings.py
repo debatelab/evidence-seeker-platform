@@ -2,6 +2,7 @@ from datetime import datetime
 from enum import Enum
 
 from sqlalchemy import (
+    Boolean,
     Column,
     DateTime,
     Float,
@@ -9,7 +10,6 @@ from sqlalchemy import (
     Integer,
     String,
     UniqueConstraint,
-    Boolean,
     func,
     text,
 )
@@ -68,7 +68,9 @@ class EvidenceSeekerSettings(Base):
     )  # enforced to include seeker id in service
     pipeline_overrides = Column(JSONB, nullable=True)
 
-    setup_mode = Column(String(16), nullable=False, server_default=SetupMode.SIMPLE.value)
+    setup_mode = Column(
+        String(16), nullable=False, server_default=SetupMode.SIMPLE.value
+    )
     configuration_state = Column(
         String(32),
         nullable=False,
@@ -78,9 +80,7 @@ class EvidenceSeekerSettings(Base):
     missing_requirements = Column(
         JSONB, nullable=False, server_default=text("'[]'::jsonb")
     )
-    document_skip_acknowledged = Column(
-        Boolean, nullable=False, server_default="false"
-    )
+    document_skip_acknowledged = Column(Boolean, nullable=False, server_default="false")
 
     onboarding_token_jti = Column(String(64), nullable=True)
     onboarding_token_owner_id = Column(Integer, ForeignKey("users.id"), nullable=True)

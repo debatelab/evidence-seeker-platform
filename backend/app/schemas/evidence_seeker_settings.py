@@ -35,9 +35,7 @@ class EvidenceSeekerSettingsBase(BaseModel):
     huggingface_api_key_id: int | None = Field(
         default=None, alias="huggingfaceApiKeyId"
     )
-    setup_mode: SetupModeLiteral = Field(
-        default="SIMPLE", alias="setupMode"
-    )
+    setup_mode: SetupModeLiteral = Field(default="SIMPLE", alias="setupMode")
     document_skip_acknowledged: bool = Field(
         default=False, alias="documentSkipAcknowledged"
     )

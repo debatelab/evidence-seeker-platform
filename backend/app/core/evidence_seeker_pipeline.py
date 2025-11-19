@@ -7,9 +7,10 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Callable, Iterable
+from typing import Any
 from uuid import UUID
 
 from loguru import logger
@@ -20,7 +21,6 @@ from app.core.evidence_seeker_config_service import (
     RetrievalConfigBundle,
     evidence_seeker_config_service,
 )
-from app.core.evidence_seeker_index_service import evidence_seeker_index_service
 from app.core.progress_tracker import progress_tracker
 from app.models import (
     ConfirmationLevel,

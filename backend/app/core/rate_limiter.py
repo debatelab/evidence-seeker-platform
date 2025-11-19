@@ -5,7 +5,6 @@ import math
 import time
 from collections import deque
 from dataclasses import dataclass
-from typing import Deque, Dict
 
 from .config import settings
 
@@ -24,7 +23,7 @@ class SimpleRateLimiter:
     def __init__(self, max_requests: int, window_seconds: int) -> None:
         self._max_requests = max_requests
         self._window_seconds = window_seconds
-        self._hits: Dict[str, Deque[float]] = {}
+        self._hits: dict[str, deque[float]] = {}
         self._lock = asyncio.Lock()
 
     async def check(self, key: str) -> RateLimitResult:

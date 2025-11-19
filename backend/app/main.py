@@ -68,7 +68,11 @@ def create_application() -> FastAPI:
     async def http_exception_handler(
         request: Request, exc: HTTPException
     ) -> JSONResponse:
-        return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"detail": exc.detail},
+            headers=exc.headers,
+        )
 
     # Include routers
     app.include_router(

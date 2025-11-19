@@ -1,6 +1,6 @@
 import logging
-from datetime import datetime
 import shutil
+from datetime import datetime
 from pathlib import Path
 from uuid import UUID
 
@@ -9,34 +9,33 @@ from sqlalchemy import desc, select
 from sqlalchemy.orm import Session, selectinload
 
 from ..core.auth import get_current_user
+from ..core.config import settings
 from ..core.config_service import config_service
+from ..core.database import get_db
 from ..core.evidence_seeker_config_service import (
     ConfigurationNotReadyError,
     evidence_seeker_config_service,
 )
 from ..core.evidence_seeker_index_service import evidence_seeker_index_service
 from ..core.evidence_seeker_pipeline import evidence_seeker_pipeline_manager
-from ..core.config import settings
-from ..core.database import get_db
 from ..core.file_utils import delete_file
 from ..core.onboarding_tokens import onboarding_token_service
-from ..core.progress_tracker import progress_tracker
 from ..core.permissions import (
     check_evidence_seeker_permission,
     get_user_permissions,
 )
+from ..core.progress_tracker import progress_tracker
 from ..models.document import Document
 from ..models.evidence_seeker import EvidenceSeeker
-from ..models.evidence_seeker_settings import EvidenceSeekerSettings
+from ..models.evidence_seeker_settings import EvidenceSeekerSettings, SetupMode
 from ..models.fact_check import (
+    FactCheckResult,
     FactCheckRun,
     FactCheckRunStatus,
-    FactCheckResult,
 )
 from ..models.index_job import IndexJob
 from ..models.permission import UserRole
 from ..models.user import User
-from ..models.evidence_seeker_settings import SetupMode
 from ..schemas.evidence_seeker import (
     EvidenceSeekerCreate,
     EvidenceSeekerRead,
@@ -50,11 +49,11 @@ from ..schemas.evidence_seeker_settings import (
     TestSettingsRequest,
 )
 from ..schemas.fact_check import (
+    FactCheckRerunRequest,
+    FactCheckResultRead,
     FactCheckRunCreate,
     FactCheckRunDetail,
     FactCheckRunRead,
-    FactCheckRerunRequest,
-    FactCheckResultRead,
 )
 from ..schemas.index_job import IndexJobRead
 from ..schemas.search import (
@@ -62,10 +61,11 @@ from ..schemas.search import (
     EvidenceSearchRequest,
     EvidenceSearchResponse,
 )
-from .documents import _process_index_update, _process_index_delete
+from .documents import _process_index_update
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
 
 def _configuration_error_detail(exc: ConfigurationNotReadyError) -> dict[str, object]:
     payload = evidence_seeker_config_service.serialise_status(exc.status)
@@ -99,6 +99,7 @@ def _apply_initial_configuration(
         bill_to=initial_config.bill_to,
         setup_mode=setup_mode,
     )
+
 
 try:  # pragma: no cover - optional dependency during tests
     from evidence_seeker import CheckedClaim
@@ -174,8 +175,8 @@ def get_accessible_evidence_seekers(user_id: int, db: Session) -> list[EvidenceS
     # Also include evidence seekers created by the user or public ones
     result = db.execute(
         select(EvidenceSeeker)
-            .options(selectinload(EvidenceSeeker.settings))
-            .where((EvidenceSeeker.created_by == user_id) | EvidenceSeeker.is_public)
+        .options(selectinload(EvidenceSeeker.settings))
+        .where((EvidenceSeeker.created_by == user_id) | EvidenceSeeker.is_public)
     )
     created_or_public = result.scalars().all()
 
@@ -220,7 +221,7 @@ def create_evidence_seeker(
         owner_user_id=int(current_user.id),
     )
     db.refresh(settings_row)
-    setattr(db_seeker, "onboarding_token", onboarding_token)
+    db_seeker.onboarding_token = onboarding_token
     return db_seeker
 
 
@@ -367,7 +368,10 @@ def update_evidence_seeker(
                     FactCheckRun.evidence_seeker_id == seeker.id,
                     FactCheckRun.is_public.is_(True),
                 )
-                .update({"is_public": False, "published_at": None}, synchronize_session=False)
+                .update(
+                    {"is_public": False, "published_at": None},
+                    synchronize_session=False,
+                )
             )
     db.commit()
     db.refresh(seeker)

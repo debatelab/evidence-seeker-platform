@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
@@ -71,19 +71,32 @@ SyncSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=sync_eng
 
 def _import_all_models() -> None:
     """Import all model modules so SQLAlchemy registers tables on Base.metadata."""
-    # Local imports avoid side effects at module import time
     import importlib
 
     modules = [
         "app.models.user",
         "app.models.permission",
         "app.models.evidence_seeker",
+        "app.models.evidence_seeker_settings",
         "app.models.document",
-        "app.models.embedding",
         "app.models.api_key",
+        "app.models.index_job",
+        "app.models.fact_check",
     ]
-    for m in modules:
-        importlib.import_module(m)
+    for module in modules:
+        importlib.import_module(module)
+
+
+def _prepare_schema(*, drop: bool = False) -> None:
+    """Ensure the Postgres schema matches the current models."""
+    _import_all_models()
+    _wait_for_db()
+    with sync_engine.begin() as conn:
+        if drop:
+            conn.exec_driver_sql("DROP SCHEMA IF EXISTS public CASCADE")
+            conn.exec_driver_sql("CREATE SCHEMA public")
+        conn.exec_driver_sql("CREATE EXTENSION IF NOT EXISTS vector")
+        Base.metadata.create_all(bind=conn)
 
 
 def _wait_for_db(max_attempts: int = 30, delay_seconds: float = 1.0) -> None:
@@ -139,17 +152,16 @@ async def _truncate_all_async() -> None:
         print(f"Warning: Async database cleanup failed: {e}")
 
 
+@pytest.fixture(scope="session", autouse=True)
+def _reset_schema() -> Generator[None, None, None]:
+    """Drop and recreate the schema once per test session to pick up model changes."""
+    _prepare_schema(drop=True)
+    yield
+
+
 @pytest.fixture(autouse=True, scope="function")
 def _auto_clean_db() -> None:
-    """Ensure a clean database state for every test, even if it doesn't request a DB fixture.
-
-    Creates schema (idempotent), ensures pgvector extension exists, and truncates all tables.
-    """
-    _import_all_models()
-    _wait_for_db()
-    with sync_engine.begin() as conn:
-        conn.exec_driver_sql("CREATE EXTENSION IF NOT EXISTS vector")
-        Base.metadata.create_all(bind=conn)
+    """Ensure a clean database state for every test, even if it doesn't request a DB fixture."""
     _truncate_all_sync()
 
 

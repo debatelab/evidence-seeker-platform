@@ -32,6 +32,7 @@
         "frontend:test": "cd frontend && npm run test",
         "test": "npm-run-all --parallel test:backend frontend:test",
         "lint": "cd backend && source .venv/bin/activate && black --check . && ruff check . && mypy .",
+        "ruff-fix": "cd backend && source .venv/bin/activate && ruff check --fix .",
         "format": "cd backend && source .venv/bin/activate && black .",
         "clean": "docker-compose down -v && rm -rf backend/.venv frontend/node_modules frontend/dist",
         "prod:build": "docker-compose build",

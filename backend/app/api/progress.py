@@ -4,7 +4,6 @@ API endpoints for progress tracking of long-running operations.
 
 import asyncio
 import logging
-from collections.abc import Callable
 
 from fastapi import (
     APIRouter,
@@ -230,4 +229,3 @@ async def websocket_progress(
             await websocket.close(code=1011, reason="Internal server error")
         except Exception:
             pass
-

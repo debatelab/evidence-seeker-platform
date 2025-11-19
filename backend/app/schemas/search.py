@@ -12,9 +12,7 @@ class EvidenceSearchRequest(BaseModel):
     metadata_filters: dict[str, Any] | None = Field(
         default=None, alias="metadataFilters"
     )
-    document_uuids: list[UUID] | None = Field(
-        default=None, alias="documentUuids"
-    )
+    document_uuids: list[UUID] | None = Field(default=None, alias="documentUuids")
 
     class Config:
         alias_generator = to_camel

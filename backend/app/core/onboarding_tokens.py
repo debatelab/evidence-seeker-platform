@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 from jose import JWTError, jwt
@@ -37,7 +37,7 @@ class OnboardingTokenService:
             db.refresh(settings_row)
 
         jti = uuid4().hex
-        expires_at = datetime.now(timezone.utc) + self._lifetime
+        expires_at = datetime.now(UTC) + self._lifetime
         payload = {
             "sub": str(owner_user_id),
             "seeker_uuid": str(seeker.uuid),

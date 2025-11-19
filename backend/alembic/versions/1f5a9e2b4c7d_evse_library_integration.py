@@ -205,9 +205,9 @@ def upgrade() -> None:
             ["evidence_seekers.id"],
             name="fact_check_runs_seeker_id_fkey",
         ),
-            sa.ForeignKeyConstraint(
-                ["submitted_by"], ["users.id"], name="fact_check_runs_submitted_by_fkey"
-            ),
+        sa.ForeignKeyConstraint(
+            ["submitted_by"], ["users.id"], name="fact_check_runs_submitted_by_fkey"
+        ),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("uuid"),
     )

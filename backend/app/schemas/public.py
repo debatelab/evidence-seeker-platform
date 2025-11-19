@@ -58,7 +58,7 @@ class PaginatedPublicEvidenceSeekers(BaseModel):
 class PublicEvidenceSeekerDetailResponse(BaseModel):
     seeker: PublicEvidenceSeekerDetail
     documents: list[PublicDocumentRead]
-    recent_fact_checks: list["PublicFactCheckRunSummary"] = Field(
+    recent_fact_checks: list[PublicFactCheckRunSummary] = Field(
         alias="recentFactChecks", default_factory=list
     )
 

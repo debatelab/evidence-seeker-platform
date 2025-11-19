@@ -43,6 +43,7 @@ def _configure_seeker(
     )
     db.add(settings)
     db.commit()
+    db.refresh(seeker)
 
 
 def test_upload_document_requires_auth(client: TestClient):
@@ -101,7 +102,7 @@ def test_upload_document_requires_admin_permission(
 
 
 def test_upload_document_success_with_permission(
-    client: TestClient, test_user: User, db: Session
+    client: TestClient, test_user: User, db: Session, tmp_path
 ):
     """Test successful document upload with admin permission"""
     # Create an evidence seeker
@@ -109,6 +110,22 @@ def test_upload_document_success_with_permission(
     db.add(seeker)
     db.commit()
     _configure_seeker(db, seeker)
+    # Seed an existing document to satisfy configuration READY guard
+    seed_file = tmp_path / "seed.txt"
+    seed_file.write_text("seed content")
+    db.add(
+        Document(
+            title="Seed",
+            description="Seed doc",
+            file_path=str(seed_file),
+            original_filename="seed.txt",
+            file_size=12,
+            mime_type="text/plain",
+            evidence_seeker_id=seeker.id,
+            evidence_seeker_uuid=str(seeker.uuid),
+        )
+    )
+    db.commit()
 
     # Login
     login_response = client.post(
@@ -135,10 +152,13 @@ def test_upload_document_success_with_permission(
         headers=headers,
     )
     assert response.status_code == 200
-    data = response.json()
-    assert data["title"] == "Test Document"
-    assert data["description"] == "Test description"
-    assert data["evidenceSeekerId"] == seeker.id
+    payload = response.json()
+    assert "document" in payload
+    document = payload["document"]
+    assert document["title"] == "Test Document"
+    assert document["description"] == "Test description"
+    assert document["evidenceSeekerId"] == seeker.id
+    assert payload["jobUuid"]
 
 
 def test_upload_document_blocked_until_configured(
@@ -528,7 +548,7 @@ def test_delete_document_success_with_permission(
     # Delete document with permission
     response = client.delete(f"/api/v1/documents/{document.uuid}", headers=headers)
     assert response.status_code == 200
-    assert "deleted" in response.json()["detail"]
+    assert response.json()["detail"] == "Document deletion scheduled"
 
     # Verify document is deleted from database
     from app.core.database import SessionLocal

@@ -41,7 +41,9 @@ def _stub_pipeline(monkeypatch: pytest.MonkeyPatch) -> None:
         db.refresh(run)
         return run
 
-    async def fake_execute_run(self, run_id: int, seeker_id: int) -> None:  # pragma: no cover - minimal stub
+    async def fake_execute_run(
+        self, run_id: int, seeker_id: int
+    ) -> None:  # pragma: no cover - minimal stub
         return None
 
     monkeypatch.setattr(

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from datetime import datetime
 import logging
-from typing import Sequence
+from collections.abc import Sequence
+from datetime import datetime
 from uuid import UUID
 
 from fastapi import (
@@ -10,15 +10,15 @@ from fastapi import (
     BackgroundTasks,
     Depends,
     HTTPException,
-    Request,
     Query,
+    Request,
     status,
 )
 from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session, selectinload
 
-from app.core.database import get_db
 from app.core.config import settings
+from app.core.database import get_db
 from app.core.evidence_seeker_config_service import (
     ConfigurationNotReadyError,
     evidence_seeker_config_service,
@@ -33,9 +33,7 @@ from app.models.fact_check import (
     FactCheckRunStatus,
 )
 from app.schemas.fact_check import (
-    FactCheckResultRead,
     FactCheckRunCreate,
-    FactCheckRunDetail,
     FactCheckRunRead,
 )
 from app.schemas.public import (
@@ -45,8 +43,8 @@ from app.schemas.public import (
     PublicEvidenceSeekerDetailResponse,
     PublicEvidenceSeekerSummary,
     PublicFactCheckRunDetailResponse,
-    PublicFactCheckRunSummary,
     PublicFactCheckRunsResponse,
+    PublicFactCheckRunSummary,
 )
 
 router = APIRouter()
@@ -118,9 +116,7 @@ def list_public_evidence_seekers(
 ) -> PaginatedPublicEvidenceSeekers:
     filters: list = [EvidenceSeeker.is_public.is_(True)]
     if search:
-        filters.append(
-            func.lower(EvidenceSeeker.title).like(f"%{search.lower()}%")
-        )
+        filters.append(func.lower(EvidenceSeeker.title).like(f"%{search.lower()}%"))
 
     total = db.execute(
         select(func.count()).select_from(EvidenceSeeker).where(*filters)
@@ -131,7 +127,11 @@ def list_public_evidence_seekers(
             select(EvidenceSeeker)
             .where(*filters)
             .order_by(
-                desc(func.coalesce(EvidenceSeeker.published_at, EvidenceSeeker.updated_at))
+                desc(
+                    func.coalesce(
+                        EvidenceSeeker.published_at, EvidenceSeeker.updated_at
+                    )
+                )
             )
             .offset((page - 1) * page_size)
             .limit(page_size)
@@ -199,7 +199,9 @@ def get_public_evidence_seeker(
                 FactCheckRun.status == FactCheckRunStatus.SUCCEEDED,
             )
             .order_by(
-                desc(func.coalesce(FactCheckRun.published_at, FactCheckRun.completed_at))
+                desc(
+                    func.coalesce(FactCheckRun.published_at, FactCheckRun.completed_at)
+                )
             )
             .limit(10)
         )
@@ -229,7 +231,9 @@ def get_public_evidence_seeker(
         PublicFactCheckRunSummary(
             uuid=run.uuid,
             statement=run.statement,
-            status=run.status.value if hasattr(run.status, "value") else str(run.status),
+            status=(
+                run.status.value if hasattr(run.status, "value") else str(run.status)
+            ),
             completed_at=run.completed_at,
             published_at=run.published_at,
             evidence_seeker_uuid=seeker.uuid,
@@ -390,7 +394,9 @@ def list_public_fact_checks(
         PublicFactCheckRunSummary(
             uuid=run.uuid,
             statement=run.statement,
-            status=run.status.value if hasattr(run.status, "value") else str(run.status),
+            status=(
+                run.status.value if hasattr(run.status, "value") else str(run.status)
+            ),
             completed_at=run.completed_at,
             published_at=run.published_at,
             evidence_seeker_uuid=seeker.uuid,
@@ -454,7 +460,9 @@ def get_public_fact_check(
                         evidence.metadata_payload = {}
 
     document_count = db.execute(
-        select(func.count()).select_from(Document).where(Document.evidence_seeker_id == seeker.id)
+        select(func.count())
+        .select_from(Document)
+        .where(Document.evidence_seeker_id == seeker.id)
     ).scalar_one()
 
     summary = _build_summary(
@@ -468,6 +476,8 @@ def get_public_fact_check(
         seeker=summary,
         results=results,
     )
+
+
 def _client_identifier(request: Request) -> str:
     """Return a stable identifier for rate limiting (trusting proxy headers)."""
     forwarded_for = request.headers.get("x-forwarded-for")

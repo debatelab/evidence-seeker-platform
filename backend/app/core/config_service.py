@@ -11,6 +11,7 @@ from typing import Any
 from cryptography.fernet import Fernet
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.models import APIKey
 
 logger = logging.getLogger(__name__)
@@ -342,18 +343,14 @@ class ConfigService:
 
             total_documents = db.query(Document).count()
             indexed_documents = (
-                db.query(Document)
-                .filter(Document.index_file_key.isnot(None))
-                .count()
+                db.query(Document).filter(Document.index_file_key.isnot(None)).count()
             )
             total_settings = db.query(EvidenceSeekerSettings).count()
             total_runs = db.query(FactCheckRun).count()
             pending_index_jobs = (
                 db.query(IndexJob)
                 .filter(
-                    IndexJob.status.in_(
-                        [IndexJobStatus.QUEUED, IndexJobStatus.RUNNING]
-                    )
+                    IndexJob.status.in_([IndexJobStatus.QUEUED, IndexJobStatus.RUNNING])
                 )
                 .count()
             )

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import uuid
 import os
+import uuid
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -42,7 +42,11 @@ def _build_settings(seeker: SimpleNamespace) -> EvidenceSeekerSettings:
     )
 
 
-def test_upsert_settings_normalises_payload(service: EvidenceSeekerConfigService, seeker: SimpleNamespace, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_upsert_settings_normalises_payload(
+    service: EvidenceSeekerConfigService,
+    seeker: SimpleNamespace,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     settings_row = _build_settings(seeker)
     db = MagicMock()
     monkeypatch.setattr(service, "ensure_settings", lambda *_: settings_row)
@@ -67,7 +71,11 @@ def test_upsert_settings_normalises_payload(service: EvidenceSeekerConfigService
     db.refresh.assert_called_with(settings_row)
 
 
-def test_upsert_settings_rejects_invalid_values(service: EvidenceSeekerConfigService, seeker: SimpleNamespace, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_upsert_settings_rejects_invalid_values(
+    service: EvidenceSeekerConfigService,
+    seeker: SimpleNamespace,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     settings_row = _build_settings(seeker)
     db = MagicMock()
     monkeypatch.setattr(service, "ensure_settings", lambda *_: settings_row)
@@ -81,7 +89,11 @@ def test_upsert_settings_rejects_invalid_values(service: EvidenceSeekerConfigSer
         )
 
 
-def test_build_retrieval_bundle_injects_metadata(service: EvidenceSeekerConfigService, seeker: SimpleNamespace, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_build_retrieval_bundle_injects_metadata(
+    service: EvidenceSeekerConfigService,
+    seeker: SimpleNamespace,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     settings_row = _build_settings(seeker)
     settings_row.top_k = 7
     settings_row.id = 12
@@ -115,7 +127,9 @@ def test_build_retrieval_bundle_hf_inference_sets_env_var(
     settings_row = _build_settings(seeker)
     settings_row.id = 77
     settings_row.embed_backend_type = "huggingface_inference_api"
-    settings_row.embed_base_url = "https://api-inference.huggingface.co/models/test-model"
+    settings_row.embed_base_url = (
+        "https://api-inference.huggingface.co/models/test-model"
+    )
     db = MagicMock()
     monkeypatch.setattr(service, "ensure_settings", lambda *_: settings_row)
     monkeypatch.setattr(
@@ -140,9 +154,7 @@ def test_build_retrieval_bundle_hf_inference_sets_env_var(
 
     assert os.environ[env_name] == "hf-secret-token"
     assert bundle.config.kwargs["api_key_name"] == env_name
-    assert (
-        bundle.config.kwargs["embed_backend_type"] == "huggingface_inference_api"
-    )
+    assert bundle.config.kwargs["embed_backend_type"] == "huggingface_inference_api"
     assert bundle.config.kwargs["embed_base_url"] == settings_row.embed_base_url
     os.environ.pop(env_name, None)
 
@@ -190,7 +202,9 @@ def test_build_retrieval_bundle_hf_inference_requires_key(
     settings_row = _build_settings(seeker)
     settings_row.id = 23
     settings_row.embed_backend_type = "huggingface_inference_api"
-    settings_row.embed_base_url = "https://api-inference.huggingface.co/models/test-model"
+    settings_row.embed_base_url = (
+        "https://api-inference.huggingface.co/models/test-model"
+    )
     db = MagicMock()
     monkeypatch.setattr(service, "ensure_settings", lambda *_: settings_row)
     monkeypatch.setattr(

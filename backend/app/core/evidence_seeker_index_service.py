@@ -6,9 +6,10 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections.abc import Callable, Iterable, Sequence
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Iterable, Sequence
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -248,9 +249,7 @@ class EvidenceSeekerIndexService:
         """Execute an update job."""
         self._update_job_status(db, job, IndexJobStatus.RUNNING, "Ingesting documents")
         try:
-            bundle = evidence_seeker_config_service.build_retrieval_bundle(
-                db, seeker
-            )
+            bundle = evidence_seeker_config_service.build_retrieval_bundle(db, seeker)
             file_paths = self._materialise_paths(doc.file_path for doc in documents)
             metadata_payload = []
             metadata_by_name: dict[str, dict[str, Any]] = {}
@@ -314,9 +313,7 @@ class EvidenceSeekerIndexService:
         """Execute a delete job removing files from the index."""
         self._update_job_status(db, job, IndexJobStatus.RUNNING, "Removing documents")
         try:
-            bundle = evidence_seeker_config_service.build_retrieval_bundle(
-                db, seeker
-            )
+            bundle = evidence_seeker_config_service.build_retrieval_bundle(db, seeker)
             file_keys = [
                 doc.index_file_key or Path(doc.file_path).name for doc in documents
             ]

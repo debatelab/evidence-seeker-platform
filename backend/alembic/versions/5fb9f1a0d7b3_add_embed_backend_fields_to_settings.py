@@ -8,6 +8,7 @@ Create Date: 2025-03-18 12:00:00.000000
 from collections.abc import Sequence
 
 import sqlalchemy as sa
+
 from alembic import op
 
 # revision identifiers, used by Alembic.
@@ -57,4 +58,3 @@ def downgrade() -> None:
     op.drop_column("evidence_seeker_settings", "embed_bill_to")
     op.drop_column("evidence_seeker_settings", "embed_base_url")
     op.drop_column("evidence_seeker_settings", "embed_backend_type")
-
