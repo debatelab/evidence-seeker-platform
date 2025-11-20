@@ -67,6 +67,12 @@ class Settings(BaseSettings):
     # Controls whether the simplified configuration flow and backend guards are enabled.
     enable_simple_config: bool = True
 
+    # Initial admin bootstrap
+    auto_bootstrap_initial_admin: bool = True
+    initial_admin_email: str | None = None
+    initial_admin_password: str | None = None
+    initial_admin_username: str | None = None
+
     # EvidenceSeeker integration
     evse_run_timeout_seconds: int = 900
     evse_max_concurrent_runs: int = 5

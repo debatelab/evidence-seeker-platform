@@ -349,68 +349,34 @@ sudo /etc/letsencrypt/renewal-hooks/deploy/evidence-seeker-cert-refresh.sh
 
 ## Step 6: Initial User Creation
 
-### 6.1 Modify Backend for Initial User Creation
+### 6.1 Configure Environment Variables
 
-Add an endpoint to create the first platform admin user:
+The backend now bootstraps the first platform admin automatically during startup.
+Add the following entries to the production `.env` on the server:
 
-```python
-# Add to backend/app/api/auth.py
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
-from app.core.database import get_async_db
-from app.models.user import User
-from app.schemas.user import UserCreate
-from app.core.auth import get_user_manager
-from fastapi_users import BaseUserManager
-
-router = APIRouter()
-
-@router.post("/create-initial-admin")
-async def create_initial_admin(
-    user_data: UserCreate,
-    session: AsyncSession = Depends(get_async_db),
-    user_manager: BaseUserManager[User, int] = Depends(get_user_manager)
-):
-    """Create the initial platform admin user (only works if no users exist)"""
-    # Check if any users already exist
-    result = await session.execute("SELECT COUNT(*) FROM users")
-    user_count = result.scalar()
-    
-    if user_count > 0:
-        raise HTTPException(status_code=400, detail="Initial admin already created")
-    
-    # Create the user
-    user = await user_manager.create(user_data)
-    
-    # Mark as verified
-    user.is_verified = True
-    await session.commit()
-    
-    return {"message": "Initial admin created successfully", "user_id": user.id}
+```env
+# backend/.env (production)
+INITIAL_ADMIN_EMAIL=admin@yourdomain.com
+INITIAL_ADMIN_PASSWORD=CHANGE_THIS_STRONG_PASSWORD
+INITIAL_ADMIN_USERNAME=admin
 ```
 
-### 6.2 Create Initial Admin User
+- The account is only created if the database is empty.
+- If a user with the same email already exists, the bootstrapper ensures it is active,
+  verified, superuser-enabled, and has the `PLATFORM_ADMIN` permission.
+- The password is never logged; update the `.env` to rotate credentials before a redeploy.
+
+### 6.2 Verify Bootstrap
+
+After deploying or restarting the backend service:
+
 ```bash
-# Start the application temporarily to create initial user
-cd /opt/evidence-seeker-platform
-docker-compose -f docker-compose.prod.yml up -d db
-sleep 30
-
-# Create initial admin user via API
-curl -X POST http://localhost:8000/api/v1/auth/create-initial-admin \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "admin@yourdomain.com",
-    "password": "CHANGE_THIS_STRONG_PASSWORD",
-    "username": "admin",
-    "is_active": true,
-    "is_superuser": true,
-    "is_verified": true
-  }'
-
-# Stop temporary database
-docker-compose -f docker-compose.prod.yml down
+# Inspect backend logs for bootstrap confirmation
+docker-compose -f docker-compose.prod.yml logs backend | grep "Created initial admin"
 ```
+
+If you wipe the database in the future, simply redeploy or restart the backend with the
+same env vars to recreate the admin automatically. No manual curl/SSH steps are needed.
 
 ## Step 7: Application Deployment
 

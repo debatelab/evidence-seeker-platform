@@ -16,6 +16,7 @@ from app.api.permissions import router as permissions_router
 from app.api.progress import router as progress_router
 from app.api.public import router as public_router
 from app.api.users import router as users_router
+from app.core.bootstrap import ensure_initial_admin_from_settings
 from app.core.config import settings
 from app.core.database import create_tables
 from app.core.logging import setup_logging
@@ -135,6 +136,7 @@ def create_application() -> FastAPI:
         logger.info("Starting Evidence Seeker Platform API")
         create_tables()
         logger.info("Database tables created/verified")
+        await ensure_initial_admin_from_settings()
 
     # Shutdown event
     @app.on_event("shutdown")

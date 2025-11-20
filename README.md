@@ -334,6 +334,17 @@ JWT_SECRET_KEY=dev-jwt-secret-key-change-in-production
 LOG_LEVEL=DEBUG
 ```
 
+For staging/production deployments, add the following variables to the backend `.env`
+to automatically bootstrap the first platform admin when the service starts:
+
+```env
+INITIAL_ADMIN_EMAIL=admin@yourdomain.com
+INITIAL_ADMIN_PASSWORD=CHANGE_THIS_STRONG_PASSWORD
+INITIAL_ADMIN_USERNAME=admin
+```
+
+These values are read only on startup and are not stored in source control.
+
 ### **Database Setup**
 
 1. **Initialize the database**

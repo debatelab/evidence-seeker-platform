@@ -29,11 +29,22 @@ if TYPE_CHECKING:
     from app.models.evidence_seeker import EvidenceSeeker
     from app.models.user import User
 
-# Import enums from evidence-seeker library
-try:
-    from evidence_seeker.datamodels import ConfirmationLevel, StatementType
-except ImportError:
-    # Fallback definitions if library not available (e.g., during migrations)
+from app.core.config import settings
+
+# Import enums from evidence-seeker library when embeddings are enabled.
+# In tests/CI we disable embeddings to avoid pulling heavy torch deps.
+if not settings.disable_embeddings:
+    try:  # pragma: no cover - relies on optional evidence_seeker package
+        from evidence_seeker.datamodels import ConfirmationLevel, StatementType
+    except Exception:  # pragma: no cover - fall back if optional dep missing
+        StatementType = None  # type: ignore[assignment]
+        ConfirmationLevel = None  # type: ignore[assignment]
+else:
+    StatementType = None  # type: ignore[assignment]
+    ConfirmationLevel = None  # type: ignore[assignment]
+
+if StatementType is None or ConfirmationLevel is None:
+    # Fallback definitions if library not available (e.g., during tests/migrations)
     class StatementType(str, enum.Enum):  # type: ignore[no-redef]
         DESCRIPTIVE = "descriptive"
         ASCRIPTIVE = "ascriptive"
