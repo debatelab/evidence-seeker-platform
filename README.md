@@ -372,7 +372,7 @@ These values are read only on startup and are not stored in source control.
    ruff check .
    mypy .
 
-   # Run development server
+   # Run development server (auto-reload is for local dev only)
    uvicorn app.main:app --reload
    ```
 
@@ -392,7 +392,7 @@ These values are read only on startup and are not stored in source control.
 ### **Docker Commands**
 
 ```bash
-# Start all services
+# Start all services (backend container becomes healthy after /health succeeds)
 docker-compose up -d
 
 # View logs
@@ -401,7 +401,7 @@ docker-compose logs -f
 # Stop all services
 docker-compose down
 
-# Rebuild and restart
+# Rebuild and restart (uses production uvicorn command without --reload)
 docker-compose up -d --build
 
 # Run tests in containers
@@ -531,6 +531,9 @@ docker-compose exec db psql -U evidence_user -d evidence_seeker
 
 # Restart specific service
 docker-compose restart backend
+
+# Check backend health status exposed to dependent services
+docker-compose ps backend
 ```
 
 ### **Project Structure**
