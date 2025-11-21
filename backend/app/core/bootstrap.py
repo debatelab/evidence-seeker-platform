@@ -95,6 +95,7 @@ async def bootstrap_platform_admin(
 
     Returns True when a new user was created, False otherwise.
     """
+
     async def _run(session: AsyncSession) -> bool:
         existing_admin = await _get_user_by_email(session, config.email)
         if existing_admin is not None:
