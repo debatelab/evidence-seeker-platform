@@ -89,12 +89,13 @@ async def bootstrap_platform_admin(
     config: AdminBootstrapConfig,
     *,
     require_empty_db: bool = True,
+    session: AsyncSession | None = None,
 ) -> bool:
     """Ensure a platform admin user matching config exists.
 
     Returns True when a new user was created, False otherwise.
     """
-    async with AsyncSessionLocal() as session:
+    async def _run(session: AsyncSession) -> bool:
         existing_admin = await _get_user_by_email(session, config.email)
         if existing_admin is not None:
             updated = await _sync_admin_flags(existing_admin, config)
@@ -135,6 +136,12 @@ async def bootstrap_platform_admin(
         await session.commit()
         logger.info("Created initial admin user '%s'", config.email)
         return True
+
+    if session is not None:
+        return await _run(session)
+
+    async with AsyncSessionLocal() as owned_session:
+        return await _run(owned_session)
 
 
 async def ensure_initial_admin_from_settings() -> None:

@@ -23,7 +23,9 @@ async def test_bootstrap_creates_admin_when_empty(test_db: AsyncSession) -> None
         username="bootstrap_admin",
     )
 
-    created = await bootstrap_platform_admin(config, require_empty_db=True)
+    created = await bootstrap_platform_admin(
+        config, require_empty_db=True, session=test_db
+    )
 
     assert created
     result = await test_db.execute(
@@ -65,7 +67,9 @@ async def test_bootstrap_skips_when_users_exist_without_matching_admin(
         username="bootstrap_admin",
     )
 
-    created = await bootstrap_platform_admin(config, require_empty_db=True)
+    created = await bootstrap_platform_admin(
+        config, require_empty_db=True, session=test_db
+    )
 
     assert created is False
     result = await test_db.execute(select(User))
@@ -95,7 +99,9 @@ async def test_bootstrap_syncs_existing_admin_permissions(
         username="bootstrap_admin",
     )
 
-    created = await bootstrap_platform_admin(config, require_empty_db=True)
+    created = await bootstrap_platform_admin(
+        config, require_empty_db=True, session=test_db
+    )
 
     assert created is False
     refreshed = await test_db.execute(
