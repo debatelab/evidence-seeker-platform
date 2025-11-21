@@ -36,9 +36,11 @@ jobs:
           script: |
             set -euo pipefail
             cd /opt/evidence-seeker-platform
-            if docker compose ps db | grep -q 'Up'; then
+            DOCKER_COMPOSE="docker compose --env-file backend/.env.prod -f docker-compose.prod.yml"
+
+            if ${DOCKER_COMPOSE} ps db | grep -q 'Up'; then
               BACKUP_FILE="backup_$(date +%Y%m%d_%H%M%S).sql"
-              docker compose exec -T db pg_dump -U evidence_user evidence_seeker > "$BACKUP_FILE"
+              ${DOCKER_COMPOSE} exec -T db pg_dump -U evidence_user evidence_seeker > "$BACKUP_FILE"
               gzip "$BACKUP_FILE"
               ls -t backup_*.sql.gz | tail -n +8 | xargs -r rm || true
               echo "Database backup created: $BACKUP_FILE.gz"
@@ -98,7 +100,10 @@ jobs:
           key: ${{ secrets.PRODUCTION_SSH_KEY }}
           script: |
             set -euo pipefail
+            GITHUB_SHA="${{ github.sha }}"
             cd /opt/evidence-seeker-platform
+
+            DOCKER_COMPOSE="docker compose --env-file backend/.env.prod -f docker-compose.prod.yml"
 
             echo "Syncing repository to deployed commit"
             git fetch origin
@@ -119,7 +124,7 @@ jobs:
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
             echo "Stopping existing stack"
-            docker compose -f docker-compose.prod.yml down --remove-orphans || true
+            ${DOCKER_COMPOSE} down --remove-orphans || true
 
             echo "Freeing Docker disk space"
             docker system df || true
@@ -128,16 +133,16 @@ jobs:
             docker builder prune -af || true
 
             echo "Starting updated stack"
-            docker compose -f docker-compose.prod.yml up -d --remove-orphans
+            ${DOCKER_COMPOSE} up -d --remove-orphans
 
             echo "Waiting for services to start up..."
             sleep 30
             
             echo "Checking container status..."
-            docker compose -f docker-compose.prod.yml ps
+            ${DOCKER_COMPOSE} ps
             
             echo "Checking backend logs..."
-            docker compose -f docker-compose.prod.yml logs backend --tail=20
+            ${DOCKER_COMPOSE} logs backend --tail=20
             
             echo "Testing backend health..."
             for i in {1..10}; do
@@ -164,7 +169,7 @@ jobs:
             done
 
             echo "Running migrations"
-            docker compose -f docker-compose.prod.yml exec -T backend alembic upgrade head
+            ${DOCKER_COMPOSE} exec -T backend alembic upgrade head
 
             echo "Final health verification"
             curl -fsS http://localhost:8000/health > /dev/null
@@ -222,8 +227,9 @@ jobs:
           script: |
             set -euo pipefail
             cd /opt/evidence-seeker-platform
-            docker compose -f docker-compose.prod.yml down || true
-            # Pull latest known good images (fallback to latest tag)
-            docker compose -f docker-compose.prod.yml pull
-            docker compose -f docker-compose.prod.yml up -d --no-build
+            DOCKER_COMPOSE="docker compose --env-file backend/.env.prod -f docker-compose.prod.yml"
+
+            ${DOCKER_COMPOSE} down || true
+            ${DOCKER_COMPOSE} pull
+            ${DOCKER_COMPOSE} up -d --no-build
             echo "Rollback completed successfully"
