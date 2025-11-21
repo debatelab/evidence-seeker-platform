@@ -13,6 +13,10 @@ import { useConfigurationStatus } from "../../hooks/useConfigurationStatus";
 import WizardDocumentStep from "./Wizard/WizardDocumentStep";
 import apiClient, { evidenceSeekerAPI } from "../../utils/api";
 import { useAuth } from "../../hooks/useAuth";
+import {
+  DEFAULT_LANGUAGE,
+  SUPPORTED_LANGUAGES,
+} from "../../constants/languages";
 
 interface EvidenceSeekerFormProps {
   onSuccess?: () => void;
@@ -28,13 +32,16 @@ const steps = [
 
 const WIZARD_API_KEY_NAME = "Onboarding key";
 
+type WizardDetailsState = {
+  title: string;
+  description: string;
+  isPublic: boolean;
+  language: string;
+};
+
 interface WizardDraftStorage {
   step: number;
-  details: {
-    title: string;
-    description: string;
-    isPublic: boolean;
-  };
+  details: WizardDetailsState;
   credentialsBillTo?: string;
   wizardSeeker: EvidenceSeeker | null;
   onboardingToken: string | null;
@@ -67,11 +74,19 @@ const EvidenceSeekerForm: React.FC<EvidenceSeekerFormProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [finishError, setFinishError] = useState<string | null>(null);
 
-  const [details, setDetails] = useState({
-    title: "",
-    description: "",
-    isPublic: false,
-  });
+  const normaliseDetails = useCallback(
+    (value?: Partial<WizardDetailsState>): WizardDetailsState => ({
+      title: value?.title ?? "",
+      description: value?.description ?? "",
+      isPublic: value?.isPublic ?? false,
+      language: value?.language ?? DEFAULT_LANGUAGE,
+    }),
+    []
+  );
+
+  const [details, setDetails] = useState<WizardDetailsState>(() =>
+    normaliseDetails()
+  );
   const [credentials, setCredentials] = useState<{
     apiKeyValue: string;
     billTo: string | undefined;
@@ -116,7 +131,7 @@ const EvidenceSeekerForm: React.FC<EvidenceSeekerFormProps> = ({
         setStep(Math.min(Math.max(parsed.step, 0), steps.length - 1));
       }
       if (parsed.details) {
-        setDetails(parsed.details);
+        setDetails(normaliseDetails(parsed.details));
       }
       if (typeof parsed.credentialsBillTo === "string") {
         setCredentials((prev) => ({
@@ -194,6 +209,12 @@ const EvidenceSeekerForm: React.FC<EvidenceSeekerFormProps> = ({
     if (details.description.length > 500) {
       errors.description = "Description must be 500 characters or fewer.";
     }
+    const supportedLanguageValues = SUPPORTED_LANGUAGES.map(
+      (option) => option.value
+    );
+    if (!details.language || !supportedLanguageValues.includes(details.language)) {
+      errors.language = "Select a supported language.";
+    }
     setDetailErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -242,6 +263,13 @@ const EvidenceSeekerForm: React.FC<EvidenceSeekerFormProps> = ({
     () => [
       { label: "Title", value: details.title },
       { label: "Description", value: details.description || "—" },
+      {
+        label: "Language",
+        value:
+          SUPPORTED_LANGUAGES.find(
+            (option) => option.value === details.language
+          )?.label || details.language || "—",
+      },
       { label: "Visibility", value: details.isPublic ? "Public" : "Private" },
       { label: "Billing reference", value: credentials.billTo || "—" },
       {
@@ -271,6 +299,10 @@ const EvidenceSeekerForm: React.FC<EvidenceSeekerFormProps> = ({
     }
     if (details.isPublic !== seekerRecord.isPublic) {
       updates.isPublic = details.isPublic;
+    }
+    const normalizedLanguage = details.language || null;
+    if ((seekerRecord.language ?? null) !== normalizedLanguage) {
+      updates.language = normalizedLanguage;
     }
     if (Object.keys(updates).length === 0) {
       return;
@@ -326,6 +358,7 @@ const EvidenceSeekerForm: React.FC<EvidenceSeekerFormProps> = ({
           title: details.title.trim(),
           description: details.description.trim(),
           isPublic: details.isPublic,
+          language: details.language,
           initialConfiguration: {
             apiKeyName: WIZARD_API_KEY_NAME,
             apiKeyValue: credentials.apiKeyValue.trim(),
@@ -536,6 +569,42 @@ const EvidenceSeekerForm: React.FC<EvidenceSeekerFormProps> = ({
                 )}
                 <p className="text-xs text-gray-500 mt-1">
                   {details.description.length}/500 characters
+                </p>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="language"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Primary language
+                </label>
+                <select
+                  id="language"
+                  value={details.language}
+                  onChange={(event) =>
+                    setDetails((prev) => ({
+                      ...prev,
+                      language: event.target.value,
+                    }))
+                  }
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary ${
+                    detailErrors.language ? "border-red-300" : "border-gray-300"
+                  }`}
+                >
+                  {SUPPORTED_LANGUAGES.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                {detailErrors.language && (
+                  <p className="text-sm text-red-600 mt-1">
+                    {detailErrors.language}
+                  </p>
+                )}
+                <p className="text-xs text-gray-500 mt-1">
+                  Determines which language is sent to preprocessing.
                 </p>
               </div>
 

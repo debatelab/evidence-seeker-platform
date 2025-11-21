@@ -37,11 +37,11 @@ if not settings.disable_embeddings:
     try:  # pragma: no cover - relies on optional evidence_seeker package
         from evidence_seeker.datamodels import ConfirmationLevel, StatementType
     except Exception:  # pragma: no cover - fall back if optional dep missing
-        StatementType = None  # type: ignore[assignment]
-        ConfirmationLevel = None  # type: ignore[assignment]
+        StatementType = None
+        ConfirmationLevel = None
 else:
-    StatementType = None  # type: ignore[assignment]
-    ConfirmationLevel = None  # type: ignore[assignment]
+    StatementType = None
+    ConfirmationLevel = None
 
 if StatementType is None or ConfirmationLevel is None:
     # Fallback definitions if library not available (e.g., during tests/migrations)

@@ -14,6 +14,8 @@ from app.models.user import User, build_user, ensure_user_id
 
 logger = logging.getLogger(__name__)
 
+USER_EMAIL_COLUMN = User.__table__.c.email
+
 
 @dataclass(slots=True)
 class AdminBootstrapConfig:
@@ -28,7 +30,7 @@ class AdminBootstrapConfig:
 
 
 async def _get_user_by_email(session: AsyncSession, email: str) -> User | None:
-    result = await session.execute(select(User).where(User.email == email))
+    result = await session.execute(select(User).where(USER_EMAIL_COLUMN == email))
     return result.scalar_one_or_none()
 
 
@@ -129,9 +131,7 @@ async def bootstrap_platform_admin(
         await session.commit()
         await session.refresh(admin_user)
 
-        await _ensure_platform_admin_permission(
-            session, ensure_user_id(admin_user)
-        )
+        await _ensure_platform_admin_permission(session, ensure_user_id(admin_user))
         await session.commit()
         logger.info("Created initial admin user '%s'", config.email)
         return True

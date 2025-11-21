@@ -6,6 +6,8 @@ services:
     environment:
       # Example explicit overrides (can also live in env file)
       DATABASE_URL: ${DATABASE_URL}
+    volumes:
+      - ${UPLOADS_VOLUME_PATH:-./backend/uploads}:${UPLOAD_STORAGE_PATH:-/app/uploads}
     depends_on:
       - db
     ports:
@@ -53,7 +55,7 @@ services:
     volumes:
       - ./nginx/prod.conf:/etc/nginx/nginx.conf:ro
       - ./ssl:/etc/ssl/certs:ro
-      - ./backend/uploads:/var/www/uploads:ro
+      - ${UPLOADS_VOLUME_PATH:-./backend/uploads}:/var/www/uploads:ro
 
 volumes:
   evidence_data:

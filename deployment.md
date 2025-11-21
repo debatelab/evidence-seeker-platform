@@ -153,16 +153,45 @@ EMAIL_FROM=your-email@gmail.com
 EMAIL_FROM_NAME=Evidence Seeker Platform
 
 # File Upload
-UPLOAD_DIR=/app/uploads
+UPLOAD_STORAGE_PATH=/app/uploads
+UPLOADS_VOLUME_PATH=./backend/uploads
 MAX_FILE_SIZE=10485760
 ALLOWED_EXTENSIONS=[".pdf",".txt"]
 EOF
+
+## Upload Storage Volume Specification
+
+### Objective
+Use the new `dev/vdb` block device (mounted at `/mnt/data`) for the application's upload directory while keeping the path configurable through environment variables so different environments can point uploads to the appropriate storage backend.
+
+### Requirements
+- The backend must read the uploads path from an environment variable (proposed: `UPLOAD_STORAGE_PATH`) with a default of `/app/uploads` to keep local development simple.
+- Docker Compose needs to mount the host directory tied to `/mnt/data` (e.g., `/mnt/data/evidence-seeker/uploads`) into the backend container at the same path that the application reads from `UPLOAD_STORAGE_PATH`.
+- Application startup must ensure that the configured directory exists and that it is writable by the process user before processing uploads.
+- Deployment documentation must explain how to prepare the `/mnt/data` mount, configure the environment variable, and migrate any existing files into the new volume.
+
+### Implementation Outline
+1. **Configuration service**: Add `UPLOAD_STORAGE_PATH` to the backend config module and expose it wherever uploads currently rely on the hardcoded `/app/uploads` path. Maintain backwards compatibility by falling back to `/app/uploads` if the variable is not defined.
+2. **Environment files**: Update `.env`, `.env.example`, `.env.prod`, and CI secrets to include the new variable. Production `.env.prod` should set `UPLOAD_STORAGE_PATH=/mnt/data/evidence-seeker/uploads`.
+3. **Directory management**: Extend the existing file utilities (or add a small helper) to create the directory at startup (using `os.makedirs(..., exist_ok=True)`) and log an explicit error if the process cannot write to it.
+4. **Docker Compose**: Introduce a dedicated host-path variable (e.g., `UPLOADS_VOLUME_PATH`) plus the container `UPLOAD_STORAGE_PATH` so the bind mount keeps both sides in sync. Document how to bind `/mnt/data/evidence-seeker/uploads` on the host.
+5. **Testing**: Verify that uploads succeed when `UPLOAD_STORAGE_PATH` is set to a temporary directory during automated tests and that the value propagates through API responses when serving files.
+
+### Deployment Steps for `/mnt/data`
+1. Ensure `dev/vdb` is formatted (e.g., `ext4`), mounted at `/mnt/data`, and added to `/etc/fstab` so the mount persists across reboots.
+2. Create the uploads directory: `sudo mkdir -p /mnt/data/evidence-seeker/uploads && sudo chown 1000:1000 /mnt/data/evidence-seeker/uploads` (replace UID/GID to match the container user).
+3. Update `backend/.env.prod` so both `UPLOAD_STORAGE_PATH` (container path) and `UPLOADS_VOLUME_PATH` (host path) point to `/mnt/data/evidence-seeker/uploads`.
+4. When running `docker compose`, pass `--env-file backend/.env.prod` so the CLI can substitute the upload-path variables declared above. The backend service already loads the same file via `env_file`.
+5. If existing uploads live under `/app/uploads`, copy them into the new `/mnt/data` directory before restarting the stack.
+6. Redeploy the stack and confirm uploads land on `/mnt/data` by creating a test document and inspecting the host directory.
 
 # Frontend production environment
 cat > frontend/.env.prod << EOF
 VITE_API_URL=https://yourdomain.com/api/v1
 EOF
 ```
+
+> **Tip:** Run production commands with `docker compose --env-file backend/.env.prod -f docker-compose.prod.yml up -d` so the CLI can substitute `UPLOAD_STORAGE_PATH`, `UPLOADS_VOLUME_PATH`, and other secrets defined in your backend env file.
 
 **Security Note:** Never commit these files to version control. Add `.env.prod` to your `.gitignore`.
 
@@ -214,7 +243,7 @@ services:
     environment:
       - DATABASE_URL=postgresql://evidence_user:CHANGE_THIS_STRONG_PASSWORD@db:5432/evidence_seeker
     volumes:
-      - ./backend/uploads:/app/uploads
+      - ${UPLOADS_VOLUME_PATH:-./backend/uploads}:${UPLOAD_STORAGE_PATH:-/app/uploads}
       - ./backend/encryption_key:/app/encryption_key:ro
     depends_on:
       db:
@@ -241,7 +270,7 @@ services:
     volumes:
       - ./nginx/prod.conf:/etc/nginx/nginx.conf:ro
       - ./ssl:/etc/ssl/certs:ro
-      - ./backend/uploads:/var/www/uploads:ro
+      - ${UPLOADS_VOLUME_PATH:-./backend/uploads}:/var/www/uploads:ro
     depends_on:
       - backend
       - frontend
@@ -262,11 +291,11 @@ EOF
 
 The repository now ships with `nginx/prod.conf`, configured for `b7233fdd-ac70-4e21-ae82-54a2e6c682e4.ka.bw-cloud-instance.org` and ready to terminate TLS, proxying traffic to the frontend and backend services. Review the file and adjust the `server_name` entries if you deploy to a different domain.
 
-The configuration expects your certificates to be available inside the project folder at `./ssl/fullchain.pem` and `./ssl/privkey.pem` (see the SSL section below for how to create symlinks). It also mounts `./backend/uploads` into the Nginx container to make uploaded files downloadable.
+The configuration expects your certificates to be available inside the project folder at `./ssl/fullchain.pem` and `./ssl/privkey.pem` (see the SSL section below for how to create symlinks). It also bind-mounts the path referenced by `UPLOADS_VOLUME_PATH` into the Nginx container so uploaded files remain downloadable even when stored on `/mnt/data`.
 
 To blunt basic DoS traffic, the default config now declares `limit_req_zone`/`limit_conn_zone` blocks (`api_rate_limit` and `api_conn_limit`) and applies them to `/api/`. Tune the rates/bursts in `nginx/prod.conf` if your deployment needs a different ceiling, then reload the stack so the container picks up the changes.
 
-If you make any edits, remember to reload the stack with `docker compose -f docker-compose.prod.yml up -d --remove-orphans` so the new configuration is picked up.
+If you make any edits, remember to reload the stack with `docker compose --env-file backend/.env.prod -f docker-compose.prod.yml up -d --remove-orphans` so the new configuration is picked up.
 
 ### 3.3 Backend throttle settings
 

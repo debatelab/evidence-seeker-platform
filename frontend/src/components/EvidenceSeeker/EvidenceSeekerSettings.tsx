@@ -9,6 +9,11 @@ import {
   EvidenceSeekerUpdate,
 } from "../../types/evidenceSeeker";
 import { useEvidenceSeekers } from "../../hooks/useEvidenceSeeker";
+import {
+  DEFAULT_LANGUAGE,
+  SUPPORTED_LANGUAGES,
+  getLanguageLabel,
+} from "../../constants/languages";
 
 interface EvidenceSeekerSettingsProps {
   evidenceSeekerUuid: string;
@@ -29,6 +34,7 @@ const EvidenceSeekerSettings: React.FC<EvidenceSeekerSettingsProps> = ({
     title: "",
     description: "",
     isPublic: false,
+    language: DEFAULT_LANGUAGE,
   });
 
   useEffect(() => {
@@ -42,6 +48,7 @@ const EvidenceSeekerSettings: React.FC<EvidenceSeekerSettingsProps> = ({
           title: seeker.title || "",
           description: seeker.description || "",
           isPublic: seeker.isPublic || false,
+          language: seeker.language || DEFAULT_LANGUAGE,
         });
       }
     }
@@ -60,6 +67,16 @@ const EvidenceSeekerSettings: React.FC<EvidenceSeekerSettingsProps> = ({
       newErrors.description = "Description must be 500 characters or less";
     }
 
+    const supportedLanguageValues = SUPPORTED_LANGUAGES.map(
+      (option) => option.value
+    );
+    if (
+      !formData.language ||
+      !supportedLanguageValues.includes(formData.language)
+    ) {
+      newErrors.language = "Select a supported language.";
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -76,6 +93,7 @@ const EvidenceSeekerSettings: React.FC<EvidenceSeekerSettingsProps> = ({
         title: formData.title,
         description: formData.description,
         isPublic: formData.isPublic,
+        language: formData.language || null,
       };
 
       const success = await updateEvidenceSeeker(evidenceSeeker.id, updateData);
@@ -88,6 +106,7 @@ const EvidenceSeekerSettings: React.FC<EvidenceSeekerSettingsProps> = ({
           title: formData.title,
           description: formData.description,
           isPublic: formData.isPublic,
+          language: formData.language,
         });
       } else {
         setErrors({ general: "Failed to update evidence seeker" });
@@ -105,6 +124,7 @@ const EvidenceSeekerSettings: React.FC<EvidenceSeekerSettingsProps> = ({
         title: evidenceSeeker.title || "",
         description: evidenceSeeker.description || "",
         isPublic: evidenceSeeker.isPublic || false,
+        language: evidenceSeeker.language || DEFAULT_LANGUAGE,
       });
     }
     setIsEditing(false);
@@ -112,7 +132,9 @@ const EvidenceSeekerSettings: React.FC<EvidenceSeekerSettingsProps> = ({
   };
 
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -230,6 +252,38 @@ const EvidenceSeekerSettings: React.FC<EvidenceSeekerSettingsProps> = ({
                 </p>
               </div>
 
+              <div>
+                <label
+                  htmlFor="language"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Primary language
+                </label>
+                <select
+                  id="language"
+                  name="language"
+                  value={formData.language}
+                  onChange={handleInputChange}
+                  className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    errors.language ? "border-red-300" : "border-gray-300"
+                  }`}
+                >
+                  {SUPPORTED_LANGUAGES.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                {errors.language && (
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.language}
+                  </p>
+                )}
+                <p className="mt-1 text-sm text-gray-500">
+                  Determines which language we pass to preprocessing.
+                </p>
+              </div>
+
               <div className="flex items-center">
                 <input
                   type="checkbox"
@@ -302,6 +356,17 @@ const EvidenceSeekerSettings: React.FC<EvidenceSeekerSettingsProps> = ({
                   >
                     {evidenceSeeker.isPublic ? "Public" : "Private"}
                   </span>
+                </div>
+
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">
+                    Language
+                  </h4>
+                  <p className="text-gray-900">
+                    {getLanguageLabel(evidenceSeeker.language) ??
+                      evidenceSeeker.language ??
+                      "—"}
+                  </p>
                 </div>
               </div>
 

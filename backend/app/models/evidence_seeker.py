@@ -36,6 +36,7 @@ class EvidenceSeeker(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     logo_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     is_public: Mapped[bool] = mapped_column(Boolean, default=False)
+    language: Mapped[str | None] = mapped_column(String(16), nullable=True)
     created_by: Mapped[int] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=False
     )
@@ -133,6 +134,7 @@ def build_evidence_seeker(
     description: str | None = None,
     logo_url: str | None = None,
     is_public: bool = False,
+    language: str | None = None,
 ) -> EvidenceSeeker:
     """Construct an EvidenceSeeker with explicit, type-checked parameters."""
     seeker = EvidenceSeeker()
@@ -141,4 +143,5 @@ def build_evidence_seeker(
     seeker.description = description
     seeker.logo_url = logo_url
     seeker.is_public = is_public
+    seeker.language = language
     return seeker

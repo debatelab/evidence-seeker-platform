@@ -13,6 +13,7 @@ class PublicEvidenceSeekerSummary(BaseModel):
     uuid: UUID
     title: str
     description: str | None = None
+    language: str | None = None
     logo_url: str | None = Field(alias="logoUrl", default=None)
     published_at: datetime | None = Field(alias="publishedAt", default=None)
     document_count: int = Field(alias="documentCount", default=0)

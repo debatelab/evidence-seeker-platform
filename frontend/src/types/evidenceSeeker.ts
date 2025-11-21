@@ -21,6 +21,7 @@ export interface EvidenceSeeker {
   uuid: string; // External API identifier
   title: string;
   description: string;
+  language?: string | null;
   logoUrl: string | null;
   isPublic: boolean;
   publishedAt?: string | null;
@@ -46,6 +47,7 @@ export interface EvidenceSeekerCreate {
   title: string;
   description: string;
   isPublic?: boolean;
+  language?: string;
   initialConfiguration?: EvidenceSeekerInitialConfiguration;
 }
 
@@ -53,6 +55,7 @@ export interface EvidenceSeekerUpdate {
   title?: string;
   description?: string;
   isPublic?: boolean;
+  language?: string | null;
 }
 
 export interface EvidenceSeekerSettings {

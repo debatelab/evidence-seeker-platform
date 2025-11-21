@@ -15,6 +15,11 @@ class EvidenceSeekerBase(BaseModel):
     title: str = Field(..., min_length=1, max_length=100)
     description: str | None = Field(None, max_length=500)
     is_public: bool = Field(default=False, alias="isPublic")
+    language: str | None = Field(
+        default=None,
+        max_length=16,
+        description="Language code used for preprocessing (e.g. EN, DE)",
+    )
 
     class Config:
         populate_by_name = True
@@ -48,6 +53,11 @@ class EvidenceSeekerUpdate(BaseModel):
     title: str | None = Field(None, min_length=1, max_length=100)
     description: str | None = Field(None, max_length=500)
     is_public: bool | None = Field(None, alias="isPublic")
+    language: str | None = Field(
+        default=None,
+        max_length=16,
+        description="Language code used for preprocessing (e.g. EN, DE)",
+    )
 
     class Config:
         populate_by_name = True
@@ -70,6 +80,7 @@ class EvidenceSeekerRead(EvidenceSeekerBase):
     missing_requirements: list[str] = Field(
         alias="missingRequirements", default_factory=list
     )
+    language: str | None = Field(default=None)
     configured_at: datetime | None = Field(alias="configuredAt", default=None)
     setup_mode: SetupModeLiteral | None = Field(alias="setupMode", default=None)
     document_skip_acknowledged: bool = Field(

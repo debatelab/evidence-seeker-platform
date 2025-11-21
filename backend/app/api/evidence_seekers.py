@@ -1,7 +1,6 @@
 import logging
 import shutil
 from datetime import datetime
-from pathlib import Path
 from typing import Any, cast
 from uuid import UUID
 
@@ -10,7 +9,6 @@ from sqlalchemy import desc, select
 from sqlalchemy.orm import Session, selectinload
 
 from ..core.auth import get_current_user
-from ..core.config import settings
 from ..core.config_service import config_service
 from ..core.database import get_db
 from ..core.evidence_seeker_config_service import (
@@ -19,7 +17,7 @@ from ..core.evidence_seeker_config_service import (
 )
 from ..core.evidence_seeker_index_service import evidence_seeker_index_service
 from ..core.evidence_seeker_pipeline import evidence_seeker_pipeline_manager
-from ..core.file_utils import delete_file
+from ..core.file_utils import delete_file, get_upload_root
 from ..core.onboarding_tokens import onboarding_token_service
 from ..core.permissions import (
     check_evidence_seeker_permission,
@@ -323,7 +321,9 @@ def finish_onboarding(
         seeker_identifier, db, ensure_user_id(current_user)
     )
     _ensure_admin(ensure_user_id(current_user), seeker, db)
-    settings_row = evidence_seeker_config_service.ensure_settings(db, seeker)
+    settings_row: EvidenceSeekerSettings = (
+        evidence_seeker_config_service.ensure_settings(db, seeker)
+    )
     onboarding_token_service.revoke_token(db, settings_row)
     status = evidence_seeker_config_service.get_configuration_status(db, seeker)
     return ConfigurationStatusRead.model_validate(
@@ -438,7 +438,7 @@ def delete_evidence_seeker(
         db.delete(document)
 
     # Delete the upload directory for this Evidence Seeker
-    upload_dir = Path(settings.upload_dir) / str(seeker.id)
+    upload_dir = get_upload_root() / str(seeker.id)
     if upload_dir.exists():
         try:
             shutil.rmtree(upload_dir)
@@ -462,7 +462,9 @@ def get_evidence_seeker_settings(
         seeker_identifier, db, ensure_user_id(current_user)
     )
     _ensure_admin(ensure_user_id(current_user), seeker, db)
-    settings_row = evidence_seeker_config_service.ensure_settings(db, seeker)
+    settings_row: EvidenceSeekerSettings = (
+        evidence_seeker_config_service.ensure_settings(db, seeker)
+    )
     evidence_seeker_config_service.get_configuration_status(db, seeker)
     db.refresh(settings_row)
     return settings_row
@@ -480,11 +482,13 @@ def update_evidence_seeker_settings(
     )
     _ensure_admin(ensure_user_id(current_user), seeker, db)
     try:
-        settings_row = evidence_seeker_config_service.upsert_settings(
-            db=db,
-            seeker=seeker,
-            payload=payload.model_dump(exclude_unset=True),
-            updated_by=ensure_user_id(current_user),
+        settings_row: EvidenceSeekerSettings = (
+            evidence_seeker_config_service.upsert_settings(
+                db=db,
+                seeker=seeker,
+                payload=payload.model_dump(exclude_unset=True),
+                updated_by=ensure_user_id(current_user),
+            )
         )
     except ValueError as exc:
         raise HTTPException(
@@ -568,7 +572,7 @@ def reindex_documents(
     if not documents:
         raise HTTPException(status_code=400, detail="No documents available to reindex")
 
-    job = evidence_seeker_index_service.queue_update(
+    job: IndexJob = evidence_seeker_index_service.queue_update(
         db=db,
         seeker=seeker,
         user_id=ensure_user_id(current_user),
@@ -745,12 +749,15 @@ async def create_fact_check_run(
             detail=_configuration_error_detail(exc),
         ) from exc
 
-    run = evidence_seeker_pipeline_manager.create_fact_check_run(
-        db=db,
-        seeker=seeker,
-        statement=request.statement,
-        user_id=ensure_user_id(current_user),
-        overrides=request.overrides,
+    run = cast(
+        FactCheckRun,
+        evidence_seeker_pipeline_manager.create_fact_check_run(
+            db=db,
+            seeker=seeker,
+            statement=request.statement,
+            user_id=ensure_user_id(current_user),
+            overrides=request.overrides,
+        ),
     )
 
     # Schedule the actual execution as a background task
@@ -887,12 +894,15 @@ async def rerun_fact_check(
     if not overrides and run.config_snapshot:
         overrides = run.config_snapshot.get("overrides") or {}
 
-    new_run = evidence_seeker_pipeline_manager.create_fact_check_run(
-        db=db,
-        seeker=seeker,
-        statement=run.statement,
-        user_id=ensure_user_id(current_user),
-        overrides=overrides,
+    new_run = cast(
+        FactCheckRun,
+        evidence_seeker_pipeline_manager.create_fact_check_run(
+            db=db,
+            seeker=seeker,
+            statement=run.statement,
+            user_id=ensure_user_id(current_user),
+            overrides=overrides,
+        ),
     )
 
     # Schedule the actual execution as a background task

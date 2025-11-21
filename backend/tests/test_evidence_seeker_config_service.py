@@ -126,6 +126,56 @@ def test_build_retrieval_bundle_injects_metadata(
     assert bundle.config.kwargs["embed_backend_type"] == "huggingface"
 
 
+def test_build_retrieval_bundle_uses_seeker_language_when_unset_in_settings(
+    service: EvidenceSeekerConfigService,
+    seeker: EvidenceSeeker,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    seeker.language = "EN"
+    settings_row = _build_settings(seeker)
+    settings_row.top_k = None
+    db = MagicMock()
+    monkeypatch.setattr(service, "ensure_settings", lambda *_: settings_row)
+
+    class DummyRetrievalConfig:
+        def __init__(self, **kwargs: object) -> None:
+            self.kwargs = kwargs
+
+    monkeypatch.setattr(
+        "app.core.evidence_seeker_config_service._RuntimeRetrievalConfig",
+        DummyRetrievalConfig,
+    )
+
+    bundle = service.build_retrieval_bundle(db=db, seeker=seeker)
+
+    assert bundle.overrides["language"] == "EN"
+
+
+def test_build_retrieval_bundle_prefers_settings_language_over_seeker(
+    service: EvidenceSeekerConfigService,
+    seeker: EvidenceSeeker,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    seeker.language = "EN"
+    settings_row = _build_settings(seeker)
+    settings_row.language = "DE"
+    db = MagicMock()
+    monkeypatch.setattr(service, "ensure_settings", lambda *_: settings_row)
+
+    class DummyRetrievalConfig:
+        def __init__(self, **kwargs: object) -> None:
+            self.kwargs = kwargs
+
+    monkeypatch.setattr(
+        "app.core.evidence_seeker_config_service._RuntimeRetrievalConfig",
+        DummyRetrievalConfig,
+    )
+
+    bundle = service.build_retrieval_bundle(db=db, seeker=seeker)
+
+    assert bundle.overrides["language"] == "DE"
+
+
 def test_build_retrieval_bundle_hf_inference_sets_env_var(
     service: EvidenceSeekerConfigService,
     seeker: EvidenceSeeker,

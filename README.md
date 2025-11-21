@@ -37,6 +37,7 @@ This is the full feature set for the initial release.
 * **Document Management**: An EVSE_ADMIN can upload (.pdf, .txt), manage metadata for (title, description), and delete documents for an Evidence Seeker.  
 * **Embedding Generation**: Upon upload, document embeddings are automatically generated and stored.  
 * **Simple Configuration**: A user-friendly interface for essential settings, like selecting an inference provider and entering API tokens (which must be stored encrypted).  
+* **Language Defaults**: Each Evidence Seeker stores a primary language (e.g., DE or EN) that we forward to the preprocessing pipeline so outputs match the corpus language.  
 * **Expert Configuration**: A text area for advanced YAML configuration will be considered a **post-MVP feature** to ensure the deadline is met.
 
 #### Simplified Configuration Flow
@@ -80,7 +81,7 @@ This stack is chosen for rapid development, type safety, and operational simplic
 | **Logging** | **Loguru** | Simple, powerful, and more developer-friendly than the standard library. |
 | **Frontend** | **React** with **TypeScript** & **Tailwind CSS** | A robust and productive stack for building modern user interfaces. |
 | **Database** | **PostgreSQL** + **pgvector** | pgvector allows storing embeddings directly in Postgres, avoiding the need for a separate vector database and simplifying the stack significantly. |
-| **File Storage** | **Local Filesystem** | The FastAPI backend will manage uploads in a dedicated volume (/app/uploads). This is the simplest solution for the MVP. The file handling layer should be abstracted (so switching to S3/minio later is simple). |
+| **File Storage** | **Local Filesystem** | The FastAPI backend stores uploads on a dedicated volume configured via `UPLOAD_STORAGE_PATH` (defaults to `/app/uploads` inside containers). The file handling layer is abstracted so switching to S3/minio later remains simple. |
 | **Auth & RBAC** | **fastapi-users Library** | A complete, battle-tested solution for user management, JWT authentication, and role-based access. **We will not build this from scratch.** We will extend fastapi-users for group-based permissions |
 | **API Documentation** | **FastAPI built-in** + **Swagger UI** | Auto-generated, interactive API documentation |
 | **Testing** | **pytest** + **Vitest** | Comprehensive testing for both backend and frontend |

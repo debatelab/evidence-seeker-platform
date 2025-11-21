@@ -4,6 +4,7 @@ export interface PublicEvidenceSeekerSummary {
   uuid: string;
   title: string;
   description: string | null;
+  language: string | null;
   logoUrl: string | null;
   publishedAt: string | null;
   documentCount: number;

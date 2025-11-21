@@ -3,8 +3,43 @@ import shutil
 from pathlib import Path
 
 from fastapi import HTTPException, UploadFile
+from loguru import logger
 
 from .config import settings
+
+_UPLOAD_WRITE_TEST_FILENAME = ".upload-write-test"
+
+
+def get_upload_root() -> Path:
+    """Get the configured upload root directory path."""
+    return settings.upload_storage_directory
+
+
+def ensure_upload_root_exists() -> Path:
+    """Create the configured upload root directory if it is missing."""
+    upload_root = get_upload_root()
+    upload_root.mkdir(parents=True, exist_ok=True)
+    return upload_root
+
+
+def verify_upload_root_writable() -> Path:
+    """Ensure the upload root is writable by performing a small write test."""
+    upload_root = ensure_upload_root_exists()
+    test_file = upload_root / _UPLOAD_WRITE_TEST_FILENAME
+    try:
+        with open(test_file, "w", encoding="utf-8") as handle:
+            handle.write("ok")
+        test_file.unlink()
+    except OSError as exc:  # pragma: no cover - fails only on misconfigured hosts
+        logger.error(
+            "Upload storage directory {upload_root} is not writable: {error}",
+            upload_root=upload_root,
+            error=exc,
+        )
+        raise RuntimeError(
+            f"Upload storage directory '{upload_root}' is not writable"
+        ) from exc
+    return upload_root
 
 
 def validate_file(file: UploadFile) -> bool:
@@ -45,7 +80,7 @@ def validate_file(file: UploadFile) -> bool:
 def save_upload_file(file: UploadFile, evidence_seeker_id: int) -> str:
     """Save uploaded file to disk and return the file path"""
     # Ensure upload directory exists
-    upload_dir = Path(settings.upload_dir) / str(evidence_seeker_id)
+    upload_dir = ensure_upload_root_exists() / str(evidence_seeker_id)
     upload_dir.mkdir(parents=True, exist_ok=True)
 
     # Generate unique filename

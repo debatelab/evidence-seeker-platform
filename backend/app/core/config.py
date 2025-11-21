@@ -1,5 +1,7 @@
 from functools import lru_cache
+from pathlib import Path
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings
 
 
@@ -39,7 +41,10 @@ class Settings(BaseSettings):
     sqlalchemy_echo: bool = False  # Set to True to see all SQL queries
 
     # File Upload Settings
-    upload_dir: str = "uploads"
+    upload_storage_path: str = Field(
+        default="/app/uploads",
+        validation_alias=AliasChoices("UPLOAD_STORAGE_PATH", "UPLOAD_DIR"),
+    )
     max_file_size: int = 10 * 1024 * 1024  # 10MB in bytes
     allowed_extensions: list[str] = [".pdf", ".txt"]
 
@@ -108,6 +113,11 @@ class Settings(BaseSettings):
             levels[module.strip()] = level.strip().upper()
 
         return levels
+
+    @property
+    def upload_storage_directory(self) -> Path:
+        """Return the configured upload storage directory."""
+        return Path(self.upload_storage_path)
 
 
 @lru_cache

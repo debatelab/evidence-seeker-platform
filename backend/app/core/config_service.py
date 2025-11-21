@@ -6,7 +6,7 @@ import hashlib
 import logging
 import os
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, cast
 
 from cryptography.fernet import Fernet
 from sqlalchemy.orm import Session
@@ -186,7 +186,7 @@ class ConfigService:
             if provider:
                 query = query.filter(APIKey.provider == provider)
 
-            return query.all()
+            return cast(list[APIKey], query.all())
         finally:
             if should_close:
                 db.close()
@@ -204,8 +204,6 @@ class ConfigService:
             return None
 
         try:
-            from typing import Any, cast
-
             decrypted_key = self.decrypt_api_key(
                 cast(Any, api_key_record).encrypted_key
             )

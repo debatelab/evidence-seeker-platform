@@ -7,6 +7,8 @@ from app.core.bootstrap import AdminBootstrapConfig, bootstrap_platform_admin
 from app.models.permission import Permission, UserRole
 from app.models.user import User, build_user
 
+USER_EMAIL_COLUMN = User.__table__.c.email
+
 
 def _hash(password: str) -> str:
     ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -24,7 +26,9 @@ async def test_bootstrap_creates_admin_when_empty(test_db: AsyncSession) -> None
     created = await bootstrap_platform_admin(config, require_empty_db=True)
 
     assert created
-    result = await test_db.execute(select(User).where(User.email == config.email))
+    result = await test_db.execute(
+        select(User).where(USER_EMAIL_COLUMN == config.email)
+    )
     user = result.scalar_one_or_none()
     assert user is not None
     assert user.username == "bootstrap_admin"
@@ -95,7 +99,7 @@ async def test_bootstrap_syncs_existing_admin_permissions(
 
     assert created is False
     refreshed = await test_db.execute(
-        select(User).where(User.email == "bootstrap@example.com")
+        select(User).where(USER_EMAIL_COLUMN == "bootstrap@example.com")
     )
     user = refreshed.scalar_one()
     assert user.username == "bootstrap_admin"

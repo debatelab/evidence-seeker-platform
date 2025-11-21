@@ -19,6 +19,7 @@ from app.api.users import router as users_router
 from app.core.bootstrap import ensure_initial_admin_from_settings
 from app.core.config import settings
 from app.core.database import create_tables
+from app.core.file_utils import verify_upload_root_writable
 from app.core.logging import setup_logging
 
 # Set up logging first, before any other imports that might use logger
@@ -134,6 +135,8 @@ def create_application() -> FastAPI:
     async def startup_event() -> None:
         """Application startup event"""
         logger.info("Starting Evidence Seeker Platform API")
+        upload_dir = verify_upload_root_writable()
+        logger.info("Upload storage ready at {path}", path=upload_dir)
         create_tables()
         logger.info("Database tables created/verified")
         await ensure_initial_admin_from_settings()

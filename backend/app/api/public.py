@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Mapping, Sequence
 from datetime import datetime
-from typing import Any, TypeVar
+from typing import Any, TypeVar, cast
 from uuid import UUID
 
 from fastapi import (
@@ -75,6 +75,7 @@ def _build_summary(
             "uuid": seeker.uuid,
             "title": seeker.title,
             "description": seeker.description,
+            "language": seeker.language,
             "logo_url": seeker.logo_url,
             "published_at": seeker.published_at,
             "document_count": document_count,
@@ -275,6 +276,7 @@ def get_public_evidence_seeker(
             "uuid": seeker.uuid,
             "title": seeker.title,
             "description": seeker.description,
+            "language": seeker.language,
             "logo_url": seeker.logo_url,
             "published_at": seeker.published_at,
             "document_count": len(documents),
@@ -375,13 +377,16 @@ async def create_public_fact_check(
                 ),
             )
 
-    run = evidence_seeker_pipeline_manager.create_fact_check_run(
-        db=db,
-        seeker=seeker,
-        statement=request.statement,
-        user_id=None,
-        overrides=request.overrides,
-        public_run=True,
+    run = cast(
+        FactCheckRun,
+        evidence_seeker_pipeline_manager.create_fact_check_run(
+            db=db,
+            seeker=seeker,
+            statement=request.statement,
+            user_id=None,
+            overrides=request.overrides,
+            public_run=True,
+        ),
     )
 
     background_tasks.add_task(

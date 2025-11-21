@@ -697,7 +697,8 @@ class EvidenceSeekerConfigService:
         max_tokens_value = overrides.get("max_tokens", settings_row.max_tokens)
         _assign_override("max_tokens", max_tokens_value)
 
-        language_value = overrides.get("language", settings_row.language)
+        language_fallback = settings_row.language or getattr(seeker, "language", None)
+        language_value = overrides.get("language", language_fallback)
         _assign_override("language", language_value)
 
         metadata_filters = self._normalise_metadata_filters(
