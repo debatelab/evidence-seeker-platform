@@ -10,12 +10,12 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
+from app.models.document import Document
+from app.models.evidence_seeker_settings import EvidenceSeekerSettings
+from app.models.fact_check import FactCheckRun
 
 if TYPE_CHECKING:
     from app.models.api_key import APIKey
-    from app.models.document import Document
-    from app.models.evidence_seeker_settings import EvidenceSeekerSettings
-    from app.models.fact_check import FactCheckRun
     from app.models.index_job import IndexJob
     from app.models.permission import Permission
     from app.models.user import User

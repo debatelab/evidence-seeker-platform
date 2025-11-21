@@ -19,9 +19,9 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
+from app.models.api_key import APIKey
 
 if TYPE_CHECKING:
-    from app.models.api_key import APIKey
     from app.models.evidence_seeker import EvidenceSeeker
     from app.models.user import User
 

@@ -12,6 +12,7 @@ import { useEvidenceSeekers } from "../../hooks/useEvidenceSeeker";
 import {
   DEFAULT_LANGUAGE,
   SUPPORTED_LANGUAGES,
+  SupportedLanguageCode,
   getLanguageLabel,
 } from "../../constants/languages";
 
@@ -48,7 +49,8 @@ const EvidenceSeekerSettings: React.FC<EvidenceSeekerSettingsProps> = ({
           title: seeker.title || "",
           description: seeker.description || "",
           isPublic: seeker.isPublic || false,
-          language: seeker.language || DEFAULT_LANGUAGE,
+          language:
+            (seeker.language as SupportedLanguageCode) || DEFAULT_LANGUAGE,
         });
       }
     }
@@ -124,7 +126,9 @@ const EvidenceSeekerSettings: React.FC<EvidenceSeekerSettingsProps> = ({
         title: evidenceSeeker.title || "",
         description: evidenceSeeker.description || "",
         isPublic: evidenceSeeker.isPublic || false,
-        language: evidenceSeeker.language || DEFAULT_LANGUAGE,
+        language:
+          (evidenceSeeker.language as SupportedLanguageCode) ||
+          DEFAULT_LANGUAGE,
       });
     }
     setIsEditing(false);
@@ -275,9 +279,7 @@ const EvidenceSeekerSettings: React.FC<EvidenceSeekerSettingsProps> = ({
                   ))}
                 </select>
                 {errors.language && (
-                  <p className="mt-1 text-sm text-red-600">
-                    {errors.language}
-                  </p>
+                  <p className="mt-1 text-sm text-red-600">{errors.language}</p>
                 )}
                 <p className="mt-1 text-sm text-gray-500">
                   Determines which language we pass to preprocessing.

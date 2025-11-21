@@ -3,7 +3,8 @@ export const SUPPORTED_LANGUAGES = [
   { value: "EN", label: "English (EN)" },
 ] as const;
 
-export type SupportedLanguageCode = (typeof SUPPORTED_LANGUAGES)[number]["value"];
+export type SupportedLanguageCode =
+  (typeof SUPPORTED_LANGUAGES)[number]["value"];
 
 export const DEFAULT_LANGUAGE: SupportedLanguageCode =
   SUPPORTED_LANGUAGES[0].value;

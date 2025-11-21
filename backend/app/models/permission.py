@@ -8,9 +8,9 @@ from sqlalchemy import DateTime, Enum, ForeignKey, Integer, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
+from app.models.evidence_seeker import EvidenceSeeker
 
 if TYPE_CHECKING:
-    from app.models.evidence_seeker import EvidenceSeeker
     from app.models.user import User
 
 

@@ -41,6 +41,21 @@ _EXPORT_MAP = {
     "Permission": "permission",
 }
 
+_MODULES_LOADED = False
+
+
+def _ensure_modules_loaded() -> None:
+    """Eagerly import model modules so SQLAlchemy relationships resolve."""
+    global _MODULES_LOADED
+    if _MODULES_LOADED:
+        return
+    for module_name in sorted(set(_EXPORT_MAP.values())):
+        import_module(f"{__name__}.{module_name}")
+    _MODULES_LOADED = True
+
+
+_ensure_modules_loaded()
+
 
 def __getattr__(name: str) -> Any:
     module_name = _EXPORT_MAP.get(name)

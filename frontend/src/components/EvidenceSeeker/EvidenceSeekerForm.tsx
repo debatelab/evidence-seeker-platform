@@ -212,7 +212,10 @@ const EvidenceSeekerForm: React.FC<EvidenceSeekerFormProps> = ({
     const supportedLanguageValues = SUPPORTED_LANGUAGES.map(
       (option) => option.value
     );
-    if (!details.language || !supportedLanguageValues.includes(details.language)) {
+    if (
+      !details.language ||
+      !supportedLanguageValues.includes(details.language as any)
+    ) {
       errors.language = "Select a supported language.";
     }
     setDetailErrors(errors);
@@ -268,7 +271,9 @@ const EvidenceSeekerForm: React.FC<EvidenceSeekerFormProps> = ({
         value:
           SUPPORTED_LANGUAGES.find(
             (option) => option.value === details.language
-          )?.label || details.language || "—",
+          )?.label ||
+          details.language ||
+          "—",
       },
       { label: "Visibility", value: details.isPublic ? "Public" : "Private" },
       { label: "Billing reference", value: credentials.billTo || "—" },
