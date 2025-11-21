@@ -214,15 +214,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [authState.isAuthenticated, authState.user]);
 
   const handleUnauthorized = useCallback(() => {
+    // Avoid re-triggering the logout flow while the reauth modal is already shown
+    if (sessionExpired) {
+      return;
+    }
+
     apiUtils.removeToken();
+    apiUtils.removeUser();
     setSessionExpired(true);
     setReauthModalOpen(true);
     setAuthState((prev) => ({
       ...prev,
       token: null,
+      user: null,
+      isAuthenticated: false,
       error: "Session expired. Please sign in again.",
     }));
-  }, []);
+  }, [sessionExpired]);
 
   useEffect(() => {
     authEvents.subscribe(handleUnauthorized);
