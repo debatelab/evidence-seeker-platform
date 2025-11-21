@@ -18,6 +18,12 @@ def get_upload_root() -> Path:
 def ensure_upload_root_exists() -> Path:
     """Create the configured upload root directory if it is missing."""
     upload_root = get_upload_root()
+    if upload_root.is_dir():
+        return upload_root
+    if upload_root.exists() and not upload_root.is_dir():
+        raise RuntimeError(
+            f"Upload storage path '{upload_root}' exists but is not a directory"
+        )
     upload_root.mkdir(parents=True, exist_ok=True)
     return upload_root
 
