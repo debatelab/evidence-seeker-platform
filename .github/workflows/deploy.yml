@@ -182,8 +182,8 @@ jobs:
             docker image prune -af || true
             docker builder prune -af || true
 
-            echo "Starting database and dependencies"
-            ${DOCKER_COMPOSE} up -d db redis
+            echo "Starting database"
+            ${DOCKER_COMPOSE} up -d db
 
             echo "Waiting for database to become healthy..."
             for i in {1..15}; do
