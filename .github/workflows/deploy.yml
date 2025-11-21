@@ -117,6 +117,40 @@ jobs:
             export BACKEND_IMAGE="${BACKEND_IMAGE}"
             export FRONTEND_IMAGE="${FRONTEND_IMAGE}"
 
+            # Ensure required DB env vars are present for docker compose.
+            # Load backend/.env.prod first, then derive POSTGRES_* from DATABASE_URL if needed.
+            if [ -f backend/.env.prod ]; then
+              set -a
+              . backend/.env.prod
+              set +a
+            fi
+
+            if [ -n "${DATABASE_URL:-}" ]; then
+              eval "$(python3 - <<'PY'
+import os
+import urllib.parse
+
+url = os.environ.get("DATABASE_URL")
+if url:
+    parsed = urllib.parse.urlparse(url)
+    user = parsed.username or ""
+    password = parsed.password or ""
+    db = parsed.path.lstrip("/") if parsed.path else ""
+    for key, val in (
+        ("POSTGRES_USER", user),
+        ("POSTGRES_PASSWORD", password),
+        ("POSTGRES_DB", db),
+    ):
+        if val:
+            print(f'export {key}="{val}"')
+PY
+)"
+            fi
+
+            : "${POSTGRES_DB:?POSTGRES_DB missing; set in backend/.env.prod or embed in DATABASE_URL}"
+            : "${POSTGRES_USER:?POSTGRES_USER missing; set in backend/.env.prod or embed in DATABASE_URL}"
+            : "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD missing; set in backend/.env.prod or embed in DATABASE_URL}"
+
             echo "Using backend image digest: ${BACKEND_IMAGE}"
             echo "Using frontend image digest: ${FRONTEND_IMAGE}"
 

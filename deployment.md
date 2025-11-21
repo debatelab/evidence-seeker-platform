@@ -134,6 +134,9 @@ Create production environment files with secure secrets:
 cat > backend/.env.prod << EOF
 # Database
 DATABASE_URL=postgresql://evidence_user:CHANGE_THIS_STRONG_PASSWORD@db:5432/evidence_seeker
+POSTGRES_DB=evidence_seeker
+POSTGRES_USER=evidence_user
+POSTGRES_PASSWORD=CHANGE_THIS_STRONG_PASSWORD
 
 # Security - Generate strong random keys
 SECRET_KEY=$(openssl rand -hex 32)
@@ -158,6 +161,8 @@ UPLOADS_VOLUME_PATH=./backend/uploads
 MAX_FILE_SIZE=10485760
 ALLOWED_EXTENSIONS=[".pdf",".txt"]
 EOF
+
+The `POSTGRES_*` entries are intentionally duplicated here even though the same values live inside `DATABASE_URL`; Docker Compose and the GitHub Actions deploy workflow rely on these variables when interpolating the `db` service environment, so keeping them explicit prevents “required variable POSTGRES_DB is missing” errors during automation.
 
 ## Upload Storage Volume Specification
 
