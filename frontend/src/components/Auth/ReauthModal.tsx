@@ -59,7 +59,11 @@ const ReauthModal: React.FC = () => {
             Please sign in again to keep working on your setup.
           </p>
         </div>
-        <form className="space-y-4 px-6 py-6" onSubmit={handleSubmit}>
+        <form
+          className="space-y-4 px-6 py-6"
+          onSubmit={handleSubmit}
+          autoComplete="on"
+        >
           <div>
             <label
               htmlFor="reauth-email"
@@ -70,6 +74,8 @@ const ReauthModal: React.FC = () => {
             <input
               id="reauth-email"
               type="email"
+              name="email"
+              autoComplete="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
@@ -85,6 +91,8 @@ const ReauthModal: React.FC = () => {
             <input
               id="reauth-password"
               type="password"
+              name="password"
+              autoComplete="current-password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"

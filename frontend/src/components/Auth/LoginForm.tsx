@@ -81,7 +81,11 @@ const LoginForm: React.FC<LoginFormProps> = ({
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form
+        onSubmit={handleSubmit}
+        className="space-y-4"
+        autoComplete="on"
+      >
         <div>
           <label
             htmlFor="email"
@@ -95,6 +99,7 @@ const LoginForm: React.FC<LoginFormProps> = ({
             name="email"
             value={formData.email}
             onChange={handleInputChange}
+            autoComplete="email"
             className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
               validationErrors.email ? "border-red-500" : "border-gray-300"
             }`}
@@ -121,6 +126,7 @@ const LoginForm: React.FC<LoginFormProps> = ({
             name="password"
             value={formData.password}
             onChange={handleInputChange}
+            autoComplete="current-password"
             className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary ${
               validationErrors.password ? "border-red-500" : "border-gray-300"
             }`}
@@ -160,7 +166,7 @@ const LoginForm: React.FC<LoginFormProps> = ({
 
       <div className="mt-6 text-center">
         <p className="text-sm text-gray-600">
-          Don\u2019t have an account?{" "}
+          Don't have an account?{" "}
           <button
             type="button"
             onClick={onSwitchToRegister}

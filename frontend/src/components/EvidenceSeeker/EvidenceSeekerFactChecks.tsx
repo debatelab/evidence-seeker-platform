@@ -334,7 +334,7 @@ const EvidenceSeekerFactChecks: React.FC<EvidenceSeekerFactChecksProps> = ({
         <div className="rounded-lg border border-primary-border bg-primary-soft p-4 flex items-start justify-between">
           <div className="text-sm text-primary space-y-1">
             <p className="font-semibold text-primary-strong">
-              You\u2019re ready to run your first fact check!
+              You're ready to run your first fact check!
             </p>
             <p>
               Enter a statement below and click Run Fact Check to validate it

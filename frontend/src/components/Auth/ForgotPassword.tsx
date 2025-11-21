@@ -28,7 +28,7 @@ const ForgotPassword: React.FC = () => {
 
       if (response.ok) {
         setMessage(
-          "If an account with that email exists, we\u2019ve sent you a password reset link. Please check your inbox."
+          "If an account with that email exists, we've sent you a password reset link. Please check your inbox."
         );
         setEmail("");
       } else {

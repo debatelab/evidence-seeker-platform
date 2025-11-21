@@ -96,7 +96,7 @@ const UploadError: React.FC<UploadErrorProps> = ({
                 {getErrorTitle(error)}
               </h2>
               <p className="text-sm text-gray-600 mt-1">
-                We couldn\u2019t upload your document
+                We couldn't upload your document
               </p>
             </div>
           </div>
