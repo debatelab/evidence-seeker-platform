@@ -182,6 +182,22 @@ jobs:
             docker image prune -af || true
             docker builder prune -af || true
 
+            echo "Starting database and dependencies"
+            ${DOCKER_COMPOSE} up -d db redis
+
+            echo "Waiting for database to become healthy..."
+            for i in {1..15}; do
+              if ${DOCKER_COMPOSE} exec -T db pg_isready -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" >/dev/null 2>&1; then
+                echo "Database is ready"
+                break
+              fi
+              echo "Database not ready, waiting 5s... (attempt $i/15)"
+              sleep 5
+            done
+
+            echo "Running migrations"
+            ${DOCKER_COMPOSE} run --rm backend alembic upgrade head
+
             echo "Starting updated stack"
             ${DOCKER_COMPOSE} up -d --remove-orphans
 
@@ -217,10 +233,7 @@ jobs:
                     sleep 10
                 fi
             done
-
-            echo "Running migrations"
-            ${DOCKER_COMPOSE} exec -T backend alembic upgrade head
-
+            
             echo "Final health verification"
             curl -fsS http://localhost:8000/health > /dev/null
             curl -fsS --resolve "${PROD_DOMAIN}:443:127.0.0.1" "https://${PROD_DOMAIN}/health" > /dev/null
