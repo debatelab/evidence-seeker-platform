@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
+import pytest_asyncio
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 from sqlalchemy.ext.asyncio import (
@@ -269,7 +270,7 @@ def client(test_app):
                 test_app.state._test_engines["sync"].dispose()
 
 
-@pytest.fixture(scope="function")
+@pytest_asyncio.fixture(scope="function")
 async def test_db() -> AsyncGenerator[AsyncSession, None]:
     """Async DB session with per-test cleanup (truncate)."""
     # Ensure schema exists (idempotent)
