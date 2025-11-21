@@ -1,6 +1,7 @@
 import os
 import time
 from collections.abc import AsyncGenerator, Generator
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
@@ -35,6 +36,11 @@ os.environ.setdefault("DEBUG", "true")
 
 # Disable embeddings during tests to avoid downloading/loading heavy models
 os.environ.setdefault("DISABLE_EMBEDDINGS", "true")
+
+# Point uploads to a workspace-local directory so CI runners are not forced to write to /app/uploads
+TEST_UPLOAD_ROOT = Path(__file__).resolve().parent.parent / "uploads"
+os.environ.setdefault("UPLOAD_STORAGE_PATH", str(TEST_UPLOAD_ROOT))
+TEST_UPLOAD_ROOT.mkdir(parents=True, exist_ok=True)
 
 if not RAW_DATABASE_URL.startswith("postgresql://"):
     raise RuntimeError(
