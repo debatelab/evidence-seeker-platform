@@ -127,24 +127,24 @@ jobs:
 
             if [ -n "${DATABASE_URL:-}" ]; then
               eval "$(python3 - <<'PY'
-import os
-import urllib.parse
+            import os
+            import urllib.parse
 
-url = os.environ.get("DATABASE_URL")
-if url:
-    parsed = urllib.parse.urlparse(url)
-    user = parsed.username or ""
-    password = parsed.password or ""
-    db = parsed.path.lstrip("/") if parsed.path else ""
-    for key, val in (
-        ("POSTGRES_USER", user),
-        ("POSTGRES_PASSWORD", password),
-        ("POSTGRES_DB", db),
-    ):
-        if val:
-            print(f'export {key}="{val}"')
-PY
-)"
+            url = os.environ.get("DATABASE_URL")
+            if url:
+                parsed = urllib.parse.urlparse(url)
+                user = parsed.username or ""
+                password = parsed.password or ""
+                db = parsed.path.lstrip("/") if parsed.path else ""
+                for key, val in (
+                    ("POSTGRES_USER", user),
+                    ("POSTGRES_PASSWORD", password),
+                    ("POSTGRES_DB", db),
+                ):
+                    if val:
+                        print(f'export {key}="{val}"')
+            PY
+              )"
             fi
 
             : "${POSTGRES_DB:?POSTGRES_DB missing; set in backend/.env.prod or embed in DATABASE_URL}"
