@@ -144,7 +144,7 @@ JWT_SECRET_KEY=$(openssl rand -hex 32)
 
 # Application
 DEBUG=false
-CORS_ORIGINS=["https://https://evidence-seeker.philosophie.kit.edu","https://www.https://evidence-seeker.philosophie.kit.edu"]
+CORS_ORIGINS=["https://evidence-seeker.philosophie.kit.edu","https://www.evidence-seeker.philosophie.kit.edu"]
 LOG_LEVEL=WARNING
 
 # Email Configuration (configure in Step 4)
@@ -345,8 +345,10 @@ sudo certbot certonly --standalone -d yourdomain.com -d www.yourdomain.com
 
 # Copy certificates into project directory (needed for Docker)
 sudo mkdir -p /opt/evidence-seeker-platform/ssl
-sudo cp /etc/letsencrypt/live/yourdomain.com/fullchain.pem /opt/evidence-seeker-platform/ssl/fullchain.pem
-sudo cp /etc/letsencrypt/live/yourdomain.com/privkey.pem /opt/evidence-seeker-platform/ssl/privkey.pem
+sudo cp /etc/letsencrypt/live/evidence-seeker.philosophie.kit.edu/fullchain.pem /opt/evidence-seeker-platform/ssl/fullchain.pem
+
+sudo cp /etc/letsencrypt/live/evidence-seeker.philosophie.kit.edu/privkey.pem /opt/evidence-seeker-platform/ssl/privkey.pem
+
 sudo chmod 644 /opt/evidence-seeker-platform/ssl/fullchain.pem
 sudo chmod 600 /opt/evidence-seeker-platform/ssl/privkey.pem
 sudo chown root:root /opt/evidence-seeker-platform/ssl/fullchain.pem /opt/evidence-seeker-platform/ssl/privkey.pem
