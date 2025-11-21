@@ -8,40 +8,48 @@ services:
       DATABASE_URL: ${DATABASE_URL}
     volumes:
       - ${UPLOADS_VOLUME_PATH:-./backend/uploads}:${UPLOAD_STORAGE_PATH:-/app/uploads}
+      - ./backend/encryption_key:/app/encryption_key:ro
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    networks:
+      - evidence-seeker-network
     ports:
       - "127.0.0.1:8000:8000"
 
   frontend:
     image: ${FRONTEND_IMAGE:-ghcr.io/debatelab/evidence-frontend:latest}
     restart: unless-stopped
+    environment:
+      - VITE_API_URL=${FRONTEND_API_URL:-https://b7233fdd-ac70-4e21-ae82-54a2e6c682e4.ka.bw-cloud-instance.org/api/v1}
     depends_on:
       - backend
+    networks:
+      - evidence-seeker-network
     expose:
       - "3000"
 
   db:
-    image: postgres:16
+    image: pgvector/pgvector:pg16
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD not set}
-      POSTGRES_DB: ${POSTGRES_DB:-evidence}
+      POSTGRES_DB: ${POSTGRES_DB:?unset}
+      POSTGRES_USER: ${POSTGRES_USER:?unset}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?unset}
+      PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
-      - evidence_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
+      - ./backup:/backup
     ports:
-      - "5432:5432"
-
-  vector_db:
-    image: ankane/pgvector:latest
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${VECTOR_USER:-vector}
-      POSTGRES_PASSWORD: ${VECTOR_PASSWORD:?VECTOR_PASSWORD not set}
-      POSTGRES_DB: ${VECTOR_DB:-vectordb}
-    volumes:
-      - vector_data:/var/lib/postgresql/data
+      - "127.0.0.1:5432:5432"  # Only accessible locally
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U evidence_user -d evidence_seeker"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - evidence-seeker-network
 
   nginx:
     image: nginx:1.27-alpine

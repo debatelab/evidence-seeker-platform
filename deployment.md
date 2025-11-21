@@ -144,7 +144,7 @@ JWT_SECRET_KEY=$(openssl rand -hex 32)
 
 # Application
 DEBUG=false
-CORS_ORIGINS=["https://b7233fdd-ac70-4e21-ae82-54a2e6c682e4.ka.bw-cloud-instance.org","https://www.b7233fdd-ac70-4e21-ae82-54a2e6c682e4.ka.bw-cloud-instance.org"]
+CORS_ORIGINS=["https://https://evidence-seeker.philosophie.kit.edu","https://www.https://evidence-seeker.philosophie.kit.edu"]
 LOG_LEVEL=WARNING
 
 # Email Configuration (configure in Step 4)
@@ -160,27 +160,12 @@ UPLOAD_STORAGE_PATH=/app/uploads
 UPLOADS_VOLUME_PATH=./backend/uploads
 MAX_FILE_SIZE=10485760
 ALLOWED_EXTENSIONS=[".pdf",".txt"]
+
+AUTO_CREATE_SCHEMA=false
+FRONTEND_API_URL=https://evidence-seeker.philosophie.kit.edu/api/v1
 EOF
 
 The `POSTGRES_*` entries are intentionally duplicated here even though the same values live inside `DATABASE_URL`; Docker Compose and the GitHub Actions deploy workflow rely on these variables when interpolating the `db` service environment, so keeping them explicit prevents “required variable POSTGRES_DB is missing” errors during automation.
-
-## Upload Storage Volume Specification
-
-### Objective
-Use the new `dev/vdb` block device (mounted at `/mnt/data`) for the application's upload directory while keeping the path configurable through environment variables so different environments can point uploads to the appropriate storage backend.
-
-### Requirements
-- The backend must read the uploads path from an environment variable (proposed: `UPLOAD_STORAGE_PATH`) with a default of `/app/uploads` to keep local development simple.
-- Docker Compose needs to mount the host directory tied to `/mnt/data` (e.g., `/mnt/data/evidence-seeker/uploads`) into the backend container at the same path that the application reads from `UPLOAD_STORAGE_PATH`.
-- Application startup must ensure that the configured directory exists and that it is writable by the process user before processing uploads.
-- Deployment documentation must explain how to prepare the `/mnt/data` mount, configure the environment variable, and migrate any existing files into the new volume.
-
-### Implementation Outline
-1. **Configuration service**: Add `UPLOAD_STORAGE_PATH` to the backend config module and expose it wherever uploads currently rely on the hardcoded `/app/uploads` path. Maintain backwards compatibility by falling back to `/app/uploads` if the variable is not defined.
-2. **Environment files**: Update `.env`, `.env.example`, `.env.prod`, and CI secrets to include the new variable. Production `.env.prod` should set `UPLOAD_STORAGE_PATH=/mnt/data/evidence-seeker/uploads`.
-3. **Directory management**: Extend the existing file utilities (or add a small helper) to create the directory at startup (using `os.makedirs(..., exist_ok=True)`) and log an explicit error if the process cannot write to it.
-4. **Docker Compose**: Introduce a dedicated host-path variable (e.g., `UPLOADS_VOLUME_PATH`) plus the container `UPLOAD_STORAGE_PATH` so the bind mount keeps both sides in sync. Document how to bind `/mnt/data/evidence-seeker/uploads` on the host.
-5. **Testing**: Verify that uploads succeed when `UPLOAD_STORAGE_PATH` is set to a temporary directory during automated tests and that the value propagates through API responses when serving files.
 
 ### Deployment Steps for `/mnt/data`
 1. Ensure `dev/vdb` is formatted (e.g., `ext4`), mounted at `/mnt/data`, and added to `/etc/fstab` so the mount persists across reboots.

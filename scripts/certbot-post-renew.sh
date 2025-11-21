@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-DOMAIN="b7233fdd-ac70-4e21-ae82-54a2e6c682e4.ka.bw-cloud-instance.org"
+DOMAIN="evidence-seeker.philosophie.kit.edu"
 PROJECT_DIR="/opt/evidence-seeker-platform"
 SSL_SOURCE="/etc/letsencrypt/live/${DOMAIN}"
 SSL_TARGET="${PROJECT_DIR}/ssl"

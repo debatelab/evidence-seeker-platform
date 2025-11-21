@@ -205,7 +205,7 @@ jobs:
                 fi
             done
             
-            PROD_DOMAIN="b7233fdd-ac70-4e21-ae82-54a2e6c682e4.ka.bw-cloud-instance.org"
+            PROD_DOMAIN="evidence-seeker.philosophie.kit.edu"
 
             echo "Testing frontend HTTPS endpoint..."
             for i in {1..10}; do
@@ -236,7 +236,7 @@ jobs:
           script: |
             set -euo pipefail
             curl -fsS http://localhost:8000/health > /dev/null
-            PROD_DOMAIN="b7233fdd-ac70-4e21-ae82-54a2e6c682e4.ka.bw-cloud-instance.org"
+            PROD_DOMAIN="https://evidence-seeker.philosophie.kit.edu"
             curl -fsS --resolve "${PROD_DOMAIN}:443:127.0.0.1" "https://${PROD_DOMAIN}" | grep -q "Evidence Seeker Platform"
             echo "Smoke tests OK"
 
