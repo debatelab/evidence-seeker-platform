@@ -120,46 +120,46 @@ jobs:
             # Ensure required DB env vars are present for docker compose.
             # Load DB-related vars from backend/.env.prod without executing it (handles spaces safely)
             ENV_EXPORTS="$(python3 - <<'PY'
-import shlex
-from pathlib import Path
+            import shlex
+            from pathlib import Path
 
-env_path = Path("backend/.env.prod")
-keys = {"DATABASE_URL", "POSTGRES_DB", "POSTGRES_USER", "POSTGRES_PASSWORD"}
-if env_path.exists():
-    for raw in env_path.read_text().splitlines():
-        line = raw.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        key, val = map(str.strip, line.split("=", 1))
-        if key not in keys:
-            continue
-        if val and (val[0] == val[-1]) and val[0] in ("'", '"'):
-            val = val[1:-1]
-        print(f'export {key}={shlex.quote(val)}')
-PY
+            env_path = Path("backend/.env.prod")
+            keys = {"DATABASE_URL", "POSTGRES_DB", "POSTGRES_USER", "POSTGRES_PASSWORD"}
+            if env_path.exists():
+                for raw in env_path.read_text().splitlines():
+                    line = raw.strip()
+                    if not line or line.startswith("#") or "=" not in line:
+                        continue
+                    key, val = map(str.strip, line.split("=", 1))
+                    if key not in keys:
+                        continue
+                    if val and (val[0] == val[-1]) and val[0] in ("'", '"'):
+                        val = val[1:-1]
+                    print(f'export {key}={shlex.quote(val)}')
+            PY
             )"
             eval "${ENV_EXPORTS}"
 
             if [ -n "${DATABASE_URL:-}" ]; then
               eval "$(python3 - <<'PY'
-import os
-import urllib.parse
-import shlex
+            import os
+            import urllib.parse
+            import shlex
 
-url = os.environ.get("DATABASE_URL")
-if url:
-    parsed = urllib.parse.urlparse(url)
-    user = parsed.username or ""
-    password = parsed.password or ""
-    db = parsed.path.lstrip("/") if parsed.path else ""
-    for key, val in (
-        ("POSTGRES_USER", user),
-        ("POSTGRES_PASSWORD", password),
-        ("POSTGRES_DB", db),
-    ):
-        if val:
-            print(f'export {key}={shlex.quote(val)}')
-PY
+            url = os.environ.get("DATABASE_URL")
+            if url:
+                parsed = urllib.parse.urlparse(url)
+                user = parsed.username or ""
+                password = parsed.password or ""
+                db = parsed.path.lstrip("/") if parsed.path else ""
+                for key, val in (
+                    ("POSTGRES_USER", user),
+                    ("POSTGRES_PASSWORD", password),
+                    ("POSTGRES_DB", db),
+                ):
+                    if val:
+                        print(f'export {key}={shlex.quote(val)}')
+            PY
               )"
             fi
 
