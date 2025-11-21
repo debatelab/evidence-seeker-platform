@@ -9,6 +9,7 @@ import pytest_asyncio
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
     AsyncSession,
     async_sessionmaker,
     create_async_engine,
@@ -55,16 +56,6 @@ from app.core.database import Base  # noqa: E402  now safe to import
 
 # Build async URL matching RAW_DATABASE_URL
 ASYNC_DATABASE_URL = RAW_DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://")
-
-# Create test engine (async)
-test_engine = create_async_engine(
-    ASYNC_DATABASE_URL,
-    echo=False,
-    future=True,
-)
-
-# Create test session factory
-TestSessionLocal = async_sessionmaker(bind=test_engine, expire_on_commit=False)
 
 # Create synchronous engine/session for tests that expect sync Session
 SYNC_DATABASE_URL = RAW_DATABASE_URL
@@ -140,13 +131,10 @@ def _truncate_all_sync() -> None:
         print(f"Warning: Database cleanup failed: {e}")
 
 
-async def _truncate_all_async() -> None:
+async def _truncate_all_async(async_engine: AsyncEngine) -> None:
     """Truncate all tables and reset identities (async)."""
     try:
-        # Close all existing connections to prevent deadlocks
-        await test_engine.dispose()
-
-        async with test_engine.begin() as conn:
+        async with async_engine.begin() as conn:
             table_names = [t.name for t in Base.metadata.sorted_tables]
             if table_names:
                 await conn.exec_driver_sql(
@@ -272,18 +260,35 @@ def client(test_app):
 
 @pytest_asyncio.fixture(scope="function")
 async def test_db() -> AsyncGenerator[AsyncSession, None]:
-    """Async DB session with per-test cleanup (truncate)."""
+    """Async DB session with per-test isolation."""
     # Ensure schema exists (idempotent)
     _import_all_models()
     _wait_for_db()
-    async with test_engine.begin() as conn:
+
+    async_test_engine = create_async_engine(
+        ASYNC_DATABASE_URL,
+        echo=False,
+        future=True,
+        poolclass=None,  # Avoid cross-loop connection reuse in pytest
+    )
+    async_session_factory = async_sessionmaker(
+        bind=async_test_engine, expire_on_commit=False
+    )
+
+    async with async_test_engine.begin() as conn:
         await conn.exec_driver_sql("CREATE EXTENSION IF NOT EXISTS vector")
         await conn.run_sync(Base.metadata.create_all)
-    # Truncate data for isolation
-    await _truncate_all_async()
 
-    async with TestSessionLocal() as session:
-        yield session
+    # Truncate data for isolation before yielding
+    await _truncate_all_async(async_test_engine)
+
+    async with async_session_factory() as session:
+        try:
+            yield session
+        finally:
+            await session.close()
+
+    await async_test_engine.dispose()
 
 
 @pytest.fixture(scope="function")
