@@ -29,8 +29,37 @@ import type {
 } from "../types/public";
 import { authEvents } from "./authEvents";
 
-// API base URL - prefer env override, otherwise default to same-origin relative API path
-const API_BASE_URL = import.meta.env.VITE_API_URL || "/api/v1";
+// API base URL - prefer env override, otherwise default to same-origin relative API path.
+// If the app is served over HTTPS but VITE_API_URL was mistakenly set to HTTP,
+// upgrade it to HTTPS to avoid mixed-content errors.
+const resolveApiBaseUrl = (): string => {
+  const raw = import.meta.env.VITE_API_URL;
+  if (!raw) {
+    return "/api/v1";
+  }
+
+  if (
+    typeof window !== "undefined" &&
+    window.location.protocol === "https:" &&
+    raw.startsWith("http://")
+  ) {
+    try {
+      const url = new URL(raw);
+      // Only upgrade if the host matches the current origin to avoid cross-site surprises
+      if (url.host === window.location.host) {
+        url.protocol = "https:";
+        return url.toString();
+      }
+    } catch (error) {
+      console.warn("Invalid VITE_API_URL, falling back to relative path:", error);
+      return "/api/v1";
+    }
+  }
+
+  return raw;
+};
+
+const API_BASE_URL = resolveApiBaseUrl();
 
 // Create axios instance with default configuration
 const apiClient: AxiosInstance = axios.create({
