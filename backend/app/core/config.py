@@ -28,6 +28,7 @@ class Settings(BaseSettings):
         "http://127.0.0.1:5173",
         "http://127.0.0.1:8080",
     ]
+    allowed_hosts: list[str] = ["localhost", "127.0.0.1"]
 
     # Application
     debug: bool = False

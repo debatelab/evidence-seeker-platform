@@ -380,6 +380,7 @@ Add the following entries to the production `.env` on the server:
 INITIAL_ADMIN_EMAIL=admin@yourdomain.com
 INITIAL_ADMIN_PASSWORD=CHANGE_THIS_STRONG_PASSWORD
 INITIAL_ADMIN_USERNAME=admin
+ALLOWED_HOSTS=["localhost","127.0.0.1","evidence-seeker.philosophie.kit.edu"]
 ```
 
 - The account is only created if the database is empty.

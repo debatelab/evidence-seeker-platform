@@ -49,10 +49,8 @@ def create_application() -> FastAPI:
     )
 
     # Add trusted host middleware
-    if not settings.debug:
-        app.add_middleware(
-            TrustedHostMiddleware, allowed_hosts=["localhost", "127.0.0.1"]
-        )
+    if not settings.debug and settings.allowed_hosts:
+        app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.allowed_hosts)
 
     @app.exception_handler(RequestValidationError)
     async def validation_exception_handler(
