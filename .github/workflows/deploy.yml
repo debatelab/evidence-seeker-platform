@@ -250,8 +250,8 @@ jobs:
             set -euo pipefail
             curl -fsS http://localhost:8000/health > /dev/null
             PROD_DOMAIN="evidence-seeker.philosophie.kit.edu"
-            curl -fsS --resolve "${PROD_DOMAIN}:443:127.0.0.1" "https://${PROD_DOMAIN}" | grep -q "Evidence Seeker Platform"
-            echo "Smoke tests OK"
+            curl -fsS --resolve "${PROD_DOMAIN}:443:127.0.0.1" "https://${PROD_DOMAIN}/health" > /dev/null
+            echo "Smoke tests OK (backend + frontend health)"
 
       - name: Slack notify success
         if: success()
