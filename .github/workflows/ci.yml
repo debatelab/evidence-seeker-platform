@@ -262,6 +262,8 @@ jobs:
         with:
           context: .
           file: ./frontend/Dockerfile
+          build-args: |
+            VITE_API_URL=${{ vars.FRONTEND_API_URL || 'https://evidence-seeker.philosophie.kit.edu/api/v1' }}
           push: true
           provenance: false
           # Layer cache locations

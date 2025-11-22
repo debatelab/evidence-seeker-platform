@@ -11,6 +11,8 @@ RUN npm ci --legacy-peer-deps
 
 ########## Build Stage ##########
 FROM base AS build
+ARG VITE_API_URL
+ENV VITE_API_URL=${VITE_API_URL}
 WORKDIR /app/frontend
 
 # Copy frontend source only (does not break cache unless code changes)
