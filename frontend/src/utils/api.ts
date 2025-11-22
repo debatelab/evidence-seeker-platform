@@ -29,9 +29,8 @@ import type {
 } from "../types/public";
 import { authEvents } from "./authEvents";
 
-// API base URL - will be replaced by environment variable in production
-const API_BASE_URL =
-  import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1";
+// API base URL - prefer env override, otherwise default to same-origin relative API path
+const API_BASE_URL = import.meta.env.VITE_API_URL || "/api/v1";
 
 // Create axios instance with default configuration
 const apiClient: AxiosInstance = axios.create({
