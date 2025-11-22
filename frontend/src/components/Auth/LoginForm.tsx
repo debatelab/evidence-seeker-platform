@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { LoginFormData } from "../../types/auth";
@@ -17,9 +17,46 @@ const LoginForm: React.FC<LoginFormProps> = ({
     email: "",
     password: "",
   });
+  const emailRef = useRef<HTMLInputElement | null>(null);
+  const passwordRef = useRef<HTMLInputElement | null>(null);
   const [validationErrors, setValidationErrors] = useState<
     Partial<LoginFormData>
   >({});
+
+  // Some password managers (e.g., 1Password) can populate fields without firing React's onChange.
+  // Sync the DOM values back into state whenever inputs change or autofill kicks in.
+  useEffect(() => {
+    const syncFromDom = () => {
+      const emailValue = emailRef.current?.value ?? "";
+      const passwordValue = passwordRef.current?.value ?? "";
+      setFormData((prev) => {
+        if (prev.email === emailValue && prev.password === passwordValue) {
+          return prev;
+        }
+        return { email: emailValue, password: passwordValue };
+      });
+    };
+
+    const emailEl = emailRef.current;
+    const passwordEl = passwordRef.current;
+    const events: Array<keyof HTMLElementEventMap> = ["input", "change"];
+
+    events.forEach((event) => {
+      emailEl?.addEventListener(event, syncFromDom);
+      passwordEl?.addEventListener(event, syncFromDom);
+    });
+
+    // Kick off a sync shortly after mount to capture any immediate autofill
+    const timer = window.setTimeout(syncFromDom, 100);
+
+    return () => {
+      events.forEach((event) => {
+        emailEl?.removeEventListener(event, syncFromDom);
+        passwordEl?.removeEventListener(event, syncFromDom);
+      });
+      window.clearTimeout(timer);
+    };
+  }, []);
 
   // Clear errors when form data changes
   useEffect(() => {
@@ -97,9 +134,10 @@ const LoginForm: React.FC<LoginFormProps> = ({
             type="email"
             id="email"
             name="email"
+            ref={emailRef}
             value={formData.email}
             onChange={handleInputChange}
-            autoComplete="email"
+            autoComplete="username"
             className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
               validationErrors.email ? "border-red-500" : "border-gray-300"
             }`}
@@ -124,6 +162,7 @@ const LoginForm: React.FC<LoginFormProps> = ({
             type="password"
             id="password"
             name="password"
+            ref={passwordRef}
             value={formData.password}
             onChange={handleInputChange}
             autoComplete="current-password"
