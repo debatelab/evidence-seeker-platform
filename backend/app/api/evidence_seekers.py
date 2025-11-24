@@ -6,7 +6,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy import desc, select
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session, object_session, selectinload
 
 from ..core.auth import get_current_user
 from ..core.config_service import config_service
@@ -848,9 +848,11 @@ def get_fact_check_results(
 
     # Expunge from session to prevent re-loading
     for result in results:
-        db.expunge(result)
+        if object_session(result) is not None:
+            db.expunge(result)
         for evidence in result.evidence:
-            db.expunge(evidence)
+            if object_session(evidence) is not None:
+                db.expunge(evidence)
 
     return results
 
