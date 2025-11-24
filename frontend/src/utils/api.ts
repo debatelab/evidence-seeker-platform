@@ -34,7 +34,9 @@ import { authEvents } from "./authEvents";
 // upgrade it to HTTPS to avoid mixed-content errors.
 const resolveApiBaseUrl = (): string => {
   const raw = import.meta.env.VITE_API_URL;
+  console.log("VITE_API_URL:", raw);
   if (!raw) {
+    console.log("VITE_API_URL not set, defaulting to /api/v1");
     return "/api/v1";
   }
 
@@ -48,10 +50,17 @@ const resolveApiBaseUrl = (): string => {
       // Only upgrade if the host matches the current origin to avoid cross-site surprises
       if (url.host === window.location.host) {
         url.protocol = "https:";
+        console.log(
+          "Upgrading VITE_API_URL to HTTPS to match app protocol",
+          url.toString()
+        );
         return url.toString();
       }
     } catch (error) {
-      console.warn("Invalid VITE_API_URL, falling back to relative path:", error);
+      console.warn(
+        "Invalid VITE_API_URL, falling back to relative path:",
+        error
+      );
       return "/api/v1";
     }
   }
@@ -231,10 +240,16 @@ export const documentsAPI = {
 
   deleteDocument: async (
     documentUuid: string
-  ): Promise<{ detail: string; jobUuid?: string; operationId?: string | null }> => {
-    const response = await apiClient.delete<
-      { detail: string; jobUuid?: string; operationId?: string | null }
-    >(`/documents/${documentUuid}`);
+  ): Promise<{
+    detail: string;
+    jobUuid?: string;
+    operationId?: string | null;
+  }> => {
+    const response = await apiClient.delete<{
+      detail: string;
+      jobUuid?: string;
+      operationId?: string | null;
+    }>(`/documents/${documentUuid}`);
     return response.data;
   },
 
@@ -349,9 +364,7 @@ export const evidenceSeekerAPI = {
     return response.data;
   },
 
-  triggerReindex: async (
-    evidenceSeekerUuid: string
-  ): Promise<IndexJob> => {
+  triggerReindex: async (evidenceSeekerUuid: string): Promise<IndexJob> => {
     const response = await apiClient.post<IndexJob>(
       `/evidence-seekers/${evidenceSeekerUuid}/documents/reindex`
     );
