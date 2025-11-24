@@ -7,6 +7,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import time
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from datetime import datetime
@@ -434,7 +435,12 @@ class EvidenceSeekerPipelineManager:
         cache_key = _hash_config(bundle)
         cached = self._pipelines.get(seeker_id)
         if cached and cached.config_hash == cache_key:
+            logger.debug(
+                "Pipeline cache hit for seeker_id={seeker_id}", seeker_id=seeker_id
+            )
             return cached.pipeline
+
+        creation_start = time.perf_counter()
 
         if (
             EvidenceSeekerPipeline is None or DocumentRetriever is None
@@ -467,7 +473,45 @@ class EvidenceSeekerPipelineManager:
         self._pipelines[seeker_id] = CachedPipeline(
             config_hash=cache_key, pipeline=pipeline_instance
         )
+        logger.info(
+            "Created pipeline for seeker_id={seeker_id} (cache_key={cache_key}) in {elapsed:.2f}s",
+            seeker_id=seeker_id,
+            cache_key=cache_key,
+            elapsed=time.perf_counter() - creation_start,
+        )
         return pipeline_instance
+
+    async def warmup_pipeline(
+        self,
+        db: Session,
+        seeker: EvidenceSeeker,
+        bundle: RetrievalConfigBundle,
+    ) -> None:
+        """
+        Ensure a pipeline is built and cached for the given seeker.
+
+        Uses the existing concurrency semaphore to avoid overwhelming the host.
+        """
+        start = time.perf_counter()
+        cache_key = _hash_config(bundle)
+        cached = self._pipelines.get(seeker.id)
+        if cached and cached.config_hash == cache_key:
+            logger.debug(
+                "Warmup: pipeline already cached for seeker_id={seeker_id}",
+                seeker_id=seeker.id,
+            )
+            return
+
+        async with self._semaphore:
+            await self._get_or_create_pipeline(
+                seeker_id=seeker.id, bundle=bundle, db=db, seeker=seeker
+            )
+
+        logger.info(
+            "Warmup: built pipeline for seeker_id={seeker_id} in {elapsed:.2f}s",
+            seeker_id=seeker.id,
+            elapsed=time.perf_counter() - start,
+        )
 
     def _build_preprocessing_config(
         self, bundle: RetrievalConfigBundle, db: Session, seeker: EvidenceSeeker

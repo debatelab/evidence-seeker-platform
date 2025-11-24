@@ -87,6 +87,10 @@ class Settings(BaseSettings):
     )
     evse_default_backend: str = "huggingface"
     evse_default_embed_base_url: str | None = None
+    evse_enable_warmup: bool = True
+    evse_warmup_max: int | None = (
+        None  # Optional cap on seekers to warm (None = no cap)
+    )
     evse_postgres_schema: str | None = None
     evse_postgres_table_prefix: str = "evse_"
     evse_require_bill_to: bool = False

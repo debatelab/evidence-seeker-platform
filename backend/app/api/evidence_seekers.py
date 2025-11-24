@@ -1,5 +1,6 @@
 import logging
 import shutil
+import time
 from datetime import datetime
 from typing import Any, cast
 from uuid import UUID
@@ -737,6 +738,7 @@ async def create_fact_check_run(
     Clients should poll the run status or subscribe to progress updates
     via the operation_id to track completion.
     """
+    create_started = time.perf_counter()
     seeker = get_evidence_seeker_by_identifier(
         seeker_identifier, db, ensure_user_id(current_user)
     )
@@ -749,6 +751,7 @@ async def create_fact_check_run(
             detail=_configuration_error_detail(exc),
         ) from exc
 
+    bundle_started = time.perf_counter()
     run = cast(
         FactCheckRun,
         evidence_seeker_pipeline_manager.create_fact_check_run(
@@ -759,12 +762,24 @@ async def create_fact_check_run(
             overrides=request.overrides,
         ),
     )
+    logger.info(
+        "Fact-check run bootstrap complete in %.2fs for seeker_id=%s",
+        time.perf_counter() - bundle_started,
+        seeker.id,
+    )
 
     # Schedule the actual execution as a background task
     background_tasks.add_task(
         evidence_seeker_pipeline_manager.execute_fact_check_run,
         run_id=int(run.id),
         seeker_id=int(seeker.id),
+    )
+
+    logger.info(
+        "Fact-check run created: run_id=%s, uuid=%s in %.2fs",
+        run.id,
+        run.uuid,
+        time.perf_counter() - create_started,
     )
 
     return run

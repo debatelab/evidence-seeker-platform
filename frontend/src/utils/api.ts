@@ -405,7 +405,11 @@ export const evidenceSeekerAPI = {
   ): Promise<FactCheckRun> => {
     const response = await apiClient.post<FactCheckRun>(
       `/evidence-seekers/${evidenceSeekerUuid}/runs`,
-      payload
+      payload,
+      {
+        // Allow extra time for occasional model cold-starts on the first run
+        timeout: 45000,
+      }
     );
     return response.data;
   },
@@ -447,7 +451,11 @@ export const evidenceSeekerAPI = {
   ): Promise<FactCheckRun> => {
     const response = await apiClient.post<FactCheckRun>(
       `/evidence-seekers/${evidenceSeekerUuid}/runs/${runUuid}/rerun`,
-      payload
+      payload,
+      {
+        // Allow extra time for model cold-starts when rerunning
+        timeout: 45000,
+      }
     );
     return response.data;
   },

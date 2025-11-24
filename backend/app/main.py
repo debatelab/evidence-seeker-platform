@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 import uvicorn
@@ -21,6 +22,7 @@ from app.core.config import settings
 from app.core.database import create_tables
 from app.core.file_utils import verify_upload_root_writable
 from app.core.logging import setup_logging
+from app.core.warmup import warmup_pipelines
 
 # Set up logging first, before any other imports that might use logger
 setup_logging()
@@ -138,6 +140,10 @@ def create_application() -> FastAPI:
         create_tables()
         logger.info("Database tables created/verified")
         await ensure_initial_admin_from_settings()
+        # Warm pipelines in the background to avoid first-request cold starts
+        if settings.evse_enable_warmup:
+            logger.info("Scheduling pipeline warmup task")
+            asyncio.create_task(warmup_pipelines())
 
     # Shutdown event
     @app.on_event("shutdown")
