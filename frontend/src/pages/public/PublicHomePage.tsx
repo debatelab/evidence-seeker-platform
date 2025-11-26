@@ -135,7 +135,7 @@ const PublicHomePage: React.FC = () => {
               </h1>
               <p className="mt-6 text-lg text-gray-600">
                 Explore community Evidence Seekers, inspect their document
-                libraries, and run transparent fact checks in real time.
+                libraries, and run transparent fact checks.
               </p>
               <div className="mt-8 flex flex-wrap gap-4">
                 <button
