@@ -43,17 +43,25 @@ interface WizardDraftStorage {
   step: number;
   details: WizardDetailsState;
   credentialsBillTo?: string;
+  credentialsApiKey?: string;
   wizardSeeker: EvidenceSeeker | null;
   onboardingToken: string | null;
   skipAcknowledged: boolean;
   documentRequirementMet: boolean;
   appliedBillTo?: string;
+  appliedApiKey?: string;
 }
 
 const EvidenceSeekerForm: React.FC<EvidenceSeekerFormProps> = ({
   onSuccess,
   onCancel,
 }) => {
+  const debugWizard = import.meta.env.DEV;
+  const wizardLog = (...args: unknown[]) => {
+    if (!debugWizard) return;
+    console.log("[wizard]", ...args);
+  };
+
   const navigate = useNavigate();
   const { user } = useAuth();
   const {
@@ -109,13 +117,24 @@ const EvidenceSeekerForm: React.FC<EvidenceSeekerFormProps> = ({
     apiKeyValue: "",
     billTo: "",
   }));
+  const [draftHydrated, setDraftHydrated] = useState(false);
   const { status: wizardStatus } = useConfigurationStatus(wizardSeeker?.uuid);
   const clearDraft = useCallback(() => {
     if (!draftKey || typeof window === "undefined") {
       return;
     }
+    wizardLog("clearing draft", draftKey);
     window.sessionStorage.removeItem(draftKey);
   }, [draftKey]);
+
+  useEffect(() => {
+    wizardLog("mount");
+    return () => wizardLog("unmount");
+  }, []);
+
+  useEffect(() => {
+    wizardLog("step change", { step });
+  }, [step]);
 
   useEffect(() => {
     if (!draftKey || typeof window === "undefined") {
@@ -127,11 +146,22 @@ const EvidenceSeekerForm: React.FC<EvidenceSeekerFormProps> = ({
     }
     try {
       const parsed = JSON.parse(stored) as WizardDraftStorage;
+      wizardLog("hydrating from draft", {
+        step: parsed.step,
+        hasSeeker: Boolean(parsed.wizardSeeker),
+        apiKeyLen: parsed.credentialsApiKey?.length ?? 0,
+      });
       if (typeof parsed.step === "number") {
         setStep(Math.min(Math.max(parsed.step, 0), steps.length - 1));
       }
       if (parsed.details) {
         setDetails(normaliseDetails(parsed.details));
+      }
+      if (typeof parsed.credentialsApiKey === "string") {
+        setCredentials((prev) => ({
+          ...prev,
+          apiKeyValue: parsed.credentialsApiKey,
+        }));
       }
       if (typeof parsed.credentialsBillTo === "string") {
         setCredentials((prev) => ({
@@ -153,16 +183,31 @@ const EvidenceSeekerForm: React.FC<EvidenceSeekerFormProps> = ({
       }
       if (typeof parsed.appliedBillTo === "string") {
         setAppliedCredentials({
-          apiKeyValue: "",
+          apiKeyValue: parsed.appliedApiKey ?? "",
           billTo: parsed.appliedBillTo,
         });
       }
+      if (
+        typeof parsed.appliedApiKey === "string" &&
+        typeof parsed.appliedBillTo !== "string"
+      ) {
+        setAppliedCredentials((prev) => ({
+          ...prev,
+          apiKeyValue: parsed.appliedApiKey,
+        }));
+      }
     } catch (err) {
       console.warn("Failed to restore wizard draft", err);
+    } finally {
+      setDraftHydrated(true);
+      wizardLog("draft hydration complete");
     }
   }, [draftKey]);
 
   useEffect(() => {
+    if (!draftHydrated) {
+      return;
+    }
     if (!draftKey || typeof window === "undefined") {
       return;
     }
@@ -170,13 +215,22 @@ const EvidenceSeekerForm: React.FC<EvidenceSeekerFormProps> = ({
       step,
       details,
       credentialsBillTo: credentials.billTo,
+      credentialsApiKey: credentials.apiKeyValue,
       wizardSeeker: wizardSeeker ?? null,
       onboardingToken: onboardingToken ?? null,
       skipAcknowledged,
       documentRequirementMet,
       appliedBillTo: appliedCredentials.billTo,
+      appliedApiKey: appliedCredentials.apiKeyValue,
     };
     try {
+      wizardLog("persisting draft", {
+        step,
+        titleLen: details.title.length,
+        descLen: details.description.length,
+        apiKeyLen: credentials.apiKeyValue.length,
+        hasSeeker: Boolean(wizardSeeker),
+      });
       window.sessionStorage.setItem(draftKey, JSON.stringify(payload));
     } catch (err) {
       console.warn("Failed to persist wizard draft", err);
@@ -186,11 +240,14 @@ const EvidenceSeekerForm: React.FC<EvidenceSeekerFormProps> = ({
     step,
     details,
     credentials.billTo,
+    credentials.apiKeyValue,
     wizardSeeker,
     onboardingToken,
     skipAcknowledged,
     documentRequirementMet,
     appliedCredentials.billTo,
+    appliedCredentials.apiKeyValue,
+    draftHydrated,
   ]);
 
   useEffect(() => {

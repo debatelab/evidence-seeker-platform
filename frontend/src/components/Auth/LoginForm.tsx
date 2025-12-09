@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { LoginFormData } from "../../types/auth";
@@ -23,6 +23,13 @@ const LoginForm: React.FC<LoginFormProps> = ({
     Partial<LoginFormData>
   >({});
 
+  const resetErrors = useCallback(() => {
+    setValidationErrors((prev) => (Object.keys(prev).length ? {} : prev));
+    if (error) {
+      clearError();
+    }
+  }, [clearError, error]);
+
   // Some password managers (e.g., 1Password) can populate fields without firing React's onChange.
   // Sync the DOM values back into state whenever inputs change or autofill kicks in.
   useEffect(() => {
@@ -33,6 +40,7 @@ const LoginForm: React.FC<LoginFormProps> = ({
         if (prev.email === emailValue && prev.password === passwordValue) {
           return prev;
         }
+        resetErrors();
         return { email: emailValue, password: passwordValue };
       });
     };
@@ -56,15 +64,7 @@ const LoginForm: React.FC<LoginFormProps> = ({
       });
       window.clearTimeout(timer);
     };
-  }, []);
-
-  // Clear errors when form data changes
-  useEffect(() => {
-    if (error) {
-      clearError();
-    }
-    setValidationErrors({});
-  }, [formData, error, clearError]);
+  }, [resetErrors]);
 
   const validateForm = (): boolean => {
     const errors: Partial<LoginFormData> = {};
@@ -91,6 +91,7 @@ const LoginForm: React.FC<LoginFormProps> = ({
       ...prev,
       [name]: value,
     }));
+    resetErrors();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

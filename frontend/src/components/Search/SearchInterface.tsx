@@ -114,7 +114,7 @@ export const SearchInterface: React.FC<SearchInterfaceProps> = ({
           status={configurationStatus}
           onConfigure={() =>
             navigate(
-              `/app/evidence-seekers/${evidenceSeekerUuid}/manage/config`
+              `/app/evidence-seekers/${evidenceSeekerUuid}/manage/settings`
             )
           }
           description="Connect your inference credentials before running semantic search."

@@ -57,7 +57,7 @@ class EvidenceSeekerSettings(Base):
         Integer, ForeignKey("api_keys.id"), nullable=True
     )
     embed_backend_type: Mapped[str] = mapped_column(
-        String(50), nullable=False, server_default="huggingface"
+        String(50), nullable=False, server_default="huggingface_inference_api"
     )
     embed_base_url: Mapped[str | None] = mapped_column(String(255), nullable=True)
     embed_bill_to: Mapped[str | None] = mapped_column(String(100), nullable=True)
@@ -140,7 +140,7 @@ def build_evidence_seeker_settings(
     *,
     evidence_seeker_id: int,
     huggingface_api_key_id: int | None = None,
-    embed_backend_type: str = "huggingface",
+    embed_backend_type: str = "huggingface_inference_api",
     metadata_filters: dict[str, Any] | None = None,
     setup_mode: str = SetupMode.SIMPLE.value,
     configuration_state: str = ConfigurationState.UNCONFIGURED.value,

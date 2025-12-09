@@ -5,7 +5,7 @@ Welcome to Evidence Seeker Platform!
 Thank you for registering. To complete your account setup and start using our platform, please verify your email address.
 
 Click the link below to verify your email:
-http://localhost:3000/verify-email?token={{ token }}
+{{ verification_url }}
 
 This verification link will expire in 24 hours.
 

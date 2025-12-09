@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { Document, DocumentCreate } from "../../types/document";
 import { useDocuments } from "../../hooks/useDocument";
@@ -42,6 +42,14 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({
   const [_uploadedDocument, setUploadedDocument] = useState<Document | null>(
     null
   ); // underscored to satisfy no-unused-vars rule
+  const progressIntervalRef = useRef<number | null>(null);
+
+  const clearProgressInterval = () => {
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+      progressIntervalRef.current = null;
+    }
+  };
 
   const handleStartUpload = async (
     file: File,
@@ -57,7 +65,7 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({
 
     try {
       // Simulate progress updates during upload
-      const progressInterval = setInterval(() => {
+      progressIntervalRef.current = window.setInterval(() => {
         setUploadProgress((prev) => {
           if (prev < 90) {
             return prev + Math.random() * 15;
@@ -74,7 +82,7 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({
 
       const result = await uploadDocument(uploadData);
 
-      clearInterval(progressInterval);
+      clearProgressInterval();
       setUploadProgress(100);
 
       if (result) {
@@ -89,10 +97,13 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({
       setUploadError("An error occurred during upload. Please try again.");
       setUploadState("error");
       setUploadProgress(0);
+    } finally {
+      clearProgressInterval();
     }
   };
 
   const handleCancel = () => {
+    clearProgressInterval();
     setUploadState("form-input");
     setUploadProgress(0);
     setUploadError("");
@@ -149,7 +160,7 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({
       <ConfigurationBlockedNotice
         status={configurationStatus}
         onConfigure={() =>
-          navigate(`/app/evidence-seekers/${evidenceSeekerUuid}/manage/config`)
+          navigate(`/app/evidence-seekers/${evidenceSeekerUuid}/manage/settings`)
         }
         description="Finish connecting your inference provider before uploading new documents."
       />

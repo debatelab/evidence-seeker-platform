@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi_users import FastAPIUsers
 
+from app.core.config import settings
 from app.core.auth import UserManager, auth_backend, get_user_manager
 from app.models.user import FastAPIUser
 from app.schemas.user import UserCreate, UserRead
@@ -17,7 +18,11 @@ security = HTTPBearer()
 
 # Include auth routes from fastapi-users
 router.include_router(
-    fastapi_users.get_auth_router(auth_backend), prefix="/auth/jwt", tags=["auth"]
+    fastapi_users.get_auth_router(
+        auth_backend, requires_verification=settings.is_email_verification_required
+    ),
+    prefix="/auth/jwt",
+    tags=["auth"],
 )
 
 # Default register route from fastapi-users

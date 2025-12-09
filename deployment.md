@@ -143,9 +143,12 @@ SECRET_KEY=$(openssl rand -hex 32)
 JWT_SECRET_KEY=$(openssl rand -hex 32)
 
 # Application
+ENVIRONMENT=production
 DEBUG=false
 CORS_ORIGINS=["https://evidence-seeker.philosophie.kit.edu","https://www.evidence-seeker.philosophie.kit.edu"]
 LOG_LEVEL=WARNING
+FRONTEND_BASE_URL=https://evidence-seeker.philosophie.kit.edu
+EMAIL_VERIFICATION_REQUIRED=true
 
 # Email Configuration (configure in Step 4)
 SMTP_SERVER=smtp.gmail.com
@@ -184,6 +187,8 @@ EOF
 > **Tip:** Run production commands with `docker compose --env-file backend/.env.prod -f docker-compose.prod.yml up -d` so the CLI can substitute `UPLOAD_STORAGE_PATH`, `UPLOADS_VOLUME_PATH`, and other secrets defined in your backend env file.
 
 **Security Note:** Never commit these files to version control. Add `.env.prod` to your `.gitignore`.
+
+Email verification is enforced automatically when `ENVIRONMENT=production` (and can be explicitly controlled via `EMAIL_VERIFICATION_REQUIRED`). The links in verification/reset emails use `FRONTEND_BASE_URL`, so keep that value aligned with your deployed frontend host.
 
 ### 2.3 Generate Encryption Key for API Keys
 ```bash
@@ -512,6 +517,47 @@ ls -la /opt/evidence-seeker-platform/backup/
 
 # Verify backup integrity
 gunzip -c /opt/evidence-seeker-platform/backup/evidence_seeker_*.sql.gz | head -20
+```
+
+## Step 10: Resetting the Database (use with care)
+
+> **Danger:** In production this deletes all data. Always take a backup first (see Step 9) and be sure you really intend to wipe the database.
+
+For a clean slate (e.g., test/prototype):
+```bash
+cd /opt/evidence-seeker-platform
+# Stop services and remove the Postgres volume
+docker compose -f docker-compose.prod.yml down
+docker volume rm evidence-seeker-platform_postgres_data
+
+# (Optional) clear uploaded files if you want a fully empty instance
+rm -rf backend/uploads
+
+# Recreate services and database
+docker compose -f docker-compose.prod.yml up -d
+
+# Re-run migrations and bootstrap admin as usual
+docker compose -f docker-compose.prod.yml exec -T backend alembic upgrade head
+```
+
+If you must reset in production, take a verified backup first and only proceed during a maintenance window.
+
+## Step 11: Accessing Backend Logs on the Production Server
+
+Follow the logs directly from the host:
+```bash
+cd /opt/evidence-seeker-platform
+# Follow backend logs
+docker compose -f docker-compose.prod.yml logs -f backend
+
+# Show recent logs without following
+docker compose -f docker-compose.prod.yml logs --tail=200 backend
+```
+
+If you need to inspect inside the container:
+```bash
+docker compose -f docker-compose.prod.yml exec backend sh
+# then view log files or process output as needed
 ```
 
 ## Step 10: Monitoring and Maintenance

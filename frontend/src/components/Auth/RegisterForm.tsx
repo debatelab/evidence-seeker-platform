@@ -36,7 +36,6 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
   const [validationErrors, setValidationErrors] = useState<
     Partial<RegisterFormData>
   >({});
-  console.log("Validation Errors:", validationErrors);
 
   // Save form data to sessionStorage whenever it changes
   useEffect(() => {
@@ -109,7 +108,6 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
       username: formData.username,
       password: formData.password,
     });
-    console.log("Registration result:", result);
 
     if (result.success) {
       // Clear the form data and sessionStorage since registration was successful
@@ -123,7 +121,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
 
       // Redirect to email verification page
       navigate("/verify-email", {
-        state: { email: formData.email },
+        state: { email: formData.email, registrationSuccess: true },
       });
     } else {
       // Handle any registration error

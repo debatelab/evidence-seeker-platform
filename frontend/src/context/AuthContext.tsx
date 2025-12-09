@@ -10,6 +10,57 @@ import { AuthState, LoginRequest, RegisterRequest } from "../types/auth";
 import { authAPI, permissionsAPI, apiUtils } from "../utils/api";
 import { authEvents } from "../utils/authEvents";
 
+const formatLoginErrorMessage = (error: any): string => {
+  const detail = error?.response?.data?.detail;
+
+  if (detail === "LOGIN_BAD_CREDENTIALS") {
+    return "Invalid email or password. Please check your credentials or sign up if you don't have an account.";
+  }
+
+  if (detail === "LOGIN_USER_NOT_VERIFIED") {
+    return "Please verify your email before signing in. Check your inbox for the verification link.";
+  }
+
+  if (typeof detail === "string") {
+    return detail;
+  }
+
+  if (error?.code === "ERR_NETWORK") {
+    return "Unable to reach the server. Please check your connection and try again.";
+  }
+
+  return "Login failed. Please try again.";
+};
+
+const normalizePermissions = (permissions?: any[] | null): string[] => {
+  if (!permissions || permissions.length === 0) {
+    return [];
+  }
+  return permissions
+    .map((perm) => {
+      if (typeof perm === "string") {
+        return perm;
+      }
+      const id = perm.id ?? perm.permissionId ?? "na";
+      const role = perm.role ?? perm.permission ?? "na";
+      const seeker = perm.evidenceSeekerId ?? perm.evidence_seeker_id ?? "na";
+      return `${id}:${role}:${seeker}`;
+    })
+    .sort();
+};
+
+const permissionsEqual = (
+  a?: any[] | null,
+  b?: any[] | null
+): boolean => {
+  const left = normalizePermissions(a);
+  const right = normalizePermissions(b);
+  if (left.length !== right.length) {
+    return false;
+  }
+  return left.every((value, index) => value === right[index]);
+};
+
 // Polling configuration
 const PERMISSION_POLLING_CONFIG = {
   interval: 60000, // 60 seconds
@@ -107,8 +158,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       return { success: true, data: response };
     } catch (error: any) {
-      const errorMessage =
-        error.response?.data?.detail || "Login failed. Please try again.";
+      const errorMessage = formatLoginErrorMessage(error);
       setAuthState((prev) => ({
         ...prev,
         isLoading: false,
@@ -192,9 +242,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     try {
       const permissionsData = await permissionsAPI.getMyPermissions();
+      const nextPermissions = permissionsData.permissions || [];
+      const currentPermissions = authState.user.permissions || [];
+      // Skip state updates when permissions are unchanged to avoid UI churn
+      if (permissionsEqual(currentPermissions, nextPermissions)) {
+        return true;
+      }
       const updatedUser = {
         ...authState.user,
-        permissions: permissionsData.permissions || [],
+        permissions: nextPermissions,
       };
 
       // Update localStorage
@@ -217,6 +273,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Avoid re-triggering the logout flow while the reauth modal is already shown
     if (sessionExpired) {
       return;
+    }
+    if (import.meta.env.DEV) {
+      console.warn("[auth] unauthorized event received");
     }
 
     apiUtils.removeToken();

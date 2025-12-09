@@ -1,16 +1,14 @@
 /**
- * Evidence Seeker Management component with tabs for Documents, Search, and Configuration
+ * Evidence Seeker Management component with tabs for documents and admin settings
  */
 
 import React, { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate, Outlet } from "react-router";
 import {
   FileText,
-  Search,
   Settings,
   ArrowLeft,
   Database,
-  Key,
   Users,
   ShieldCheck,
 } from "lucide-react";
@@ -26,11 +24,9 @@ interface EvidenceSeekerManagementProps {
 
 type TabType =
   | "documents"
-  | "search"
   | "fact-checks"
   | "settings"
-  | "users"
-  | "config";
+  | "users";
 
 const EvidenceSeekerManagement: React.FC<EvidenceSeekerManagementProps> = ({
   evidenceSeekerUuid,
@@ -52,12 +48,6 @@ const EvidenceSeekerManagement: React.FC<EvidenceSeekerManagementProps> = ({
       description: "Manage documents and uploads",
     },
     {
-      id: "search" as TabType,
-      label: "AI Search",
-      icon: Search,
-      description: "Search through documents with AI",
-    },
-    {
       id: "fact-checks" as TabType,
       label: "Fact Checks",
       icon: ShieldCheck,
@@ -65,21 +55,15 @@ const EvidenceSeekerManagement: React.FC<EvidenceSeekerManagementProps> = ({
     },
     {
       id: "settings" as TabType,
-      label: "Settings",
+      label: "Settings & Configuration",
       icon: Settings,
-      description: "Basic information and visibility",
+      description: "Manage basics, visibility, and pipeline configuration",
     },
     {
       id: "users" as TabType,
       label: "User Management",
       icon: Users,
       description: "Manage who can access and modify this evidence seeker",
-    },
-    {
-      id: "config" as TabType,
-      label: "Configuration",
-      icon: Key,
-      description: "Configure pipeline defaults and provider credentials",
     },
   ];
 

@@ -64,6 +64,7 @@ class FactCheckResultRead(BaseModel):
     confirmation_level: str | None = Field(alias="confirmationLevel", default=None)
     confidence_score: float | None = Field(alias="confidenceScore", default=None)
     summary: str | None = None
+    raw_payload: dict[str, Any] | None = Field(alias="rawPayload", default=None)
     evidence: list[FactCheckEvidenceRead]
 
     class Config:

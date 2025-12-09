@@ -55,20 +55,14 @@
 
         <p>Click the button below to verify your email:</p>
 
-        <a
-          href="http://localhost:3000/verify-email?token={{ token }}"
-          class="button"
-          >Verify Email Address</a
-        >
+        <a href="{{ verification_url }}" class="button">Verify Email Address</a>
 
         <p>
           If the button doesn't work, you can also copy and paste this link into
           your browser:
         </p>
         <p>
-          <a href="http://localhost:3000/verify-email?token={{ token }}"
-            >http://localhost:3000/verify-email?token={{ token }}</a
-          >
+          <a href="{{ verification_url }}">{{ verification_url }}</a>
         </p>
 
         <p><strong>This verification link will expire in 24 hours.</strong></p>

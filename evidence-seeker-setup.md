@@ -44,12 +44,12 @@ We will reuse this key for both embeddings and the rest of the pipeline.
 1. Open the **Pipeline Settings** tab for your seeker.
 2. Fill in the **Default model** with the embedding model you want:
    ```
-   sentence-transformers/paraphrase-multilingual-mpnet-base-v2
+   BAAI/bge-m3
    ```
 3. Under **Embedding backend**, choose **Hugging Face Inference API**.
 4. Provide the endpoint Hugging Face expects:
    ```
-   https://router.huggingface.co/hf-inference/models/sentence-transformers/paraphrase-multilingual-mpnet-base-v2
+   https://router.huggingface.co/hf-inference/models/BAAI/bge-m3
    ```
 5. Set **Billing organisation** if the usage should be charged to a Hugging Face org (value for `X-HF-Bill-To`). (e.g. DebateLabKIT)
 6. Use the **Hugging Face API key** dropdown to pick the credential you just stored (leave it on **None** for now if you still need to add one in the API Keys section below).

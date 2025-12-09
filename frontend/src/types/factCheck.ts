@@ -25,6 +25,7 @@ export interface FactCheckResult {
   confirmationLevel?: string | null;
   confidenceScore?: number | null;
   summary?: string | null;
+  rawPayload?: Record<string, unknown> | null;
   evidence: FactCheckEvidence[];
 }
 

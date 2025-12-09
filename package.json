@@ -12,7 +12,7 @@
         "backend:test:ci": "cd backend && source .venv/bin/activate && pytest -v --cov=app --cov-report=term-missing",
         "backend:test:local": "export DATABASE_URL=postgresql://evidence_user:evidence_password@localhost:5433/evidence_seeker_test && cd backend && source .venv/bin/activate && pytest -v --cov=app --cov-report=term-missing",
         "test:backend": "npm-run-all test:db:up backend:test:local",
-        "dev": "npm-run-all --parallel dev:db dev:backend dev:frontend",
+        "dev": "node scripts/dev.js",
         "dev:db": "docker-compose -f docker-compose.dev.yml up db",
         "dev:backend": "cd backend && source .venv/bin/activate && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000",
         "dev:frontend": "cd frontend && npm run dev",

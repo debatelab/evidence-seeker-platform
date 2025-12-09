@@ -22,6 +22,9 @@ from app.models import Document, EvidenceSeeker, IndexJob, IndexJobStatus
 
 logger = logging.getLogger(__name__)
 
+# Ensure NLTK resources are available for llama-index sentence parsing.
+_NLTK_READY = False
+
 try:  # pragma: no cover - optional dependency during tests
     from evidence_seeker.retrieval.index_builder import IndexBuilder as _IndexBuilder
 except ImportError:  # pragma: no cover
@@ -176,6 +179,31 @@ class EvidenceSeekerIndexService:
                 raise FileNotFoundError(f"Document path not found: {path}")
         return paths
 
+    def _ensure_nltk_resources(self) -> None:
+        """Download required NLTK data if missing (punkt + stopwords)."""
+        global _NLTK_READY
+        if _NLTK_READY:
+            return
+        try:
+            import nltk
+        except Exception as exc:  # pragma: no cover - defensive guard
+            logger.warning("NLTK not available; sentence parsing may fail: %s", exc)
+            return
+
+        required = [
+            ("tokenizers/punkt", "punkt"),
+            ("corpora/stopwords", "stopwords"),
+        ]
+        for path, name in required:
+            try:
+                nltk.data.find(path)
+            except LookupError:
+                try:
+                    nltk.download(name, quiet=True)
+                except Exception as dl_exc:  # pragma: no cover
+                    logger.warning("Failed to download NLTK resource '%s': %s", name, dl_exc)
+        _NLTK_READY = True
+
     async def _execute_index_builder(
         self,
         bundle: RetrievalConfigBundle,
@@ -186,6 +214,9 @@ class EvidenceSeekerIndexService:
             raise RuntimeError(
                 "EvidenceSeeker package is not installed; cannot perform index operations."
             )
+
+        # Ensure sentence tokenizer + stopwords are available for llama-index parsers.
+        self._ensure_nltk_resources()
 
         index_builder = IndexBuilder(
             config=bundle.config,

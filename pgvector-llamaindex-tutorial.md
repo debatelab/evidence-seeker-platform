@@ -62,7 +62,7 @@ The `embed_dim` parameter is crucial here; it must match the output dimension of
 
 ### 3\. Configuring the Embedding Model 🤖
 
-Next, you'll instantiate your embedding model. This is where you specify `sentence-transformers/paraphrase-multilingual-mpnet-base-v2` using the `HuggingFaceEmbedding` class from LlamaIndex.
+Next, you'll instantiate your embedding model. This is where you specify `BAAI/bge-m3` using the `HuggingFaceEmbedding` class from LlamaIndex.
 
 ```python
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
@@ -70,7 +70,7 @@ from llama_index.core import Settings
 
 # Set the embedding model globally
 Settings.embed_model = HuggingFaceEmbedding(
-    model_name="sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+    model_name="BAAI/bge-m3"
 )
 ```
 

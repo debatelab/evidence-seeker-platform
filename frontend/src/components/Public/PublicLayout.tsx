@@ -19,8 +19,11 @@ const PublicLayout: React.FC<PublicLayoutProps> = ({ children }) => {
           </Link>
           <div className="flex items-center space-x-3">
             {isAuthenticated ? (
-              <Link to="/app" className="btn-primary px-4 py-2 rounded-md">
-                Go to Dashboard
+              <Link
+                to="/app/evidence-seekers"
+                className="btn-primary px-4 py-2 rounded-md"
+              >
+                Manage Evidence Seekers
               </Link>
             ) : (
               <>

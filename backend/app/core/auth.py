@@ -67,6 +67,11 @@ class UserManager(IntegerIDMixin, BaseUserManager[FastAPIUser, int]):
     ) -> None:
         """Hook called after user registration"""
         print(f"User {user.id} has registered.")
+        if settings.is_email_verification_required:
+            try:
+                await self.request_verify(user, request)
+            except Exception as e:
+                print(f"Failed to send verification email to {user.email}: {e}")
 
     async def on_after_forgot_password(
         self, user: FastAPIUser, token: str, request: Request | None = None

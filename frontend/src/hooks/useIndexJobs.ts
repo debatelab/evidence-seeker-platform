@@ -47,11 +47,13 @@ export const useIndexJobs = (
   const [triggering, setTriggering] = useState(false);
   const pollInterval = useRef<number | undefined>(undefined);
 
-  const fetchJobs = useCallback(async () => {
+  const fetchJobs = useCallback(async (showLoading = true) => {
     if (!evidenceSeekerUuid) {
       return;
     }
-    setLoading(true);
+    if (showLoading) {
+      setLoading(true);
+    }
     setError(null);
     try {
       const data = await evidenceSeekerAPI.listIndexJobs(evidenceSeekerUuid);
@@ -59,7 +61,9 @@ export const useIndexJobs = (
     } catch (err) {
       setError(toErrorMessage(err));
     } finally {
-      setLoading(false);
+      if (showLoading) {
+        setLoading(false);
+      }
     }
   }, [evidenceSeekerUuid]);
 
@@ -72,7 +76,10 @@ export const useIndexJobs = (
       return undefined;
     }
     pollInterval.current = window.setInterval(() => {
-      void fetchJobs();
+      if (typeof document !== "undefined" && document.hidden) {
+        return;
+      }
+      void fetchJobs(false);
     }, options.pollIntervalMs);
 
     return () => {
@@ -116,4 +123,3 @@ export const useIndexJobs = (
     triggerReindex,
   };
 };
-

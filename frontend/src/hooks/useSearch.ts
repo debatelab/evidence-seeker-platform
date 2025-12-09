@@ -122,6 +122,9 @@ export const useProgressUpdates = (operationId: string | null) => {
     };
 
     const poll = async () => {
+      if (typeof document !== "undefined" && document.hidden) {
+        return;
+      }
       try {
         const response = await apiClient.get(
           `/progress/operations/${operationId}`

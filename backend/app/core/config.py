@@ -32,6 +32,10 @@ class Settings(BaseSettings):
 
     # Application
     debug: bool = False
+    environment: str = Field(
+        default="development",
+        validation_alias=AliasChoices("ENVIRONMENT", "APP_ENV", "ENV"),
+    )
     project_name: str = "Evidence Seeker Platform"
     version: str = "1.0.0"
     api_v1_prefix: str = "/api/v1"
@@ -61,6 +65,16 @@ class Settings(BaseSettings):
     smtp_password: str = ""
     email_from: str = "noreply@evidence-seeker.com"
     email_from_name: str = "Evidence Seeker Platform"
+    frontend_base_url: str = Field(
+        default="http://localhost:3000",
+        validation_alias=AliasChoices("FRONTEND_BASE_URL", "WEB_BASE_URL"),
+    )
+    email_verification_required: bool | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "EMAIL_VERIFICATION_REQUIRED", "REQUIRE_EMAIL_VERIFICATION"
+        ),
+    )
 
     # Email templates (relative to backend working dir)
     email_templates_dir: str = "app/templates/email"
@@ -85,8 +99,11 @@ class Settings(BaseSettings):
     evse_default_model: str = (
         "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
     )
-    evse_default_backend: str = "huggingface"
-    evse_default_embed_base_url: str | None = None
+    evse_default_backend: str = "huggingface_inference_api"
+    # Default Hugging Face Inference API base URL
+    evse_default_embed_base_url: str | None = (
+        "https://router.huggingface.co/hf-inference/models/BAAI/bge-m3"
+    )
     evse_enable_warmup: bool = True
     evse_warmup_max: int | None = (
         None  # Optional cap on seekers to warm (None = no cap)
@@ -123,6 +140,17 @@ class Settings(BaseSettings):
     def upload_storage_directory(self) -> Path:
         """Return the configured upload storage directory."""
         return Path(self.upload_storage_path)
+
+    @property
+    def is_email_verification_required(self) -> bool:
+        """Determine whether email verification is enforced.
+
+        Defaults to True in production environments and False in development,
+        unless explicitly overridden via env vars.
+        """
+        if self.email_verification_required is not None:
+            return bool(self.email_verification_required)
+        return self.environment.lower() == "production"
 
 
 @lru_cache

@@ -22,7 +22,9 @@ class EvidenceSeekerSettingsBase(BaseModel):
     rerank_k: int | None = Field(default=None, alias="rerankK")
     max_tokens: int | None = Field(default=None, alias="maxTokens")
     language: str | None = None
-    embed_backend_type: str = Field(default="huggingface", alias="embedBackendType")
+    embed_backend_type: str = Field(
+        default="huggingface_inference_api", alias="embedBackendType"
+    )
     embed_base_url: str | None = Field(default=None, alias="embedBaseUrl")
     embed_bill_to: str | None = Field(default=None, alias="embedBillTo")
     trust_remote_code: bool | None = Field(default=None, alias="trustRemoteCode")

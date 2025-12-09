@@ -321,7 +321,9 @@ const EvidenceSeekerFactChecks: React.FC<EvidenceSeekerFactChecksProps> = ({
       <ConfigurationBlockedNotice
         status={configurationStatus}
         onConfigure={() =>
-          navigate(`/app/evidence-seekers/${evidenceSeekerUuid}/manage/config`)
+          navigate(
+            `/app/evidence-seekers/${evidenceSeekerUuid}/manage/settings`
+          )
         }
         description="Complete configuration before submitting or rerunning fact-check jobs."
       />

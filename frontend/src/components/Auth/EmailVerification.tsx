@@ -18,6 +18,9 @@ const EmailVerification: React.FC<EmailVerificationProps> = ({
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const locationState = (location.state as
+    | { email?: string; registrationSuccess?: boolean }
+    | null) ?? { email: undefined, registrationSuccess: false };
   const [isVerifying, setIsVerifying] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -25,7 +28,8 @@ const EmailVerification: React.FC<EmailVerificationProps> = ({
   const [resendMessage, setResendMessage] = useState<string | null>(null);
 
   const token = searchParams.get("token");
-  const locationEmail = location.state?.email;
+  const locationEmail = locationState.email;
+  const registrationSuccess = locationState.registrationSuccess;
   const displayEmail = propEmail || locationEmail;
 
   const verifyEmail = useCallback(
@@ -142,6 +146,24 @@ const EmailVerification: React.FC<EmailVerificationProps> = ({
             )}
           </p>
         </div>
+
+        {registrationSuccess && (
+          <div className="bg-green-50 border border-green-200 rounded-md p-4">
+            <div className="flex">
+              <CheckCircle className="h-5 w-5 text-green-500" />
+              <div className="ml-3">
+                <p className="text-sm font-medium text-green-800">
+                  Account created
+                </p>
+                <p className="mt-1 text-sm text-green-700">
+                  We&apos;ve sent a verification link to{" "}
+                  {displayEmail ?? "your email"}. Please confirm it to finish
+                  setting up your account.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {isVerifying && (
           <div className="bg-primary-soft border border-primary-border rounded-md p-4">

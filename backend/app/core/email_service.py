@@ -35,12 +35,15 @@ class EmailService:
         if not settings.smtp_server:
             return  # Skip sending in test environments without SMTP config
 
+        verification_url = self._build_frontend_url("/verify-email", token)
+
         message = MessageSchema(
             subject="Verify your Evidence Seeker Platform account",
             recipients=[email],
             template_body={
                 "token": token,
                 "email": email,
+                "verification_url": verification_url,
             },
             subtype=MessageType.html,
         )
@@ -52,14 +55,23 @@ class EmailService:
         if not settings.smtp_server:
             return  # Skip sending in test environments without SMTP config
 
+        reset_url = self._build_frontend_url("/reset-password", token)
+
         message = MessageSchema(
             subject="Reset your Evidence Seeker Platform password",
             recipients=[email],
             template_body={
                 "token": token,
                 "email": email,
+                "reset_url": reset_url,
             },
             subtype=MessageType.html,
         )
 
         await self.fast_mail.send_message(message, template_name="reset_password.html")
+
+    def _build_frontend_url(self, path: str, token: str) -> str:
+        """Build a fully-qualified frontend URL for auth flows."""
+        base = settings.frontend_base_url.rstrip("/")
+        cleaned_path = path if path.startswith("/") else f"/{path}"
+        return f"{base}{cleaned_path}?token={token}"

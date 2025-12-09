@@ -639,6 +639,15 @@ class EvidenceSeekerConfigService:
         base_kwargs.update(self._build_postgres_kwargs())
 
         if backend_type in {"huggingface_inference_api", "tei"}:
+            # Ensure a usable base URL for remote embedding providers
+            if "embed_base_url" not in base_kwargs or not base_kwargs["embed_base_url"]:
+                default_base_url = settings.evse_default_embed_base_url
+                if backend_type == "huggingface_inference_api" and not default_base_url:
+                    default_base_url = (
+                        "https://router.huggingface.co/hf-inference/models/BAAI/bge-m3"
+                    )
+                base_kwargs["embed_base_url"] = default_base_url
+
             base_kwargs["api_key_name"] = api_key_name
             if backend_type == "huggingface_inference_api" and not hf_key:
                 raise ValueError(

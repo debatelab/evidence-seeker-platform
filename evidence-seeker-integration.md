@@ -358,7 +358,7 @@ This simplified plan embraces the prototype nature: no backward compatibility, n
 - **GET** `/api/v1/evidence-seekers/{seeker_uuid}/settings`
   ```json
   {
-    "default_model": "sentence-transformers/paraphrase-multilingual-mpnet-base-v2",
+    "default_model": "BAAI/bge-m3",
     "temperature": 0.2,
     "top_k": 8,
     "rerank_k": 25,

@@ -166,7 +166,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
           status={configurationStatus}
           onConfigure={() =>
             navigate(
-              `/app/evidence-seekers/${evidenceSeekerUuid}/manage/config`
+              `/app/evidence-seekers/${evidenceSeekerUuid}/manage/settings`
             )
           }
           description="Complete configuration before managing documents."

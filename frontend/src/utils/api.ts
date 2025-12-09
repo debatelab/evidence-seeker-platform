@@ -82,7 +82,8 @@ const shouldSkipUnauthorizedHandling = (
   return (
     url.includes("/auth/jwt/login") ||
     url.includes("/auth/register") ||
-    url.includes("/auth/logout")
+    url.includes("/auth/logout") ||
+    url.includes("/permissions/me")
   );
 };
 
@@ -109,6 +110,14 @@ apiClient.interceptors.response.use(
   },
   (error) => {
     if (error.response?.status === 401) {
+      if (import.meta.env.DEV) {
+        console.warn(
+          "[api] 401 from",
+          error.config?.url,
+          "skipUnauthorized?",
+          shouldSkipUnauthorizedHandling(error.config)
+        );
+      }
       if (!shouldSkipUnauthorizedHandling(error.config)) {
         authEvents.emitUnauthorized(error);
       }

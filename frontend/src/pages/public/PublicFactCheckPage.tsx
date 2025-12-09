@@ -168,6 +168,9 @@ const PublicFactCheckPage: React.FC = () => {
   const [isPolling, setIsPolling] = useState(false);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
   const pollIntervalRef = useRef<number | null>(null);
+  const pollInFlight = useRef(false);
+  const [openSources, setOpenSources] = useState<Record<number, boolean>>({});
+  const [openEvidence, setOpenEvidence] = useState<Record<string, boolean>>({});
 
   const fetchRunDetail = useCallback(
     async (mode: "initial" | "poll" = "initial") => {
@@ -232,9 +235,17 @@ const PublicFactCheckPage: React.FC = () => {
 
     setIsPolling(true);
     pollIntervalRef.current = window.setInterval(() => {
-      fetchRunDetail("poll").catch(() => {
-        /* errors handled via pollError state */
-      });
+      if (document.hidden || pollInFlight.current) {
+        return;
+      }
+      pollInFlight.current = true;
+      fetchRunDetail("poll")
+        .catch(() => {
+          /* errors handled via pollError state */
+        })
+        .finally(() => {
+          pollInFlight.current = false;
+        });
     }, 3000);
 
     return () => {
@@ -284,6 +295,66 @@ const PublicFactCheckPage: React.FC = () => {
     });
     return Object.values(summaryMap).sort((a, b) => b.count - a.count);
   }, [results]);
+
+  const toggleSources = (resultId: number) => {
+    setOpenSources((prev) => ({
+      ...prev,
+      [resultId]: !prev[resultId],
+    }));
+  };
+
+  const toggleEvidence = (resultId: number, evidenceId: number) => {
+    const key = `${resultId}-${evidenceId}`;
+    setOpenEvidence((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  };
+
+  const truncateText = (text: string, max = 220) => {
+    if (text.length <= max) return text;
+    return `${text.slice(0, max)}…`;
+  };
+
+  const extractContext = (
+    metadata?: Record<string, unknown> | null
+  ): string | null => {
+    if (!metadata) return null;
+    const candidates = [
+      "context",
+      "full_text",
+      "fullText",
+      "passage",
+      "excerpt",
+    ];
+    for (const key of candidates) {
+      const value = metadata[key];
+      if (typeof value === "string" && value.trim()) {
+        return value;
+      }
+    }
+    return null;
+  };
+
+  const extractMetadataEntries = (
+    metadata?: Record<string, unknown> | null
+  ): Array<[string, string]> => {
+    if (!metadata) return [];
+    const skipKeys = new Set([
+      "context",
+      "full_text",
+      "fullText",
+      "passage",
+      "excerpt",
+    ]);
+    return Object.entries(metadata).flatMap(([key, value]) => {
+      if (skipKeys.has(key)) return [];
+      if (typeof value === "string" || typeof value === "number") {
+        return [[key, String(value)]];
+      }
+      return [];
+    });
+  };
 
   if (loading) {
     return (
@@ -530,6 +601,8 @@ const PublicFactCheckPage: React.FC = () => {
                   result.confirmationLevel
                 );
                 const ConfirmationIcon = confirmationDisplay.icon;
+                const evidenceCount = result.evidence.length;
+                const isSourcesOpen = openSources[result.id] ?? false;
                 return (
                   <div
                     key={result.id}
@@ -570,26 +643,109 @@ const PublicFactCheckPage: React.FC = () => {
                     {result.summary && (
                       <p className="text-gray-700">{result.summary}</p>
                     )}
-                    <div className="space-y-3">
-                      {result.evidence.map((evidence) => (
-                        <div
-                          key={evidence.id}
-                          className="rounded-lg border border-gray-100 bg-gray-50 p-4"
-                        >
+                    <div className="border border-dashed border-gray-200 rounded-lg">
+                      <button
+                        type="button"
+                        onClick={() => toggleSources(result.id)}
+                        className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-gray-50 transition"
+                      >
+                        <div>
                           <p className="text-sm font-semibold text-gray-900">
-                            {evidence.chunkLabel || "Evidence snippet"}
+                            Sources ({evidenceCount})
                           </p>
-                          <p className="mt-2 text-sm text-gray-700 whitespace-pre-wrap">
-                            {evidence.evidenceText}
+                          <p className="text-xs text-gray-500">
+                            Click to {isSourcesOpen ? "hide" : "show"} evidence
+                            excerpts
                           </p>
-                          <div className="mt-3 flex items-center justify-between text-xs text-gray-500">
-                            <span>{evidence.stance}</span>
-                            {typeof evidence.score === "number" && (
-                              <span>Score {evidence.score.toFixed(2)}</span>
-                            )}
+                        </div>
+                        <span className="text-primary font-semibold text-sm">
+                          {isSourcesOpen ? "Collapse" : "Expand"}
+                        </span>
+                      </button>
+                      {isSourcesOpen && (
+                        <div className="border-t border-gray-100">
+                          <div className="divide-y divide-gray-100">
+                            {result.evidence.map((evidence) => {
+                              const context = extractContext(
+                                evidence.metadata as Record<string, unknown> | null
+                              );
+                              const metadataEntries = extractMetadataEntries(
+                                evidence.metadata as Record<string, unknown> | null
+                              );
+                              const evidenceKey = `${result.id}-${evidence.id}`;
+                              const isOpen = openEvidence[evidenceKey] ?? false;
+                              return (
+                                <div
+                                  key={evidence.id}
+                                  className="p-4 bg-gray-50"
+                                >
+                                  <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                                    <div>
+                                      <p className="text-sm font-semibold text-gray-900">
+                                        {evidence.chunkLabel ||
+                                          evidence.libraryNodeId ||
+                                          "Evidence snippet"}
+                                      </p>
+                                      <p className="mt-1 text-xs text-gray-500">
+                                        {evidence.stance}
+                                      </p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      {typeof evidence.score === "number" && (
+                                        <span className="inline-flex items-center rounded-full bg-white px-3 py-1 text-xs font-semibold text-gray-700 border border-gray-200">
+                                          Score {evidence.score.toFixed(2)}
+                                        </span>
+                                      )}
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          toggleEvidence(result.id, evidence.id)
+                                        }
+                                        className="text-primary text-sm font-semibold"
+                                      >
+                                        {isOpen ? "Hide excerpt" : "Show full excerpt"}
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  <p className="mt-2 text-sm text-gray-800 whitespace-pre-wrap">
+                                    {isOpen
+                                      ? evidence.evidenceText
+                                      : truncateText(evidence.evidenceText)}
+                                  </p>
+
+                                  {isOpen && context && (
+                                    <div className="mt-3 rounded-md bg-white border border-gray-200 p-3">
+                                      <p className="text-xs font-semibold text-gray-700 mb-1">
+                                        Wider context
+                                      </p>
+                                      <p className="text-sm text-gray-800 whitespace-pre-wrap">
+                                        {context}
+                                      </p>
+                                    </div>
+                                  )}
+
+                                  {isOpen && metadataEntries.length > 0 && (
+                                    <div className="mt-3 flex flex-wrap gap-2">
+                                      {metadataEntries.map(([key, value]) => (
+                                        <span
+                                          key={key}
+                                          className="inline-flex items-center gap-1 rounded-full bg-white border border-gray-200 px-3 py-1 text-xs text-gray-700"
+                                        >
+                                          <span className="font-semibold">
+                                            {key}:
+                                          </span>
+                                          <span>{value}</span>
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
-                      ))}
+                      )}
                     </div>
                   </div>
                 );
