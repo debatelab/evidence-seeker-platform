@@ -262,6 +262,9 @@ class EvidenceSeekerConfigService:
         if not getattr(settings_row, "embed_backend_type", None):
             settings_row.embed_backend_type = settings.evse_default_backend
             changed = True
+        if not getattr(settings_row, "default_model", None):
+            settings_row.default_model = settings.evse_default_model
+            changed = True
         if (
             settings_row.embed_base_url is None
             and settings.evse_default_embed_base_url is not None
