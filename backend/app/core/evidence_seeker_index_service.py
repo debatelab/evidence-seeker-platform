@@ -201,7 +201,9 @@ class EvidenceSeekerIndexService:
                 try:
                     nltk.download(name, quiet=True)
                 except Exception as dl_exc:  # pragma: no cover
-                    logger.warning("Failed to download NLTK resource '%s': %s", name, dl_exc)
+                    logger.warning(
+                        "Failed to download NLTK resource '%s': %s", name, dl_exc
+                    )
         _NLTK_READY = True
 
     async def _execute_index_builder(
