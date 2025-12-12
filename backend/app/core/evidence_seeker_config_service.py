@@ -9,7 +9,7 @@ import os
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Literal, TypedDict
+from typing import TYPE_CHECKING, Any, Literal, TypedDict, cast
 
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session
@@ -38,24 +38,29 @@ else:
     RetrievalConfigType = Any
     EmbedBackendTypeType = Any
 
-_RuntimeRetrievalConfig: type[RetrievalConfigType] | None
-_RuntimeEmbedBackendType: type[EmbedBackendTypeType] | None
+_RuntimeRetrievalConfig: type[RetrievalConfigType] | None = None
+_RuntimeEmbedBackendType: type[EmbedBackendTypeType] | None = None
 
-if settings.disable_embeddings:
-    _RuntimeRetrievalConfig = None
-    _RuntimeEmbedBackendType = None
-else:
+if not settings.disable_embeddings:
     try:  # pragma: no cover - optional dependency during tests
-        from evidence_seeker import RetrievalConfig as _RuntimeRetrievalConfig
+        from evidence_seeker import RetrievalConfig as _ImportedRetrievalConfig
     except ImportError:  # pragma: no cover
-        _RuntimeRetrievalConfig = None
+        _ImportedRetrievalConfig = None
+    else:
+        _RuntimeRetrievalConfig = cast(
+            type[RetrievalConfigType], _ImportedRetrievalConfig
+        )
 
     try:  # pragma: no cover - optional dependency during tests
         from evidence_seeker.retrieval.config import (
-            EmbedBackendType as _RuntimeEmbedBackendType,
+            EmbedBackendType as _ImportedEmbedBackendType,
         )
     except ImportError:  # pragma: no cover
-        _RuntimeEmbedBackendType = None
+        _ImportedEmbedBackendType = None
+    else:
+        _RuntimeEmbedBackendType = cast(
+            type[EmbedBackendTypeType], _ImportedEmbedBackendType
+        )
 
 if _RuntimeEmbedBackendType is not None:
     _VALID_BACKEND_TYPES = {member.value for member in _RuntimeEmbedBackendType}
