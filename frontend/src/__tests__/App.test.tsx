@@ -3,10 +3,35 @@ import "@testing-library/jest-dom";
 import { render, screen } from "@testing-library/react";
 import App from "../App";
 import { AuthProvider } from "../context/AuthContext";
+import api from "../utils/api";
+import { EvidenceSeeker } from "../types/evidenceSeeker";
+
+const mockEvidenceSeekers: EvidenceSeeker[] = [
+  {
+    id: 1,
+    uuid: "mock-uuid",
+    title: "Demo Evidence Seeker",
+    description: "A demo seeker for testing.",
+    language: "en",
+    logoUrl: null,
+    isPublic: true,
+    factCheckPublicationMode: "MANUAL",
+    publishedAt: null,
+    createdBy: 1,
+    createdAt: "2024-01-01T00:00:00.000Z",
+    updatedAt: "2024-01-01T00:00:00.000Z",
+    configurationState: "READY",
+    missingRequirements: [],
+    setupMode: "SIMPLE",
+    documentSkipAcknowledged: false,
+  },
+];
 
 // Mock localStorage token and user before rendering
 beforeEach(() => {
   vi.restoreAllMocks();
+
+  vi.spyOn(api, "get").mockResolvedValue({ data: mockEvidenceSeekers });
   class MockRequest {
     input: RequestInfo | URL;
     init: RequestInit;
@@ -55,9 +80,11 @@ beforeEach(() => {
     JSON.stringify({
       id: 1,
       email: "test@example.com",
-      is_active: true,
-      is_verified: true,
-      is_superuser: true,
+      username: "test-user",
+      isActive: true,
+      isVerified: true,
+      isSuperuser: true,
+      permissions: [],
     })
   );
 });
@@ -74,11 +101,13 @@ test("renders welcome page immediately after login state is present", async () =
     </AuthProvider>
   );
 
-  // Wait for the dashboard welcome heading to appear
+  // Wait for the dashboard to load the evidence seekers list
   expect(
-    await screen.findByText(/Welcome to the Evidence Seeker Platform/i)
+    await screen.findByText(mockEvidenceSeekers[0].title)
   ).toBeInTheDocument();
 
   // Ensure the logged in user's email is displayed in the account info section
-  expect(await screen.findByText("test@example.com")).toBeInTheDocument();
+  expect(
+    await screen.findByText(/Welcome,\s*test@example.com/i)
+  ).toBeInTheDocument();
 });

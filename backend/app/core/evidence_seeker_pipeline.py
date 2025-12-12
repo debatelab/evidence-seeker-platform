@@ -42,36 +42,43 @@ RetrievalConfig: type[Any] | None
 ClaimPreprocessingConfig: type[Any] | None
 ConfirmationAnalyzerConfig: type[Any] | None
 
-try:  # pragma: no cover - optional runtime dependency
-    from evidence_seeker.retrieval.document_retriever import (
-        DocumentRetriever as _DocumentRetriever,
-    )
-except ImportError:  # pragma: no cover
+if settings.disable_embeddings:
     DocumentRetriever = None
-else:
-    DocumentRetriever = cast(type[Any], _DocumentRetriever)
-
-try:  # pragma: no cover - pipeline is optional during unit tests
-    from evidence_seeker import (
-        ClaimPreprocessingConfig as _ClaimPreprocessingConfig,
-    )
-    from evidence_seeker import (
-        ConfirmationAnalyzerConfig as _ConfirmationAnalyzerConfig,
-    )
-    from evidence_seeker import EvidenceSeeker as _EvidenceSeekerPipeline
-    from evidence_seeker import (
-        RetrievalConfig as _RetrievalConfig,
-    )
-except ImportError:  # pragma: no cover
     EvidenceSeekerPipeline = None
     RetrievalConfig = None
     ClaimPreprocessingConfig = None
     ConfirmationAnalyzerConfig = None
 else:
-    EvidenceSeekerPipeline = cast(type[Any], _EvidenceSeekerPipeline)
-    RetrievalConfig = cast(type[Any], _RetrievalConfig)
-    ClaimPreprocessingConfig = cast(type[Any], _ClaimPreprocessingConfig)
-    ConfirmationAnalyzerConfig = cast(type[Any], _ConfirmationAnalyzerConfig)
+    try:  # pragma: no cover - optional runtime dependency
+        from evidence_seeker.retrieval.document_retriever import (
+            DocumentRetriever as _DocumentRetriever,
+        )
+    except ImportError:  # pragma: no cover
+        DocumentRetriever = None
+    else:
+        DocumentRetriever = cast(type[Any], _DocumentRetriever)
+
+    try:  # pragma: no cover - pipeline is optional during unit tests
+        from evidence_seeker import (
+            ClaimPreprocessingConfig as _ClaimPreprocessingConfig,
+        )
+        from evidence_seeker import (
+            ConfirmationAnalyzerConfig as _ConfirmationAnalyzerConfig,
+        )
+        from evidence_seeker import EvidenceSeeker as _EvidenceSeekerPipeline
+        from evidence_seeker import (
+            RetrievalConfig as _RetrievalConfig,
+        )
+    except ImportError:  # pragma: no cover
+        EvidenceSeekerPipeline = None
+        RetrievalConfig = None
+        ClaimPreprocessingConfig = None
+        ConfirmationAnalyzerConfig = None
+    else:
+        EvidenceSeekerPipeline = cast(type[Any], _EvidenceSeekerPipeline)
+        RetrievalConfig = cast(type[Any], _RetrievalConfig)
+        ClaimPreprocessingConfig = cast(type[Any], _ClaimPreprocessingConfig)
+        ConfirmationAnalyzerConfig = cast(type[Any], _ConfirmationAnalyzerConfig)
 
 
 def _hash_config(bundle: RetrievalConfigBundle) -> str:

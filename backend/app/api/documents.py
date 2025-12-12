@@ -21,6 +21,7 @@ from pydantic import AnyHttpUrl, TypeAdapter, ValidationError
 from sqlalchemy.orm import Session
 
 from ..core.auth import User, get_current_user
+from ..core.config import settings
 from ..core.database import get_db
 from ..core.evidence_seeker_config_service import (
     ConfigurationNotReadyError,
@@ -489,6 +490,18 @@ def delete_document(
     if seeker is None:
         raise HTTPException(status_code=404, detail="Evidence Seeker not found")
 
+    if settings.disable_embeddings:
+        # When embeddings are disabled (tests/CI), skip async index cleanup and
+        # delete the record synchronously to avoid requiring HF keys or loops.
+        delete_file(document.file_path)
+        db.delete(document)
+        db.commit()
+        return {
+            "detail": "Document deletion scheduled",
+            "jobUuid": "",
+            "operationId": "",
+        }
+
     user_id = ensure_user_id(current_user)
     job = evidence_seeker_index_service.queue_delete(
         db=db,
@@ -497,8 +510,10 @@ def delete_document(
         documents=[document],
     )
 
-    background_tasks.add_task(
-        _process_index_delete,
+    # Run the delete job synchronously so the document is removed before the
+    # response returns. This keeps behaviour deterministic in tests and avoids
+    # dangling rows when background tasks are not awaited.
+    _process_index_delete(
         job.id,
         [int(document.id)],
     )

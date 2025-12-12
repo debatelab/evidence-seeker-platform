@@ -27,55 +27,58 @@ logger = logging.getLogger(__name__)
 # Ensure NLTK resources are available for llama-index sentence parsing.
 _NLTK_READY = False
 
-try:  # pragma: no cover - optional dependency during tests
-    from evidence_seeker.retrieval.index_builder import IndexBuilder as _IndexBuilder
-except ImportError:  # pragma: no cover
+if settings.disable_embeddings:
     IndexBuilder = None
 else:
-    IndexBuilder = cast(type[Any], _IndexBuilder)
-    # Add retries for HF Inference embeddings to survive transient 5xx/504 responses.
-    try:
-        import evidence_seeker.retrieval.base as es_base
-        import tenacity
+    try:  # pragma: no cover - optional dependency during tests
+        from evidence_seeker.retrieval.index_builder import IndexBuilder as _IndexBuilder
+    except ImportError:  # pragma: no cover
+        IndexBuilder = None
+    else:
+        IndexBuilder = cast(type[Any], _IndexBuilder)
+        # Add retries for HF Inference embeddings to survive transient 5xx/504 responses.
+        try:
+            import evidence_seeker.retrieval.base as es_base
+            import tenacity
 
-        hf_inference_base = getattr(es_base, "HFTextEmbeddingsInference", None)
-        HFInferenceBase: type[Any] | None
-        if isinstance(hf_inference_base, type):
-            HFInferenceBase = cast(type[Any], hf_inference_base)
-        else:
-            HFInferenceBase = None
+            hf_inference_base = getattr(es_base, "HFTextEmbeddingsInference", None)
+            HFInferenceBase: type[Any] | None
+            if isinstance(hf_inference_base, type):
+                HFInferenceBase = cast(type[Any], hf_inference_base)
+            else:
+                HFInferenceBase = None
 
-        if HFInferenceBase is not None and not getattr(
-            HFInferenceBase, "__evse_retry_wrapped__", False
-        ):
-            assert isinstance(HFInferenceBase, type)
+            if HFInferenceBase is not None and not getattr(
+                HFInferenceBase, "__evse_retry_wrapped__", False
+            ):
+                assert isinstance(HFInferenceBase, type)
 
-            class _RetryingHFTextEmbeddingsInference(HFInferenceBase):  # type: ignore[misc,valid-type]
-                """Wrap HF inference calls with exponential backoff."""
+                class _RetryingHFTextEmbeddingsInference(HFInferenceBase):  # type: ignore[misc,valid-type]
+                    """Wrap HF inference calls with exponential backoff."""
 
-                @tenacity.retry(
-                    reraise=True,
-                    stop=tenacity.stop_after_attempt(6),
-                    wait=tenacity.wait_exponential(multiplier=1, max=20),
-                )
-                def _call_api(self, texts: list[str]) -> list[list[float]]:
-                    result = super()._call_api(texts)
-                    return cast(list[list[float]], result)
+                    @tenacity.retry(
+                        reraise=True,
+                        stop=tenacity.stop_after_attempt(6),
+                        wait=tenacity.wait_exponential(multiplier=1, max=20),
+                    )
+                    def _call_api(self, texts: list[str]) -> list[list[float]]:
+                        result = super()._call_api(texts)
+                        return cast(list[list[float]], result)
 
-                @tenacity.retry(
-                    reraise=True,
-                    stop=tenacity.stop_after_attempt(6),
-                    wait=tenacity.wait_exponential(multiplier=1, max=20),
-                )
-                async def _acall_api(self, texts: list[str]) -> list[list[float]]:
-                    result = await super()._acall_api(texts)
-                    return cast(list[list[float]], result)
+                    @tenacity.retry(
+                        reraise=True,
+                        stop=tenacity.stop_after_attempt(6),
+                        wait=tenacity.wait_exponential(multiplier=1, max=20),
+                    )
+                    async def _acall_api(self, texts: list[str]) -> list[list[float]]:
+                        result = await super()._acall_api(texts)
+                        return cast(list[list[float]], result)
 
-            _RetryingHFTextEmbeddingsInference.__evse_retry_wrapped__ = True
-            es_base.HFTextEmbeddingsInference = _RetryingHFTextEmbeddingsInference
-            logger.info("Patched HFTextEmbeddingsInference with retry/backoff")
-    except Exception:  # pragma: no cover - defensive
-        logger.exception("Failed to patch HFTextEmbeddingsInference for retries")
+                _RetryingHFTextEmbeddingsInference.__evse_retry_wrapped__ = True
+                es_base.HFTextEmbeddingsInference = _RetryingHFTextEmbeddingsInference
+                logger.info("Patched HFTextEmbeddingsInference with retry/backoff")
+        except Exception:  # pragma: no cover - defensive
+            logger.exception("Failed to patch HFTextEmbeddingsInference for retries")
 
 
 class EvidenceSeekerIndexService:

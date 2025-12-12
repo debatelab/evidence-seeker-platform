@@ -38,6 +38,9 @@ os.environ.setdefault("DEBUG", "true")
 
 # Disable embeddings during tests to avoid downloading/loading heavy models
 os.environ.setdefault("DISABLE_EMBEDDINGS", "true")
+# Skip runtime bootstrap/warmup tasks that spawn background async work
+os.environ.setdefault("AUTO_BOOTSTRAP_INITIAL_ADMIN", "false")
+os.environ.setdefault("EVSE_ENABLE_WARMUP", "false")
 
 # Point uploads to a workspace-local directory so CI runners are not forced to write to /app/uploads
 TEST_UPLOAD_ROOT = Path(__file__).resolve().parent.parent / "uploads"
