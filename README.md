@@ -260,6 +260,8 @@ KIT DebateLab Team
 - Node.js 18+
 - Git
 
+**Backend dependency note:** The backend now pulls `evidence-seeker` from PyPI at `0.1.4b0` (we previously pointed to the GitHub repo for testing).
+
 ### **Quick Start - Streamlined Development Environment**
 
 1. **Clone the repository**
