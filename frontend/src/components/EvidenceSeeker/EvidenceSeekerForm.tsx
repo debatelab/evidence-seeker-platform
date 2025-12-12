@@ -160,7 +160,7 @@ const EvidenceSeekerForm: React.FC<EvidenceSeekerFormProps> = ({
       if (typeof parsed.credentialsApiKey === "string") {
         setCredentials((prev) => ({
           ...prev,
-          apiKeyValue: parsed.credentialsApiKey,
+          apiKeyValue: parsed.credentialsApiKey ?? prev.apiKeyValue,
         }));
       }
       if (typeof parsed.credentialsBillTo === "string") {
@@ -193,7 +193,7 @@ const EvidenceSeekerForm: React.FC<EvidenceSeekerFormProps> = ({
       ) {
         setAppliedCredentials((prev) => ({
           ...prev,
-          apiKeyValue: parsed.appliedApiKey,
+          apiKeyValue: parsed.appliedApiKey ?? prev.apiKeyValue,
         }));
       }
     } catch (err) {

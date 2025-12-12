@@ -4,6 +4,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from app.models.fact_check import FactCheckRunVisibility
+
 from .document import to_camel
 
 
@@ -16,16 +18,28 @@ class FactCheckRerunRequest(BaseModel):
     overrides: dict[str, Any] | None = None
 
 
+class FactCheckRunPublicationUpdate(BaseModel):
+    visibility: FactCheckRunVisibility
+
+
+class FactCheckRunDeleteRequest(BaseModel):
+    deletion_reason: str | None = Field(default=None, alias="deletionReason")
+
+
 class FactCheckRunRead(BaseModel):
     uuid: UUID
     evidence_seeker_id: int = Field(alias="evidenceSeekerId")
     statement: str
     status: str
     is_public: bool = Field(alias="isPublic", default=False)
+    visibility: FactCheckRunVisibility = Field(
+        alias="visibility", default=FactCheckRunVisibility.PUBLIC
+    )
     created_at: datetime = Field(alias="createdAt")
     began_at: datetime | None = Field(alias="beganAt", default=None)
     completed_at: datetime | None = Field(alias="completedAt", default=None)
     published_at: datetime | None = Field(alias="publishedAt", default=None)
+    featured_at: datetime | None = Field(alias="featuredAt", default=None)
     error_message: str | None = Field(alias="errorMessage", default=None)
     operation_id: str | None = Field(alias="operationId", default=None)
 

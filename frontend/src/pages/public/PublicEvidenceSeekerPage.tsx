@@ -14,21 +14,7 @@ import {
   aggregateResultSummary,
   type ConfirmationSummaryDisplay,
 } from "../../utils/factCheckSummaries";
-
-const formatDateTime = (value?: string | null) => {
-  if (!value) return "—";
-  try {
-    return new Intl.DateTimeFormat(undefined, {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-    }).format(new Date(value));
-  } catch {
-    return new Date(value).toLocaleString();
-  }
-};
+import { formatRelativeTime } from "../../utils/dates";
 
 const PublicEvidenceSeekerPage: React.FC = () => {
   const { seekerUuid } = useParams<{ seekerUuid: string }>();
@@ -227,7 +213,7 @@ const PublicEvidenceSeekerPage: React.FC = () => {
             <div>
               <dt className="text-sm text-gray-500">Published</dt>
               <dd className="text-2xl font-semibold text-gray-900">
-                {seeker.publishedAt ? formatDateTime(seeker.publishedAt) : "—"}
+                {formatRelativeTime(seeker.publishedAt)}
               </dd>
             </div>
           </dl>
@@ -245,9 +231,6 @@ const PublicEvidenceSeekerPage: React.FC = () => {
                 Test this Evidence Seeker
               </h2>
             </div>
-            <p className="text-sm text-gray-500">
-              Runs finish asynchronously. Bookmark the result link.
-            </p>
           </div>
           <form onSubmit={handleFactCheckSubmit} className="space-y-4">
             <label className="block">
@@ -263,10 +246,7 @@ const PublicEvidenceSeekerPage: React.FC = () => {
               />
             </label>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <button
-                type="submit"
-                className="btn-primary px-6 py-3 text-base"
-              >
+              <button type="submit" className="btn-primary px-6 py-3 text-base">
                 {isSubmitting ? "Redirecting..." : "Run fact check"}
               </button>
               <p className="text-xs text-gray-500">
@@ -294,10 +274,10 @@ const PublicEvidenceSeekerPage: React.FC = () => {
             {recentFactChecks.map(
               (run: PublicFactCheckRunSummary, index: number) => {
                 const summaries = runSummaries[run.uuid] ?? [];
-                const publishedLabel =
-                  run.publishedAt || run.completedAt
-                    ? formatDateTime(run.publishedAt ?? run.completedAt)
-                    : "Awaiting publication";
+                const publishedLabel = formatRelativeTime(
+                  run.publishedAt ?? run.completedAt,
+                  "Awaiting publication"
+                );
                 return (
                   <FactCheckSummaryCard
                     key={run.uuid}
@@ -318,15 +298,12 @@ const PublicEvidenceSeekerPage: React.FC = () => {
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <p className="text-sm font-semibold text-primary uppercase tracking-wide">
-                Document Library
-              </p>
               <h2 className="brand-title text-2xl text-gray-900">
                 Source material
               </h2>
             </div>
             <p className="text-sm text-gray-500">
-              Downloads require platform access.
+              Downloads are available when admins provide public links.
             </p>
           </div>
           {data.documents.length === 0 ? (
@@ -341,10 +318,7 @@ const PublicEvidenceSeekerPage: React.FC = () => {
                 </h3>
                 <div className="space-y-3">
                   {documents.map((doc) => {
-                    const docWithDownload = doc as PublicDocument & {
-                      downloadUrl?: string | null;
-                    };
-                    const downloadUrl = docWithDownload.downloadUrl ?? null;
+                    const downloadUrl = doc.downloadUrl ?? null;
                     return (
                       <div
                         key={doc.uuid}
@@ -364,7 +338,7 @@ const PublicEvidenceSeekerPage: React.FC = () => {
                               </p>
                             )}
                             <p className="text-xs text-gray-500 mt-1">
-                              Uploaded {formatDateTime(doc.createdAt)}
+                              Uploaded {formatRelativeTime(doc.createdAt)}
                             </p>
                           </div>
                         </div>

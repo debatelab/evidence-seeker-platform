@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi_users import FastAPIUsers
 
-from app.core.config import settings
 from app.core.auth import UserManager, auth_backend, get_user_manager
+from app.core.config import settings
 from app.models.user import FastAPIUser
 from app.schemas.user import UserCreate, UserRead
 

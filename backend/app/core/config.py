@@ -109,6 +109,13 @@ class Settings(BaseSettings):
     evse_postgres_schema: str | None = None
     evse_postgres_table_prefix: str = "evse_"
     evse_require_bill_to: bool = False
+    # Embedding/indexing safeguards
+    evse_embed_batch_size: int = (
+        4  # keep batches very small to avoid HF router timeouts
+    )
+    evse_index_max_concurrency: int = (
+        1  # strictly serialize indexing jobs across seekers
+    )
 
     model_config = {
         "env_file": ".env",

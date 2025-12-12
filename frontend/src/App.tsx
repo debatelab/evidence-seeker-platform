@@ -23,6 +23,7 @@ import DocumentList from "./components/Document/DocumentList";
 import DocumentUpload from "./components/Document/DocumentUpload";
 import EvidenceSeekerSettingsAndConfig from "./components/EvidenceSeeker/EvidenceSeekerSettingsAndConfig";
 import EvidenceSeekerFactChecks from "./components/EvidenceSeeker/EvidenceSeekerFactChecks";
+import EvidenceSeekerRunForm from "./components/EvidenceSeeker/EvidenceSeekerRunForm";
 import { UserRoleManager } from "./components/EvidenceSeeker/UserRoleManager";
 import ErrorBoundary from "./components/ErrorBoundary";
 import PlatformSettings from "./pages/PlatformSettings";
@@ -31,6 +32,7 @@ import { EvidenceSeeker } from "./types/evidenceSeeker";
 import PublicHomePage from "./pages/public/PublicHomePage";
 import PublicEvidenceSeekerPage from "./pages/public/PublicEvidenceSeekerPage";
 import PublicFactCheckPage from "./pages/public/PublicFactCheckPage";
+import AdminFactCheckRunPage from "./pages/app/AdminFactCheckRunPage";
 import ReauthModal from "./components/Auth/ReauthModal";
 import Logo from "./components/Logo";
 
@@ -258,6 +260,14 @@ const App: React.FC = () => {
                 {
                   path: "fact-checks",
                   element: <TabWrapper Component={EvidenceSeekerFactChecks} />,
+                },
+                {
+                  path: "fact-checks/new",
+                  element: <TabWrapper Component={EvidenceSeekerRunForm} />,
+                },
+                {
+                  path: "fact-checks/:runUuid",
+                  element: <TabWrapper Component={AdminFactCheckRunPage} />,
                 },
                 {
                   path: "settings",

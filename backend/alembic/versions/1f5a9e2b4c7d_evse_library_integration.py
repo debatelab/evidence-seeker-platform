@@ -81,6 +81,23 @@ def upgrade() -> None:
     )
     evidence_stance.create(op.get_bind(), checkfirst=True)
 
+    fact_check_run_visibility = postgresql.ENUM(
+        "PUBLIC",
+        "UNLISTED",
+        "PRIVATE",
+        name="fact_check_run_visibility",
+        create_type=False,
+    )
+    fact_check_run_visibility.create(op.get_bind(), checkfirst=True)
+
+    publication_mode = postgresql.ENUM(
+        "AUTOPUBLISH",
+        "MANUAL",
+        name="fact_check_publication_mode",
+        create_type=False,
+    )
+    publication_mode.create(op.get_bind(), checkfirst=True)
+
     index_job_status = postgresql.ENUM(
         "QUEUED",
         "RUNNING",
@@ -169,6 +186,16 @@ def upgrade() -> None:
         ),
     )
 
+    with op.batch_alter_table("evidence_seekers") as batch_op:
+        batch_op.add_column(
+            sa.Column(
+                "fact_check_publication_mode",
+                publication_mode,
+                nullable=False,
+                server_default="AUTOPUBLISH",
+            )
+        )
+
     # Fact-check tables
     op.create_table(
         "fact_check_runs",
@@ -193,6 +220,17 @@ def upgrade() -> None:
         sa.Column("is_public", sa.Boolean(), nullable=False, server_default=sa.false()),
         sa.Column("published_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column(
+            "visibility",
+            fact_check_run_visibility,
+            nullable=False,
+            server_default="PUBLIC",
+        ),
+        sa.Column("featured_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("featured_by_id", sa.Integer(), nullable=True),
+        sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("deleted_by_id", sa.Integer(), nullable=True),
+        sa.Column("deletion_reason", sa.Text(), nullable=True),
+        sa.Column(
             "created_at",
             sa.DateTime(),
             server_default=sa.text("now()"),
@@ -207,6 +245,12 @@ def upgrade() -> None:
         ),
         sa.ForeignKeyConstraint(
             ["submitted_by"], ["users.id"], name="fact_check_runs_submitted_by_fkey"
+        ),
+        sa.ForeignKeyConstraint(
+            ["featured_by_id"], ["users.id"], name="fact_check_runs_featured_by_fkey"
+        ),
+        sa.ForeignKeyConstraint(
+            ["deleted_by_id"], ["users.id"], name="fact_check_runs_deleted_by_fkey"
         ),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("uuid"),
@@ -311,6 +355,8 @@ def downgrade() -> None:
     op.drop_table("fact_check_results")
     op.drop_table("index_jobs")
     op.drop_table("fact_check_runs")
+    with op.batch_alter_table("evidence_seekers") as batch_op:
+        batch_op.drop_column("fact_check_publication_mode")
     op.drop_table("evidence_seeker_settings")
 
     # Drop enums
@@ -318,6 +364,8 @@ def downgrade() -> None:
     op.execute("DROP TYPE IF EXISTS fact_check_confirmation_level")
     op.execute("DROP TYPE IF EXISTS fact_check_interpretation_type")
     op.execute("DROP TYPE IF EXISTS fact_check_run_status")
+    op.execute("DROP TYPE IF EXISTS fact_check_run_visibility")
+    op.execute("DROP TYPE IF EXISTS fact_check_publication_mode")
     op.execute("DROP TYPE IF EXISTS index_job_status")
 
     # Remove new column and re-add legacy embedding metadata

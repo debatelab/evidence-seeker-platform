@@ -6,6 +6,7 @@ export type ConfigurationState =
   | "ERROR";
 
 export type SetupMode = "SIMPLE" | "EXPERT";
+export type FactCheckPublicationMode = "AUTOPUBLISH" | "MANUAL";
 
 export interface ConfigurationStatus {
   state: ConfigurationState;
@@ -24,6 +25,7 @@ export interface EvidenceSeeker {
   language?: string | null;
   logoUrl: string | null;
   isPublic: boolean;
+  factCheckPublicationMode: FactCheckPublicationMode;
   publishedAt?: string | null;
   createdBy: number;
   createdAt: string;
@@ -47,6 +49,7 @@ export interface EvidenceSeekerCreate {
   title: string;
   description: string;
   isPublic?: boolean;
+  factCheckPublicationMode?: FactCheckPublicationMode;
   language?: string;
   initialConfiguration?: EvidenceSeekerInitialConfiguration;
 }
@@ -55,6 +58,7 @@ export interface EvidenceSeekerUpdate {
   title?: string;
   description?: string;
   isPublic?: boolean;
+  factCheckPublicationMode?: FactCheckPublicationMode;
   language?: string | null;
 }
 

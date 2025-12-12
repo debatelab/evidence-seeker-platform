@@ -8,13 +8,19 @@ import {
 import PageLayout from "../PageLayout";
 
 interface UploadFormProps {
-  onStartUpload: (file: File, title: string, description: string) => void;
+  onStartUpload: (
+    file: File,
+    title: string,
+    description: string,
+    sourceUrl?: string
+  ) => void;
 }
 
 const UploadForm: React.FC<UploadFormProps> = ({ onStartUpload }) => {
   const [formData, setFormData] = useState({
     title: "",
     description: "",
+    sourceUrl: "",
   });
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -85,10 +91,28 @@ const UploadForm: React.FC<UploadFormProps> = ({ onStartUpload }) => {
 
     // Clear any existing errors and start upload
     setError(null);
+    let urlToSubmit = formData.sourceUrl.trim();
+    if (urlToSubmit) {
+      try {
+        const parsed = new URL(urlToSubmit);
+        if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+          throw new Error("URL must start with http or https");
+        }
+        urlToSubmit = parsed.toString();
+      } catch (err: any) {
+        setError(
+          err?.message ??
+            "Invalid URL. Please use a fully qualified http(s) link."
+        );
+        return;
+      }
+    }
+
     onStartUpload(
       selectedFile,
       formData.title.trim(),
-      formData.description.trim()
+      formData.description.trim(),
+      urlToSubmit
     );
   };
 
@@ -195,6 +219,27 @@ const UploadForm: React.FC<UploadFormProps> = ({ onStartUpload }) => {
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
               placeholder="Optional description of the document"
             />
+          </div>
+
+          <div>
+            <label
+              htmlFor="sourceUrl"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
+              Public download URL
+            </label>
+            <input
+              type="url"
+              id="sourceUrl"
+              name="sourceUrl"
+              value={formData.sourceUrl}
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+              placeholder="https://example.com/my-document.pdf (optional)"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Link to an external copy users can access publicly.
+            </p>
           </div>
 
           {/* Submit Button */}

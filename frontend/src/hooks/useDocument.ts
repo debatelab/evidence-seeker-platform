@@ -3,6 +3,7 @@ import type {
   Document,
   DocumentCreate,
   DocumentIngestionResponse,
+  DocumentUpdate,
 } from "../types/document";
 import { documentsAPI } from "../utils/api";
 
@@ -98,6 +99,26 @@ export const useDocuments = (
     }
   };
 
+  const updateDocument = async (
+    uuid: string,
+    payload: DocumentUpdate
+  ): Promise<Document | null> => {
+    setLoading(true);
+    setError(null);
+    try {
+      const updated = await documentsAPI.updateDocument(uuid, payload);
+      setDocuments((prev) =>
+        prev.map((doc) => (doc.uuid === uuid ? updated : doc))
+      );
+      return updated;
+    } catch (err) {
+      setError(toErrorMessage(err, "Failed to update document"));
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const enabled = options.enabled ?? true;
 
   useEffect(() => {
@@ -113,5 +134,6 @@ export const useDocuments = (
     fetchDocuments,
     uploadDocument,
     deleteDocument,
+    updateDocument,
   };
 };

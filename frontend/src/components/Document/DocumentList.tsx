@@ -1,10 +1,9 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { Document } from "../../types/document";
 import { useDocuments } from "../../hooks/useDocument";
 import { documentsAPI } from "../../utils/api";
 import { useIndexJobs } from "../../hooks/useIndexJobs";
-import { useEvidenceSeekerSettings } from "../../hooks/useEvidenceSeekerSettings";
 import type { IndexJob } from "../../types/indexJob";
 import { useConfigurationStatus } from "../../hooks/useConfigurationStatus";
 import { ConfigurationBlockedNotice } from "../Configuration/ConfigurationBlockedNotice";
@@ -33,24 +32,71 @@ const DocumentList: React.FC<DocumentListProps> = ({
     loading: documentsLoading,
     error: documentsError,
     deleteDocument,
+    updateDocument,
   } = useDocuments(evidenceSeekerUuid, { enabled: allowDocumentWork });
   const {
     jobs,
-    loading: jobsLoading,
-    error: jobsError,
     triggering: reindexing,
     triggerReindex,
   } = useIndexJobs(evidenceSeekerUuid, { pollIntervalMs: 5000 });
-  const {
-    settings,
-    loading: settingsLoading,
-    error: settingsError,
-    metadataPreview,
-  } = useEvidenceSeekerSettings(evidenceSeekerUuid);
+  const [editingDocument, setEditingDocument] = useState<Document | null>(null);
+  const [editingTitle, setEditingTitle] = useState<string>("");
+  const [editingDescription, setEditingDescription] = useState<string>("");
+  const [editingSourceUrl, setEditingSourceUrl] = useState<string>("");
+  const [editError, setEditError] = useState<string | null>(null);
+  const [savingEdit, setSavingEdit] = useState<boolean>(false);
 
   const handleDelete = async (uuid: string) => {
     const success = await deleteDocument(uuid);
     if (!success) alert("Failed to delete document");
+  };
+
+  const handleEdit = (document: Document) => {
+    setEditingDocument(document);
+    setEditingTitle(document.title);
+    setEditingDescription(document.description ?? "");
+    setEditingSourceUrl(document.sourceUrl ?? "");
+    setEditError(null);
+  };
+
+  const handleUpdate = async () => {
+    if (!editingDocument) return;
+    let normalizedUrl = editingSourceUrl.trim();
+    if (normalizedUrl) {
+      try {
+        const parsed = new URL(normalizedUrl);
+        if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+          throw new Error("URL must start with http or https");
+        }
+        normalizedUrl = parsed.toString();
+      } catch (err: any) {
+        setEditError(
+          err?.message ??
+            "Invalid URL. Please enter a fully qualified http(s) link."
+        );
+        return;
+      }
+    }
+    setSavingEdit(true);
+    setEditError(null);
+    const payload = {
+      title: editingTitle.trim() || editingDocument.title,
+      description: editingDescription.trim() || null,
+      sourceUrl: normalizedUrl || null,
+    };
+    const result = await updateDocument(editingDocument.uuid, payload);
+    if (!result) {
+      setEditError("Failed to update document. Please try again.");
+      setSavingEdit(false);
+      return;
+    }
+    setSavingEdit(false);
+    setEditingDocument(null);
+  };
+
+  const closeEditModal = () => {
+    if (savingEdit) return;
+    setEditingDocument(null);
   };
 
   const handleDownload = async (doc: Document) => {
@@ -92,6 +138,8 @@ const DocumentList: React.FC<DocumentListProps> = ({
           return "bg-green-100 text-green-800";
         case "RUNNING":
           return "bg-primary-soft text-primary-strong";
+        case "QUEUED":
+          return "bg-yellow-100 text-yellow-800";
         case "FAILED":
           return "bg-red-100 text-red-800";
         case "CANCELLED":
@@ -112,39 +160,88 @@ const DocumentList: React.FC<DocumentListProps> = ({
     }
   };
 
-  const renderJobStatus = (job: IndexJob) => {
-    const labelClasses = statusClassName(job.status);
-    const created = new Date(job.createdAt).toLocaleString();
-    const completed = job.completedAt
-      ? new Date(job.completedAt).toLocaleString()
-      : null;
+  const extractDocumentUuids = (job: IndexJob): string[] | null => {
+    if (job.documentUuids && job.documentUuids.length > 0) {
+      return job.documentUuids.filter(Boolean) as string[];
+    }
+    if (job.documentUuid) {
+      return [job.documentUuid];
+    }
+    const payload = job.payload as Record<string, unknown> | null;
+    const payloadUuids =
+      payload && (payload["document_uuids"] || payload["documentUuids"]);
+    if (Array.isArray(payloadUuids)) {
+      return payloadUuids.filter(Boolean) as string[];
+    }
+    return null;
+  };
 
-    return (
-      <div
-        key={job.uuid}
-        className="border border-gray-200 rounded-lg p-4 shadow-sm bg-white"
-      >
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-gray-900">
-              {job.jobType.toUpperCase()}
-            </p>
-            <p className="text-xs text-gray-500">
-              Submitted at {created}
-              {completed ? ` • Completed ${completed}` : ""}
-            </p>
-          </div>
-          <span
-            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${labelClasses}`}
-          >
-            {job.status}
-          </span>
-        </div>
-        {job.errorMessage && (
-          <p className="mt-2 text-xs text-red-600">{job.errorMessage}</p>
-        )}
-      </div>
-    );
+  const documentJobs = useMemo(() => {
+    const priority: Record<string, number> = {
+      RUNNING: 4,
+      QUEUED: 3,
+      FAILED: 2,
+      SUCCEEDED: 1,
+      CANCELLED: 0,
+    };
+
+    const selectBest = (existing: IndexJob | undefined, candidate: IndexJob) => {
+      if (!existing) return candidate;
+      const existingPriority = priority[existing.status] ?? -1;
+      const candidatePriority = priority[candidate.status] ?? -1;
+      if (candidatePriority > existingPriority) {
+        return candidate;
+      }
+      if (
+        candidatePriority === existingPriority &&
+        new Date(candidate.createdAt).getTime() >
+          new Date(existing.createdAt).getTime()
+      ) {
+        return candidate;
+      }
+      return existing;
+    };
+
+    const mapping: Record<string, IndexJob> = {};
+    const globalJobs: IndexJob[] = [];
+
+    jobs.forEach((job) => {
+      const targets = extractDocumentUuids(job);
+      if (targets && targets.length > 0) {
+        targets.forEach((uuid) => {
+          mapping[uuid] = selectBest(mapping[uuid], job);
+        });
+      } else {
+        globalJobs.push(job);
+      }
+    });
+
+    if (globalJobs.length > 0) {
+      documents.forEach((doc) => {
+        globalJobs.forEach((job) => {
+          mapping[doc.uuid] = selectBest(mapping[doc.uuid], job);
+        });
+      });
+    }
+
+    return mapping;
+  }, [documents, jobs]);
+
+  const jobLabel = (job: IndexJob | undefined) => {
+    if (!job) return { text: "Indexed", style: "bg-green-50 text-green-700" };
+    switch (job.status) {
+      case "RUNNING":
+        return { text: "Indexing…", style: statusClassName(job.status) };
+      case "QUEUED":
+        return { text: "Queued", style: statusClassName(job.status) };
+      case "FAILED":
+        return { text: "Failed", style: statusClassName(job.status) };
+      case "CANCELLED":
+        return { text: "Cancelled", style: statusClassName(job.status) };
+      case "SUCCEEDED":
+      default:
+        return { text: "Indexed", style: statusClassName("SUCCEEDED") };
+    }
   };
 
   if (statusLoading) {
@@ -255,135 +352,183 @@ const DocumentList: React.FC<DocumentListProps> = ({
             </div>
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
-              {documents.map((document) => (
-                <div
-                  key={document.id}
-                  className="bg-white border border-gray-200 rounded-lg shadow-sm p-4 hover:shadow-md transition-shadow cursor-pointer"
-                  onClick={() => onDocumentSelect?.(document)}
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center space-x-3">
-                      <div className="text-2xl">
-                        {getFileIcon(document.mimeType)}
+              {documents.map((document) => {
+                const job = documentJobs[document.uuid];
+                const label = jobLabel(job);
+                const hasJobError = Boolean(job?.errorMessage);
+                return (
+                  <div
+                    key={document.id}
+                    className="bg-white border border-gray-200 rounded-lg shadow-sm p-4 hover:shadow-md transition-shadow cursor-pointer"
+                    onClick={() => onDocumentSelect?.(document)}
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center space-x-3">
+                        <div className="text-2xl">
+                          {getFileIcon(document.mimeType)}
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-900 truncate">
+                            {document.title}
+                          </h4>
+                          <p className="text-xs text-gray-500 truncate">
+                            📁 {document.originalFilename}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {formatFileSize(document.fileSize || 0)} •{" "}
+                            {document.mimeType || "Unknown"}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <h4 className="text-sm font-medium text-gray-900 truncate">
-                          {document.title}
-                        </h4>
-                        <p className="text-xs text-gray-500 truncate">
-                          📁 {document.originalFilename}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {formatFileSize(document.fileSize || 0)} •{" "}
-                          {document.mimeType || "Unknown"}
-                        </p>
+                      <div className="flex items-center space-x-1">
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${label.style}`}
+                        >
+                          {label.text}
+                        </span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEdit(document);
+                          }}
+                          className="text-gray-600 hover:text-gray-900 p-1"
+                          title="Edit"
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDownload(document);
+                          }}
+                          className="text-blue-600 hover:text-blue-800 p-1"
+                          title="Download"
+                        >
+                          📥
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(document.uuid);
+                          }}
+                          className="text-red-600 hover:text-red-800 p-1"
+                          title="Delete"
+                        >
+                          🗑️
+                        </button>
                       </div>
                     </div>
-                    <div className="flex space-x-1">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDownload(document);
-                        }}
-                        className="text-blue-600 hover:text-blue-800 p-1"
-                        title="Download"
+
+                    {document.description && (
+                      <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                        {document.description}
+                      </p>
+                    )}
+
+                    {document.sourceUrl && (
+                      <a
+                        href={document.sourceUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-sm text-primary hover:text-primary-strong inline-flex items-center gap-1 mb-2"
+                        onClick={(e) => e.stopPropagation()}
                       >
-                        📥
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(document.uuid);
-                        }}
-                        className="text-red-600 hover:text-red-800 p-1"
-                        title="Delete"
-                      >
-                        🗑️
-                      </button>
+                        External download
+                      </a>
+                    )}
+
+                    {hasJobError && (
+                      <div className="text-xs text-red-600 mb-2">
+                        {job?.errorMessage}
+                      </div>
+                    )}
+
+                    <div className="text-xs text-gray-500">
+                      Uploaded{" "}
+                      {document.createdAt
+                        ? new Date(document.createdAt).toLocaleDateString()
+                        : "Unknown date"}
                     </div>
                   </div>
-
-                  {document.description && (
-                    <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                      {document.description}
-                    </p>
-                  )}
-
-                  <div className="text-xs text-gray-500">
-                    Uploaded{" "}
-                    {document.createdAt
-                      ? new Date(document.createdAt).toLocaleDateString()
-                      : "Unknown date"}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
-
-          <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm space-y-3">
-              <div className="flex items-center justify-between">
-                <h4 className="text-sm font-semibold text-gray-900">
-                  Index Jobs
-                </h4>
-                {jobsLoading && (
-                  <span className="text-xs text-gray-500">Refreshing…</span>
-                )}
-              </div>
-              {jobsError && <p className="text-xs text-red-600">{jobsError}</p>}
-              {jobs.length === 0 ? (
-                <p className="text-sm text-gray-500">
-                  No indexing jobs found yet. Upload a document or trigger a
-                  rebuild to populate this list.
-                </p>
-              ) : (
-                <div className="space-y-3">
-                  {jobs.slice(0, 6).map((job) => renderJobStatus(job))}
-                </div>
-              )}
-            </div>
-
-            <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm space-y-3">
-              <div className="flex items-center justify-between">
-                <h4 className="text-sm font-semibold text-gray-900">
-                  Default Metadata Filters
-                </h4>
-                {settingsLoading && (
-                  <span className="text-xs text-gray-500">Loading…</span>
-                )}
-              </div>
-              {settingsError && (
-                <p className="text-xs text-red-600">{settingsError}</p>
-              )}
-              <pre className="bg-gray-50 border border-gray-200 rounded-md text-xs p-3 overflow-auto max-h-48">
-                {metadataPreview}
-              </pre>
-              {settings && (
-                <div className="text-xs text-gray-500 space-y-1">
-                  <p>
-                    Model:{" "}
-                    <span className="font-medium">
-                      {settings.defaultModel ?? "Not set"}
-                    </span>
-                  </p>
-                  <p>
-                    Top K:{" "}
-                    <span className="font-medium">
-                      {settings.topK ?? "Default"}
-                    </span>
-                  </p>
-                  {settings.lastValidatedAt && (
-                    <p>
-                      Last tested:{" "}
-                      {new Date(settings.lastValidatedAt).toLocaleString()}
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-          </section>
         </div>
       </div>
+
+      {editingDocument && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-lg p-6 relative">
+            <h4 className="text-lg font-semibold text-gray-900 mb-4">
+              Edit document
+            </h4>
+            {editError && (
+              <div className="mb-3 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+                {editError}
+              </div>
+            )}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Title
+                </label>
+                <input
+                  type="text"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+                  value={editingTitle}
+                  onChange={(e) => setEditingTitle(e.target.value)}
+                  disabled={savingEdit}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Description
+                </label>
+                <textarea
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+                  rows={3}
+                  value={editingDescription}
+                  onChange={(e) => setEditingDescription(e.target.value)}
+                  disabled={savingEdit}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Public download URL
+                </label>
+                <input
+                  type="url"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+                  value={editingSourceUrl}
+                  onChange={(e) => setEditingSourceUrl(e.target.value)}
+                  placeholder="https://example.com/document.pdf"
+                  disabled={savingEdit}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Optional link to a public copy users can access.
+                </p>
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                onClick={closeEditModal}
+                className="btn-primary-outline text-sm"
+                disabled={savingEdit}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUpdate}
+                className="btn-primary text-sm disabled:opacity-70"
+                disabled={savingEdit}
+              >
+                {savingEdit ? "Saving…" : "Save changes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 };

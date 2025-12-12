@@ -5,6 +5,8 @@ export type FactCheckRunStatus =
   | "FAILED"
   | "CANCELLED";
 
+export type FactCheckRunVisibility = "PUBLIC" | "UNLISTED" | "PRIVATE";
+
 export interface FactCheckEvidence {
   id: number;
   libraryNodeId?: string | null;
@@ -35,10 +37,12 @@ export interface FactCheckRun {
   statement: string;
   status: FactCheckRunStatus;
   isPublic: boolean;
+  visibility: FactCheckRunVisibility;
   createdAt: string;
   beganAt?: string | null;
   completedAt?: string | null;
   publishedAt?: string | null;
+  featuredAt?: string | null;
   errorMessage?: string | null;
   operationId?: string | null;
 }

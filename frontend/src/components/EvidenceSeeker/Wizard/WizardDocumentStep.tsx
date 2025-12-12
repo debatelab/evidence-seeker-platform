@@ -208,6 +208,10 @@ export const WizardDocumentStep: React.FC<WizardDocumentStepProps> = ({
           <p className="text-sm text-gray-500">
             Supported formats: PDF, TXT • Max size: 10MB
           </p>
+          <p className="text-xs text-gray-500 mt-2 text-center">
+            Uploads can run a bit longer while embeddings are generated right
+            after the file lands.
+          </p>
           {validationError && (
             <p className="text-sm text-red-600 mt-3">{validationError}</p>
           )}

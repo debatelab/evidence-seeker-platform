@@ -43,6 +43,7 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({
     null
   ); // underscored to satisfy no-unused-vars rule
   const progressIntervalRef = useRef<number | null>(null);
+  const [currentSourceUrl, setCurrentSourceUrl] = useState<string>("");
 
   const clearProgressInterval = () => {
     if (progressIntervalRef.current) {
@@ -54,12 +55,14 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({
   const handleStartUpload = async (
     file: File,
     title: string,
-    description: string
+    description: string,
+    sourceUrl?: string
   ) => {
     // Store current upload data
     setCurrentFile(file);
     setCurrentTitle(title);
     setCurrentDescription(description);
+    setCurrentSourceUrl(sourceUrl ?? "");
     setUploadState("uploading");
     setUploadProgress(0);
 
@@ -77,7 +80,8 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({
       const uploadData: DocumentCreate = {
         file,
         title: title.trim(),
-        description: description.trim(),
+        description: description.trim() || null,
+        sourceUrl: sourceUrl?.trim() || null,
       };
 
       const result = await uploadDocument(uploadData);
@@ -110,6 +114,7 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({
     setCurrentFile(null);
     setCurrentTitle("");
     setCurrentDescription("");
+    setCurrentSourceUrl("");
   };
 
   const handleUploadAnother = () => {
@@ -119,12 +124,18 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({
     setCurrentFile(null);
     setCurrentTitle("");
     setCurrentDescription("");
+    setCurrentSourceUrl("");
     setUploadedDocument(null);
   };
 
   const handleRetry = () => {
     if (currentFile) {
-      handleStartUpload(currentFile, currentTitle, currentDescription);
+      handleStartUpload(
+        currentFile,
+        currentTitle,
+        currentDescription,
+        currentSourceUrl
+      );
     } else {
       setUploadState("form-input");
     }

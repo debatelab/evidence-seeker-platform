@@ -43,10 +43,11 @@ This is the full feature set for the initial release.
 #### Simplified Configuration Flow
 
 1. **Guided creation wizard** – Creating an Evidence Seeker now walks admins through three steps (basics, Hugging Face credentials, review) before the project is created so no seeker is left without working inference settings.
-2. **Status-driven management** – Every seeker surfaces its configuration state via badges on the list page, within the management header, and on the configuration tab. Status metadata includes the current setup mode, last configured timestamp, and the requirements that are still missing.
-3. **Workflow guards** – Document uploads, reindexing, semantic search, and fact-check runs are blocked in both the UI and API until the configuration state is `READY`. Users see a call-to-action to open the configuration tab, while the backend returns `409 Conflict` with machine-readable details so clients can respond gracefully.
-4. **Expert mode toggle** – Advanced retrieval controls are hidden by default. Once the simple setup succeeds, admins can opt into expert mode per seeker to edit backend/language/override fields. They can revert to simple mode at any time to rely on platform defaults.
-5. **API key rotation** – The configuration tab exposes the API Key Manager so admins can add a new Hugging Face key, switch the active credential, and remove the old key without downtime. Rotating a key automatically re-validates the configuration state.
+2. **Upload step expectations** – The guided uploader states that files can take a moment because embeddings are generated right after the upload lands, so admins know a slow upload is normal.
+3. **Status-driven management** – Every seeker surfaces its configuration state via badges on the list page, within the management header, and on the configuration tab. Status metadata includes the current setup mode, last configured timestamp, and the requirements that are still missing.
+4. **Workflow guards** – Document uploads, reindexing, semantic search, and fact-check runs are blocked in both the UI and API until the configuration state is `READY`. Users see a call-to-action to open the configuration tab, while the backend returns `409 Conflict` with machine-readable details so clients can respond gracefully.
+5. **Expert mode toggle** – Advanced retrieval controls are hidden by default. Once the simple setup succeeds, admins can opt into expert mode per seeker to edit backend/language/override fields. They can revert to simple mode at any time to rely on platform defaults.
+6. **API key rotation** – The configuration tab exposes the API Key Manager so admins can add a new Hugging Face key, switch the active credential, and remove the old key without downtime. Rotating a key automatically re-validates the configuration state.
 
 ### **Public Interface**
 

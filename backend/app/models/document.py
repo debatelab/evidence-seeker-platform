@@ -42,6 +42,8 @@ class Document(Base):
     # EvidenceSeeker indexing metadata
     index_file_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
+    source_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), onupdate=func.now()
@@ -83,6 +85,7 @@ def build_document(
     evidence_seeker_uuid: UUIDType | str,
     description: str | None = None,
     index_file_key: str | None = None,
+    source_url: str | None = None,
 ) -> Document:
     """Construct a Document instance with explicit, type-checked parameters."""
     document = Document()
@@ -98,4 +101,5 @@ def build_document(
         document.evidence_seeker_uuid = UUIDType(evidence_seeker_uuid)
     document.description = description
     document.index_file_key = index_file_key
+    document.source_url = source_url
     return document

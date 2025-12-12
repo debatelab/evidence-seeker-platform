@@ -1,4 +1,9 @@
-import type { FactCheckResult, FactCheckRun, FactCheckRunDetail } from "./factCheck";
+import type {
+  FactCheckResult,
+  FactCheckRun,
+  FactCheckRunDetail,
+  FactCheckRunVisibility,
+} from "./factCheck";
 
 export interface PublicEvidenceSeekerSummary {
   uuid: string;
@@ -23,6 +28,7 @@ export interface PublicDocument {
   title: string;
   description: string | null;
   originalFilename: string;
+  downloadUrl?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -46,6 +52,8 @@ export interface PublicFactCheckRunSummary {
   status: FactCheckRun["status"];
   completedAt: string | null;
   publishedAt: string | null;
+  featuredAt?: string | null;
+  visibility: FactCheckRunVisibility;
   evidenceSeekerUuid: string;
   evidenceSeekerId: number;
   evidenceSeekerTitle: string;

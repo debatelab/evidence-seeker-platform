@@ -724,7 +724,7 @@ wheels = [
 [[package]]
 name = "evidence-seeker"
 version = "0.1.3"
-source = { registry = "https://pypi.org/simple" }
+source = { git = "https://github.com/debatelab/evidence-seeker.git#f43a31d2f7369dbf803f7ffb3caccb579b0a7564" }
 dependencies = [
     { name = "argon2-cffi" },
     { name = "gradio" },
@@ -747,10 +747,6 @@ dependencies = [
     { name = "pygithub" },
     { name = "python-dotenv" },
     { name = "wrapt" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/64/24/a6c108428f4e090829254c3f5d282f1a81abdf705bbf3d828bca955134e1/evidence_seeker-0.1.3.tar.gz", hash = "sha256:beb98cf406742b9a0bc579c2736f3cdab6a2283399d79d16010147a9cf198241", size = 51283, upload-time = "2025-11-21T08:59:44.649Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/01/f8/2b9fa0086089ecd48c827c139f1d0179d9923f2f8b9b68388e41748e92d7/evidence_seeker-0.1.3-py3-none-any.whl", hash = "sha256:95551a267dc1350247508b05aa5db4977377850602bc3dc103796414462157e0", size = 62685, upload-time = "2025-11-21T08:59:41.367Z" },
 ]
 
 [[package]]
@@ -808,7 +804,7 @@ requires-dist = [
     { name = "bcrypt", specifier = "==4.3.0" },
     { name = "black", marker = "extra == 'dev'", specifier = "==25.1.0" },
     { name = "cryptography", specifier = "==45.0.7" },
-    { name = "evidence-seeker", specifier = "==0.1.3" },
+    { name = "evidence-seeker", git = "https://github.com/debatelab/evidence-seeker.git" },
     { name = "fastapi", specifier = "==0.116.1" },
     { name = "fastapi-mail", specifier = "==1.4.1" },
     { name = "fastapi-users", extras = ["sqlalchemy"], specifier = "==14.0.1" },

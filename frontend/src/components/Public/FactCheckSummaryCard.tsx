@@ -3,6 +3,8 @@ import { Link } from "react-router";
 import type { PublicFactCheckRunSummary } from "../../types/public";
 import type { ConfirmationSummaryDisplay } from "../../utils/factCheckSummaries";
 
+type MetaTone = "gray" | "green" | "red";
+
 interface FactCheckSummaryCardProps {
   run: PublicFactCheckRunSummary;
   index?: number;
@@ -10,6 +12,9 @@ interface FactCheckSummaryCardProps {
   summaries: ConfirmationSummaryDisplay[];
   isLoading: boolean;
   emptyMessage?: string;
+  toOverride?: string;
+  meta?: Array<{ label: string; tone?: MetaTone }>;
+  publishedPrefix?: string;
 }
 
 const FactCheckSummaryCard: React.FC<FactCheckSummaryCardProps> = ({
@@ -19,10 +24,19 @@ const FactCheckSummaryCard: React.FC<FactCheckSummaryCardProps> = ({
   summaries,
   isLoading,
   emptyMessage = "This run has not published interpretations yet.",
+  toOverride,
+  meta,
+  publishedPrefix = "Published",
 }) => {
+  const metaToneClass: Record<MetaTone, string> = {
+    gray: "bg-gray-100 text-gray-700 border-gray-200",
+    green: "bg-emerald-50 text-emerald-800 border-emerald-200",
+    red: "bg-red-50 text-red-800 border-red-200",
+  };
+
   return (
     <Link
-      to={`/fact-checks/${run.uuid}`}
+      to={toOverride ?? `/fact-checks/${run.uuid}`}
       className="block border border-gray-100 rounded-lg p-5 space-y-4 bg-white shadow-sm transition hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
     >
       <div className="space-y-2">
@@ -30,7 +44,23 @@ const FactCheckSummaryCard: React.FC<FactCheckSummaryCardProps> = ({
           Fact check #{index + 1}
         </p>
         <p className="text-lg font-semibold text-gray-900">{run.statement}</p>
-        <p className="text-xs text-gray-500">Published {publishedLabel}</p>
+        <p className="text-xs text-gray-500">
+          {publishedPrefix} {publishedLabel}
+        </p>
+        {meta && meta.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {meta.map((item, itemIndex) => (
+              <span
+                key={`${run.uuid}-meta-${itemIndex}-${item.label}`}
+                className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
+                  metaToneClass[item.tone ?? "gray"]
+                }`}
+              >
+                {item.label}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
       {summaries.length > 0 ? (
         <div className="flex flex-wrap gap-3">

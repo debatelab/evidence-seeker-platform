@@ -26,12 +26,15 @@ from ..core.permissions import (
 )
 from ..core.progress_tracker import progress_tracker
 from ..models.document import Document
-from ..models.evidence_seeker import EvidenceSeeker
+from ..models.evidence_seeker import (
+    EvidenceSeeker,
+)
 from ..models.evidence_seeker_settings import EvidenceSeekerSettings, SetupMode
 from ..models.fact_check import (
     FactCheckResult,
     FactCheckRun,
     FactCheckRunStatus,
+    FactCheckRunVisibility,
 )
 from ..models.index_job import IndexJob
 from ..models.permission import UserRole
@@ -52,7 +55,9 @@ from ..schemas.fact_check import (
     FactCheckRerunRequest,
     FactCheckResultRead,
     FactCheckRunCreate,
+    FactCheckRunDeleteRequest,
     FactCheckRunDetail,
+    FactCheckRunPublicationUpdate,
     FactCheckRunRead,
 )
 from ..schemas.index_job import IndexJobRead
@@ -384,7 +389,13 @@ def update_evidence_seeker(
                     FactCheckRun.is_public.is_(True),
                 )
                 .update(
-                    {"is_public": False, "published_at": None},
+                    {
+                        "is_public": False,
+                        "published_at": None,
+                        "visibility": FactCheckRunVisibility.PRIVATE,
+                        "featured_at": None,
+                        "featured_by_id": None,
+                    },
                     synchronize_session=False,
                 )
             )
@@ -709,7 +720,10 @@ def list_fact_check_runs(
     # Readers can examine runs
     runs = (
         db.query(FactCheckRun)
-        .filter(FactCheckRun.evidence_seeker_id == seeker.id)
+        .filter(
+            FactCheckRun.evidence_seeker_id == seeker.id,
+            FactCheckRun.deleted_at.is_(None),
+        )
         .order_by(desc(FactCheckRun.created_at))
         .offset(skip)
         .limit(limit)
@@ -802,12 +816,72 @@ def get_fact_check_run(
     run = (
         db.query(FactCheckRun)
         .filter(
-            FactCheckRun.evidence_seeker_id == seeker.id, FactCheckRun.uuid == run_uuid
+            FactCheckRun.evidence_seeker_id == seeker.id,
+            FactCheckRun.uuid == run_uuid,
+            FactCheckRun.deleted_at.is_(None),
         )
         .first()
     )
     if run is None:
         raise HTTPException(status_code=404, detail="Fact-check run not found")
+    return run
+
+
+@router.post(
+    "/{seeker_identifier}/runs/{run_uuid}/publication",
+    response_model=FactCheckRunRead,
+)
+def update_fact_check_publication(
+    seeker_identifier: int | str,
+    run_uuid: UUID,
+    request: FactCheckRunPublicationUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> FactCheckRun:
+    seeker = get_evidence_seeker_by_identifier(
+        seeker_identifier, db, ensure_user_id(current_user)
+    )
+    _ensure_admin(ensure_user_id(current_user), seeker, db)
+
+    run = (
+        db.query(FactCheckRun)
+        .filter(
+            FactCheckRun.evidence_seeker_id == seeker.id,
+            FactCheckRun.uuid == run_uuid,
+            FactCheckRun.deleted_at.is_(None),
+        )
+        .first()
+    )
+    if run is None:
+        raise HTTPException(status_code=404, detail="Fact-check run not found")
+
+    if request.visibility not in {
+        FactCheckRunVisibility.PUBLIC,
+        FactCheckRunVisibility.UNLISTED,
+    }:
+        raise HTTPException(status_code=400, detail="Unsupported visibility transition")
+
+    if request.visibility == FactCheckRunVisibility.PUBLIC:
+        if run.status != FactCheckRunStatus.SUCCEEDED:
+            raise HTTPException(
+                status_code=400,
+                detail="Only succeeded runs can be published",
+            )
+        now = datetime.utcnow()
+        run.visibility = FactCheckRunVisibility.PUBLIC
+        run.is_public = True
+        run.published_at = run.published_at or now
+        run.featured_at = now
+        run.featured_by_id = ensure_user_id(current_user)
+    else:
+        run.visibility = FactCheckRunVisibility.UNLISTED
+        run.is_public = False
+        run.published_at = None
+        run.featured_at = None
+        run.featured_by_id = None
+
+    db.commit()
+    db.refresh(run)
     return run
 
 
@@ -828,7 +902,9 @@ def get_fact_check_results(
     run = (
         db.query(FactCheckRun)
         .filter(
-            FactCheckRun.evidence_seeker_id == seeker.id, FactCheckRun.uuid == run_uuid
+            FactCheckRun.evidence_seeker_id == seeker.id,
+            FactCheckRun.uuid == run_uuid,
+            FactCheckRun.deleted_at.is_(None),
         )
         .first()
     )
@@ -900,7 +976,9 @@ async def rerun_fact_check(
     run = (
         db.query(FactCheckRun)
         .filter(
-            FactCheckRun.evidence_seeker_id == seeker.id, FactCheckRun.uuid == run_uuid
+            FactCheckRun.evidence_seeker_id == seeker.id,
+            FactCheckRun.uuid == run_uuid,
+            FactCheckRun.deleted_at.is_(None),
         )
         .first()
     )
@@ -949,7 +1027,9 @@ def cancel_fact_check_run(
     run = (
         db.query(FactCheckRun)
         .filter(
-            FactCheckRun.evidence_seeker_id == seeker.id, FactCheckRun.uuid == run_uuid
+            FactCheckRun.evidence_seeker_id == seeker.id,
+            FactCheckRun.uuid == run_uuid,
+            FactCheckRun.deleted_at.is_(None),
         )
         .first()
     )
@@ -972,3 +1052,49 @@ def cancel_fact_check_run(
         )
 
     return {"detail": "Run cancelled"}
+
+
+@router.delete(
+    "/{seeker_identifier}/runs/{run_uuid}/delete",
+)
+def delete_fact_check_run(
+    seeker_identifier: int | str,
+    run_uuid: UUID,
+    request: FactCheckRunDeleteRequest | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict[str, str]:
+    seeker = get_evidence_seeker_by_identifier(
+        seeker_identifier, db, ensure_user_id(current_user)
+    )
+    _ensure_admin(ensure_user_id(current_user), seeker, db)
+
+    run = (
+        db.query(FactCheckRun)
+        .filter(
+            FactCheckRun.evidence_seeker_id == seeker.id,
+            FactCheckRun.uuid == run_uuid,
+            FactCheckRun.deleted_at.is_(None),
+        )
+        .first()
+    )
+    if run is None:
+        raise HTTPException(status_code=404, detail="Fact-check run not found")
+
+    run.deleted_at = datetime.utcnow()
+    run.deleted_by_id = ensure_user_id(current_user)
+    run.deletion_reason = request.deletion_reason if request else None
+    run.visibility = FactCheckRunVisibility.PRIVATE
+    run.is_public = False
+    run.published_at = None
+    run.featured_at = None
+    run.featured_by_id = None
+    db.commit()
+
+    # Optionally clear results/evidence to reclaim storage
+    db.query(FactCheckResult).filter(FactCheckResult.run_id == run.id).delete(
+        synchronize_session=False
+    )
+    db.commit()
+
+    return {"detail": "Run deleted"}

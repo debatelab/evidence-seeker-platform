@@ -13,21 +13,7 @@ import {
   aggregateResultSummary,
   type ConfirmationSummaryDisplay,
 } from "../../utils/factCheckSummaries";
-
-const formatDateTime = (value?: string | null) => {
-  if (!value) return "—";
-  try {
-    return new Intl.DateTimeFormat(undefined, {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-    }).format(new Date(value));
-  } catch {
-    return new Date(value).toLocaleString();
-  }
-};
+import { formatRelativeTime } from "../../utils/dates";
 
 const PublicHomePage: React.FC = () => {
   const [seekers, setSeekers] = useState<PublicEvidenceSeekerSummary[]>([]);
@@ -120,9 +106,7 @@ const PublicHomePage: React.FC = () => {
     : "/register";
 
   const getPublishedLabel = (run: PublicFactCheckRunSummary) =>
-    run.publishedAt || run.completedAt
-      ? formatDateTime(run.publishedAt ?? run.completedAt)
-      : "Awaiting publication";
+    formatRelativeTime(run.publishedAt ?? run.completedAt, "Awaiting publication");
 
   return (
     <PublicLayout>

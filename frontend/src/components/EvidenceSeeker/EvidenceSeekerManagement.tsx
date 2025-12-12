@@ -22,11 +22,7 @@ interface EvidenceSeekerManagementProps {
   evidenceSeekerUuid: string;
 }
 
-type TabType =
-  | "documents"
-  | "fact-checks"
-  | "settings"
-  | "users";
+type TabType = "documents" | "fact-checks" | "settings" | "users";
 
 const EvidenceSeekerManagement: React.FC<EvidenceSeekerManagementProps> = ({
   evidenceSeekerUuid,
@@ -176,30 +172,6 @@ const EvidenceSeekerManagement: React.FC<EvidenceSeekerManagementProps> = ({
           {/* Tab Content */}
           <div className="p-6">
             {/* Tab Description */}
-            <div className="mb-6">
-              {tabs.map((tab) => {
-                if (tab.id === activeTab) {
-                  const Icon = tab.icon;
-                  return (
-                    <div
-                      key={tab.id}
-                      className="flex items-center space-x-3 p-4 bg-blue-50 rounded-lg border border-blue-200"
-                    >
-                      <Icon className="h-5 w-5 text-blue-600" />
-                      <div>
-                        <h3 className="text-sm font-medium text-blue-900">
-                          {tab.label}
-                        </h3>
-                        <p className="text-sm text-blue-700">
-                          {tab.description}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                }
-                return null;
-              })}
-            </div>
 
             {/* Content */}
             <Outlet />

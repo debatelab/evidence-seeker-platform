@@ -3,7 +3,11 @@ import axios, {
   AxiosResponse,
   InternalAxiosRequestConfig,
 } from "axios";
-import type { Document, DocumentIngestionResponse } from "../types/document";
+import type {
+  Document,
+  DocumentIngestionResponse,
+  DocumentUpdate,
+} from "../types/document";
 import type {
   ConfigurationStatus,
   EvidenceSeekerSettings,
@@ -217,13 +221,21 @@ export const documentsAPI = {
 
   uploadDocument: async (
     evidenceSeekerUuid: string,
-    payload: { file: File; title: string; description?: string | null },
+    payload: {
+      file: File;
+      title: string;
+      description?: string | null;
+      sourceUrl?: string | null;
+    },
     options?: { onboardingToken?: string }
   ): Promise<DocumentIngestionResponse> => {
     const formData = new FormData();
     formData.append("file", payload.file);
     formData.append("title", payload.title);
     formData.append("description", payload.description ?? "");
+    if (payload.sourceUrl) {
+      formData.append("source_url", payload.sourceUrl);
+    }
     formData.append("evidence_seeker_uuid", evidenceSeekerUuid);
 
     const response = await apiClient.post<DocumentIngestionResponse>(
@@ -262,6 +274,17 @@ export const documentsAPI = {
       {
         responseType: "blob",
       }
+    );
+    return response.data;
+  },
+
+  updateDocument: async (
+    documentUuid: string,
+    payload: DocumentUpdate
+  ): Promise<Document> => {
+    const response = await apiClient.patch<Document>(
+      `/documents/${documentUuid}`,
+      payload
     );
     return response.data;
   },
@@ -449,6 +472,32 @@ export const evidenceSeekerAPI = {
   ): Promise<{ detail: string }> => {
     const response = await apiClient.delete<{ detail: string }>(
       `/evidence-seekers/${evidenceSeekerUuid}/runs/${runUuid}`
+    );
+    return response.data;
+  },
+
+  deleteFactCheckRun: async (
+    evidenceSeekerUuid: string,
+    runUuid: string,
+    deletionReason?: string
+  ): Promise<{ detail: string }> => {
+    const response = await apiClient.delete<{ detail: string }>(
+      `/evidence-seekers/${evidenceSeekerUuid}/runs/${runUuid}/delete`,
+      {
+        data: deletionReason ? { deletionReason } : undefined,
+      }
+    );
+    return response.data;
+  },
+
+  updateFactCheckPublication: async (
+    evidenceSeekerUuid: string,
+    runUuid: string,
+    visibility: "PUBLIC" | "UNLISTED"
+  ): Promise<FactCheckRun> => {
+    const response = await apiClient.post<FactCheckRun>(
+      `/evidence-seekers/${evidenceSeekerUuid}/runs/${runUuid}/publication`,
+      { visibility }
     );
     return response.data;
   },

@@ -28,9 +28,11 @@ from app.models import (
     EvidenceSeeker,
     EvidenceStance,
     FactCheckEvidence,
+    FactCheckPublicationMode,
     FactCheckResult,
     FactCheckRun,
     FactCheckRunStatus,
+    FactCheckRunVisibility,
     InterpretationType,
 )
 
@@ -128,13 +130,15 @@ class EvidenceSeekerPipelineManager:
             db, seeker, overrides
         )
 
+        run_visibility = _initial_visibility(seeker, public_run)
         run = _build_fact_check_run(
             seeker=seeker,
             statement=statement,
             user_id=user_id,
             bundle=bundle,
-            public_run=public_run,
+            visibility=run_visibility,
         )
+        _apply_publication_transition(run, run_visibility)
         db.add(run)
         db.commit()
         db.refresh(run)
@@ -356,13 +360,15 @@ class EvidenceSeekerPipelineManager:
             db, seeker, overrides
         )
 
+        run_visibility = _initial_visibility(seeker, public_run)
         run = _build_fact_check_run(
             seeker=seeker,
             statement=statement,
             user_id=user_id,
             bundle=bundle,
-            public_run=public_run,
+            visibility=run_visibility,
         )
+        _apply_publication_transition(run, run_visibility)
         db.add(run)
         db.commit()
         db.refresh(run)
@@ -826,7 +832,7 @@ def _build_fact_check_run(
     statement: str,
     user_id: int | None,
     bundle: RetrievalConfigBundle,
-    public_run: bool,
+    visibility: FactCheckRunVisibility,
 ) -> FactCheckRun:
     """Create a FactCheckRun instance without relying on SQLAlchemy kwargs."""
     run = FactCheckRun()
@@ -835,9 +841,42 @@ def _build_fact_check_run(
     run.statement = statement
     run.status = FactCheckRunStatus.PENDING
     run.config_snapshot = _serialise_config(bundle)
-    run.is_public = public_run
-    run.published_at = datetime.utcnow() if public_run else None
+    run.visibility = visibility
     return run
+
+
+def _apply_publication_transition(
+    run: FactCheckRun, visibility: FactCheckRunVisibility
+) -> None:
+    """Synchronise visibility, is_public, and timestamps."""
+    run.visibility = visibility
+    if visibility == FactCheckRunVisibility.PUBLIC:
+        run.is_public = True
+        now = datetime.utcnow()
+        run.published_at = run.published_at or now
+        run.featured_at = run.featured_at or now
+    elif visibility == FactCheckRunVisibility.UNLISTED:
+        run.is_public = False
+        run.published_at = None
+        run.featured_at = None
+        run.featured_by_id = None
+    else:
+        run.is_public = False
+        run.published_at = None
+        run.featured_at = None
+        run.featured_by_id = None
+    if visibility != FactCheckRunVisibility.PUBLIC:
+        run.featured_by_id = None
+
+
+def _initial_visibility(
+    seeker: EvidenceSeeker, public_run: bool
+) -> FactCheckRunVisibility:
+    if not public_run:
+        return FactCheckRunVisibility.PRIVATE
+    if seeker.fact_check_publication_mode == FactCheckPublicationMode.MANUAL:
+        return FactCheckRunVisibility.UNLISTED
+    return FactCheckRunVisibility.PUBLIC
 
 
 def _extract_metrics(result: Any) -> dict[str, Any]:

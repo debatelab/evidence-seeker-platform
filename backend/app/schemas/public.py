@@ -3,7 +3,9 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import AnyHttpUrl, BaseModel, Field
+
+from app.models.fact_check import FactCheckRunVisibility
 
 from .document import to_camel
 from .fact_check import FactCheckResultRead, FactCheckRunDetail
@@ -39,6 +41,7 @@ class PublicDocumentRead(BaseModel):
     original_filename: str = Field(alias="originalFilename")
     created_at: datetime = Field(alias="createdAt")
     updated_at: datetime = Field(alias="updatedAt")
+    download_url: AnyHttpUrl | None = Field(alias="downloadUrl", default=None)
 
     class Config:
         alias_generator = to_camel
@@ -74,6 +77,10 @@ class PublicFactCheckRunSummary(BaseModel):
     status: str
     completed_at: datetime | None = Field(alias="completedAt", default=None)
     published_at: datetime | None = Field(alias="publishedAt", default=None)
+    featured_at: datetime | None = Field(alias="featuredAt", default=None)
+    visibility: FactCheckRunVisibility = Field(
+        alias="visibility", default=FactCheckRunVisibility.PUBLIC
+    )
     evidence_seeker_uuid: UUID = Field(alias="evidenceSeekerUuid")
     evidence_seeker_id: int = Field(alias="evidenceSeekerId")
     evidence_seeker_title: str = Field(alias="evidenceSeekerTitle")

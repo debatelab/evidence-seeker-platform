@@ -1,9 +1,18 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Link, useParams } from "react-router";
-import PublicLayout from "../../components/Public/PublicLayout";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useParams } from "react-router";
 import FactCheckRunDetailView from "../../components/FactCheck/FactCheckRunDetailView";
-import { publicAPI } from "../../utils/api";
 import type { PublicFactCheckRunDetailResponse } from "../../types/public";
+import { evidenceSeekerAPI } from "../../utils/api";
+import { useEvidenceSeekers } from "../../hooks/useEvidenceSeeker";
+
+interface AdminFactCheckRunPageProps {
+  evidenceSeekerUuid?: string;
+}
+
+const isTerminalStatus = (status?: string | null): boolean => {
+  if (!status) return false;
+  return ["SUCCEEDED", "FAILED", "CANCELLED"].includes(status.toUpperCase());
+};
 
 const getErrorDetail = (error: unknown, fallback: string): string => {
   if (
@@ -27,30 +36,59 @@ const getErrorDetail = (error: unknown, fallback: string): string => {
   return fallback;
 };
 
-const isTerminalStatus = (status?: string | null): boolean => {
-  if (!status) return false;
-  return ["SUCCEEDED", "FAILED", "CANCELLED"].includes(status.toUpperCase());
-};
-
-const PublicFactCheckPage: React.FC = () => {
+const AdminFactCheckRunPage: React.FC<AdminFactCheckRunPageProps> = ({
+  evidenceSeekerUuid,
+}) => {
   const { runUuid } = useParams<{ runUuid: string }>();
+  const { evidenceSeekers } = useEvidenceSeekers();
+  const seeker = useMemo(
+    () =>
+      evidenceSeekers.find((item) => item.uuid === evidenceSeekerUuid) ?? null,
+    [evidenceSeekers, evidenceSeekerUuid]
+  );
+
   const [data, setData] = useState<PublicFactCheckRunDetailResponse | null>(
     null
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [shareCopied, setShareCopied] = useState(false);
   const [pollError, setPollError] = useState<string | null>(null);
   const [isPolling, setIsPolling] = useState(false);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
   const pollIntervalRef = useRef<number | null>(null);
   const pollInFlight = useRef(false);
 
+  const seekerSummary = useMemo(() => {
+    if (!seeker) return null;
+    return {
+      uuid: seeker.uuid,
+      title: seeker.title,
+      description: seeker.description ?? null,
+      language: seeker.language ?? null,
+      logoUrl: seeker.logoUrl ?? null,
+      publishedAt: seeker.publishedAt ?? null,
+      documentCount: 0,
+      latestFactCheckAt: null,
+    };
+  }, [seeker]);
+
+  const backHref = evidenceSeekerUuid
+    ? `/app/evidence-seekers/${evidenceSeekerUuid}/manage/fact-checks`
+    : "/app/evidence-seekers";
+
   const fetchRunDetail = useCallback(
     async (mode: "initial" | "poll" = "initial") => {
-      if (!runUuid) return null;
+      if (!runUuid || !evidenceSeekerUuid || !seekerSummary) return null;
       try {
-        const response = await publicAPI.getFactCheck(runUuid);
+        const [run, results] = await Promise.all([
+          evidenceSeekerAPI.getFactCheckRun(evidenceSeekerUuid, runUuid),
+          evidenceSeekerAPI.getFactCheckResults(evidenceSeekerUuid, runUuid),
+        ]);
+        const response: PublicFactCheckRunDetailResponse = {
+          run,
+          seeker: seekerSummary,
+          results,
+        };
         setData(response);
         setError(null);
         setPollError(null);
@@ -68,26 +106,24 @@ const PublicFactCheckPage: React.FC = () => {
         throw err;
       }
     },
-    [runUuid]
+    [evidenceSeekerUuid, runUuid, seekerSummary]
   );
 
   useEffect(() => {
-    if (!runUuid) return;
+    if (!runUuid || !evidenceSeekerUuid || !seekerSummary) return;
     let isMounted = true;
     setLoading(true);
     fetchRunDetail("initial")
       .catch(() => {
-        /* errors handled in fetchRunDetail */
+        /* handled above */
       })
       .finally(() => {
-        if (isMounted) {
-          setLoading(false);
-        }
+        if (isMounted) setLoading(false);
       });
     return () => {
       isMounted = false;
     };
-  }, [runUuid, fetchRunDetail]);
+  }, [runUuid, evidenceSeekerUuid, seekerSummary, fetchRunDetail]);
 
   useEffect(() => {
     if (!data?.run?.status || !runUuid) {
@@ -138,62 +174,29 @@ const PublicFactCheckPage: React.FC = () => {
     };
   }, []);
 
-  const handleShare = async () => {
-    if (!runUuid) return;
-    try {
-      await navigator.clipboard.writeText(
-        `${window.location.origin}/fact-checks/${runUuid}`
-      );
-      setShareCopied(true);
-      setTimeout(() => setShareCopied(false), 2000);
-    } catch (err) {
-      console.error(err);
-    }
-  };
+  if (!evidenceSeekerUuid) {
+    return (
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <p className="text-gray-700">
+          Evidence Seeker context is required to view this run.
+        </p>
+      </div>
+    );
+  }
 
   return (
-    <PublicLayout>
-      <FactCheckRunDetailView
-        data={data}
-        loading={loading}
-        error={error}
-        backHref={
-          data ? `/evidence-seekers/${data.seeker.uuid}` : "/"
-        }
-        onShare={handleShare}
-        shareCopied={shareCopied}
-        pollError={pollError}
-        isPolling={isPolling}
-        lastUpdatedAt={lastUpdatedAt}
-        showShare
-        footerSlot={
-          data ? (
-            <div className="bg-primary-soft border border-primary-border rounded-lg p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <div>
-                <p className="text-sm font-semibold text-primary uppercase tracking-wide">
-                  Continue
-                </p>
-                <p className="text-lg text-primary-strong font-medium">
-                  Want to build a custom Evidence Seeker?
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-3">
-                <Link to="/register" className="btn-primary px-5 py-2">
-                  Create your seeker
-                </Link>
-                <Link
-                  to={`/evidence-seekers/${data.seeker.uuid}`}
-                  className="btn-primary-outline text-sm font-semibold"
-                >
-                  Explore this seeker
-                </Link>
-              </div>
-            </div>
-          ) : null
-        }
-      />
-    </PublicLayout>
+    <FactCheckRunDetailView
+      data={data}
+      loading={loading}
+      error={error}
+      backHref={backHref}
+      showShare={false}
+      pollError={pollError}
+      isPolling={isPolling}
+      lastUpdatedAt={lastUpdatedAt}
+      seekerOverride={seekerSummary ?? undefined}
+    />
   );
 };
 
-export default PublicFactCheckPage;
+export default AdminFactCheckRunPage;

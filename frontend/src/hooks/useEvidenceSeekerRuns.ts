@@ -18,12 +18,17 @@ interface UseEvidenceSeekerRuns {
     payload: CreateFactCheckRunRequest
   ) => Promise<FactCheckRun | null>;
   cancelRun: (runUuid: string) => Promise<boolean>;
+  deleteRun: (runUuid: string, deletionReason?: string) => Promise<boolean>;
   rerun: (
     runUuid: string,
     payload?: RerunFactCheckRequest
   ) => Promise<FactCheckRun | null>;
   getRunDetail: (runUuid: string) => Promise<FactCheckRunDetail | null>;
   getRunResults: (runUuid: string) => Promise<FactCheckResult[]>;
+  updatePublication: (
+    runUuid: string,
+    visibility: "PUBLIC" | "UNLISTED"
+  ) => Promise<FactCheckRun | null>;
 }
 
 const toErrorMessage = (error: unknown): string => {
@@ -215,6 +220,52 @@ export const useEvidenceSeekerRuns = (
     [evidenceSeekerUuid]
   );
 
+  const deleteRun = useCallback(
+    async (runUuid: string, deletionReason?: string) => {
+      if (!evidenceSeekerUuid) {
+        setError("Evidence Seeker UUID is required.");
+        return false;
+      }
+      try {
+        await evidenceSeekerAPI.deleteFactCheckRun(
+          evidenceSeekerUuid,
+          runUuid,
+          deletionReason
+        );
+        setRuns((prev) => prev.filter((run) => run.uuid !== runUuid));
+        return true;
+      } catch (err) {
+        setError(toErrorMessage(err));
+        return false;
+      }
+    },
+    [evidenceSeekerUuid]
+  );
+
+  const updatePublication = useCallback(
+    async (runUuid: string, visibility: "PUBLIC" | "UNLISTED") => {
+      if (!evidenceSeekerUuid) {
+        setError("Evidence Seeker UUID is required.");
+        return null;
+      }
+      try {
+        const updated = await evidenceSeekerAPI.updateFactCheckPublication(
+          evidenceSeekerUuid,
+          runUuid,
+          visibility
+        );
+        setRuns((prev) =>
+          prev.map((run) => (run.uuid === runUuid ? updated : run))
+        );
+        return updated;
+      } catch (err) {
+        setError(toErrorMessage(err));
+        return null;
+      }
+    },
+    [evidenceSeekerUuid]
+  );
+
   return {
     runs,
     loading,
@@ -223,8 +274,10 @@ export const useEvidenceSeekerRuns = (
     refresh: fetchRuns,
     createRun,
     cancelRun,
+    deleteRun,
     rerun,
     getRunDetail,
     getRunResults,
+    updatePublication,
   };
 };

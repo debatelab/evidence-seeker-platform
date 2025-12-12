@@ -11,6 +11,9 @@ export interface IndexJob {
   submittedBy: number;
   jobType: string;
   status: IndexJobStatus;
+  documentUuid?: string | null;
+  documentUuids?: string[] | null;
+  payload?: Record<string, unknown> | null;
   operationId?: string | null;
   errorMessage?: string | null;
   createdAt: string;

@@ -33,6 +33,7 @@ from app.models.fact_check import (
     FactCheckResult,
     FactCheckRun,
     FactCheckRunStatus,
+    FactCheckRunVisibility,
 )
 from app.schemas.fact_check import (
     FactCheckResultRead,
@@ -109,7 +110,8 @@ def _fetch_counts(
             )
             .where(
                 FactCheckRun.evidence_seeker_id.in_(seeker_ids),
-                FactCheckRun.is_public.is_(True),
+                FactCheckRun.visibility == FactCheckRunVisibility.PUBLIC,
+                FactCheckRun.deleted_at.is_(None),
                 FactCheckRun.status == FactCheckRunStatus.SUCCEEDED,
             )
             .group_by(FactCheckRun.evidence_seeker_id)
@@ -214,7 +216,8 @@ def get_public_evidence_seeker(
             select(FactCheckRun)
             .where(
                 FactCheckRun.evidence_seeker_id == seeker.id,
-                FactCheckRun.is_public.is_(True),
+                FactCheckRun.visibility == FactCheckRunVisibility.PUBLIC,
+                FactCheckRun.deleted_at.is_(None),
                 FactCheckRun.status == FactCheckRunStatus.SUCCEEDED,
             )
             .order_by(
@@ -238,6 +241,7 @@ def get_public_evidence_seeker(
                 "original_filename": document.original_filename,
                 "created_at": document.created_at,
                 "updated_at": document.updated_at,
+                "download_url": document.source_url,
             },
         )
         for document in documents
@@ -262,6 +266,8 @@ def get_public_evidence_seeker(
                 ),
                 "completed_at": run.completed_at,
                 "published_at": run.published_at,
+                "featured_at": getattr(run, "featured_at", None),
+                "visibility": getattr(run, "visibility", FactCheckRunVisibility.PUBLIC),
                 "evidence_seeker_uuid": seeker.uuid,
                 "evidence_seeker_id": seeker.id,
                 "evidence_seeker_title": seeker.title,
@@ -353,10 +359,10 @@ async def create_public_fact_check(
             .select_from(FactCheckRun)
             .where(
                 FactCheckRun.evidence_seeker_id == seeker.id,
-                FactCheckRun.is_public.is_(True),
                 FactCheckRun.status.in_(
                     (FactCheckRunStatus.PENDING, FactCheckRunStatus.RUNNING)
                 ),
+                FactCheckRun.deleted_at.is_(None),
             )
         ).scalar_one()
 
@@ -408,7 +414,8 @@ def list_public_fact_checks(
     db: Session = Depends(get_db),
 ) -> PublicFactCheckRunsResponse:
     filters = [
-        FactCheckRun.is_public.is_(True),
+        FactCheckRun.visibility == FactCheckRunVisibility.PUBLIC,
+        FactCheckRun.deleted_at.is_(None),
         FactCheckRun.status == FactCheckRunStatus.SUCCEEDED,
     ]
 
@@ -440,6 +447,8 @@ def list_public_fact_checks(
                 ),
                 "completed_at": run.completed_at,
                 "published_at": run.published_at,
+                "featured_at": getattr(run, "featured_at", None),
+                "visibility": getattr(run, "visibility", FactCheckRunVisibility.PUBLIC),
                 "evidence_seeker_uuid": seeker.uuid,
                 "evidence_seeker_id": seeker.id,
                 "evidence_seeker_title": seeker.title,
@@ -472,7 +481,10 @@ def get_public_fact_check(
         .join(EvidenceSeeker, EvidenceSeeker.id == FactCheckRun.evidence_seeker_id)
         .where(
             FactCheckRun.uuid == run_uuid,
-            FactCheckRun.is_public.is_(True),
+            FactCheckRun.visibility.in_(
+                [FactCheckRunVisibility.PUBLIC, FactCheckRunVisibility.UNLISTED]
+            ),
+            FactCheckRun.deleted_at.is_(None),
             EvidenceSeeker.is_public.is_(True),
         )
     ).first()

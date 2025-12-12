@@ -46,6 +46,7 @@ export const useDocumentUploadController = (
   const {
     documents,
     uploadDocument,
+    deleteDocument,
     loading: documentsLoading,
     error: documentsError,
   } = useDocuments(evidenceSeekerUuid ?? "", {
@@ -255,8 +256,14 @@ export const useDocumentUploadController = (
   );
 
   const removeItem = useCallback((itemId: string) => {
+    const target = queue.find((item) => item.id === itemId);
+    // Remove from backend when the item already has a document record so it
+    // does not reappear on the next fetch/mount.
+    if (target?.document?.uuid) {
+      void deleteDocument(target.document.uuid);
+    }
     setQueue((current) => current.filter((item) => item.id !== itemId));
-  }, []);
+  }, [deleteDocument, queue]);
 
   const hasReadyDocument = useMemo(() => {
     return queue.some((item) => item.status === "ready" || item.status === "embedding");

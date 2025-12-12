@@ -82,6 +82,14 @@ class EvidenceStance(str, enum.Enum):
     NEUTRAL = "NEUTRAL"
 
 
+class FactCheckRunVisibility(str, enum.Enum):
+    """Publication visibility for a fact-check run."""
+
+    PUBLIC = "PUBLIC"
+    UNLISTED = "UNLISTED"
+    PRIVATE = "PRIVATE"
+
+
 class FactCheckRun(Base):
     """Top-level execution record for EvidenceSeeker runs."""
 
@@ -113,6 +121,24 @@ class FactCheckRun(Base):
     published_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    visibility: Mapped[FactCheckRunVisibility] = mapped_column(
+        Enum(FactCheckRunVisibility, name="fact_check_run_visibility"),
+        nullable=False,
+        default=FactCheckRunVisibility.PUBLIC,
+    )
+    featured_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    featured_by_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("users.id"), nullable=True
+    )
+    deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    deleted_by_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("users.id"), nullable=True
+    )
+    deletion_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     began_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
@@ -121,11 +147,19 @@ class FactCheckRun(Base):
     evidence_seeker: Mapped[EvidenceSeeker] = relationship(
         "EvidenceSeeker", back_populates="fact_check_runs"
     )
-    submitter: Mapped[User] = relationship("User")
+    submitter: Mapped[User] = relationship(
+        "User", foreign_keys=[submitted_by], lazy="joined"
+    )
     results: Mapped[list[FactCheckResult]] = relationship(
         "FactCheckResult",
         back_populates="run",
         cascade="all, delete-orphan",
+    )
+    featured_by: Mapped[User | None] = relationship(
+        "User", foreign_keys=[featured_by_id], lazy="joined"
+    )
+    deleted_by: Mapped[User | None] = relationship(
+        "User", foreign_keys=[deleted_by_id], lazy="joined"
     )
 
     def __repr__(self) -> str:
@@ -219,6 +253,7 @@ def build_fact_check_run(
     status: FactCheckRunStatus = FactCheckRunStatus.PENDING,
     submitted_by: int | None = None,
     is_public: bool = False,
+    visibility: FactCheckRunVisibility = FactCheckRunVisibility.PUBLIC,
 ) -> FactCheckRun:
     """Construct a FactCheckRun instance with explicit, type-checked parameters."""
     run = FactCheckRun()
@@ -227,4 +262,5 @@ def build_fact_check_run(
     run.status = status
     run.submitted_by = submitted_by
     run.is_public = is_public
+    run.visibility = visibility
     return run

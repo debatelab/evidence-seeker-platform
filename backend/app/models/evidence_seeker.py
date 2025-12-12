@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import enum
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 from uuid import UUID as UUIDType
 from uuid import uuid4
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -19,6 +20,11 @@ if TYPE_CHECKING:
     from app.models.index_job import IndexJob
     from app.models.permission import Permission
     from app.models.user import User
+
+
+class FactCheckPublicationMode(str, enum.Enum):
+    AUTOPUBLISH = "AUTOPUBLISH"
+    MANUAL = "MANUAL"
 
 
 class EvidenceSeeker(Base):
@@ -36,6 +42,10 @@ class EvidenceSeeker(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     logo_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     is_public: Mapped[bool] = mapped_column(Boolean, default=False)
+    fact_check_publication_mode: Mapped[FactCheckPublicationMode] = mapped_column(
+        Enum(FactCheckPublicationMode, name="fact_check_publication_mode"),
+        default=FactCheckPublicationMode.AUTOPUBLISH,
+    )
     language: Mapped[str | None] = mapped_column(String(16), nullable=True)
     created_by: Mapped[int] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=False
@@ -134,6 +144,7 @@ def build_evidence_seeker(
     description: str | None = None,
     logo_url: str | None = None,
     is_public: bool = False,
+    fact_check_publication_mode: FactCheckPublicationMode = FactCheckPublicationMode.AUTOPUBLISH,
     language: str | None = None,
 ) -> EvidenceSeeker:
     """Construct an EvidenceSeeker with explicit, type-checked parameters."""
@@ -143,5 +154,6 @@ def build_evidence_seeker(
     seeker.description = description
     seeker.logo_url = logo_url
     seeker.is_public = is_public
+    seeker.fact_check_publication_mode = fact_check_publication_mode
     seeker.language = language
     return seeker

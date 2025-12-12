@@ -35,6 +35,7 @@ const EvidenceSeekerSettings: React.FC<EvidenceSeekerSettingsProps> = ({
     title: "",
     description: "",
     isPublic: false,
+    factCheckPublicationMode: "AUTOPUBLISH",
     language: DEFAULT_LANGUAGE,
   });
 
@@ -49,6 +50,8 @@ const EvidenceSeekerSettings: React.FC<EvidenceSeekerSettingsProps> = ({
           title: seeker.title || "",
           description: seeker.description || "",
           isPublic: seeker.isPublic || false,
+          factCheckPublicationMode:
+            seeker.factCheckPublicationMode || "AUTOPUBLISH",
           language:
             (seeker.language as SupportedLanguageCode) || DEFAULT_LANGUAGE,
         });
@@ -95,6 +98,7 @@ const EvidenceSeekerSettings: React.FC<EvidenceSeekerSettingsProps> = ({
         title: formData.title,
         description: formData.description,
         isPublic: formData.isPublic,
+        factCheckPublicationMode: formData.factCheckPublicationMode as EvidenceSeeker["factCheckPublicationMode"],
         language: formData.language || null,
       };
 
@@ -108,6 +112,8 @@ const EvidenceSeekerSettings: React.FC<EvidenceSeekerSettingsProps> = ({
           title: formData.title,
           description: formData.description,
           isPublic: formData.isPublic,
+          factCheckPublicationMode:
+            formData.factCheckPublicationMode as EvidenceSeeker["factCheckPublicationMode"],
           language: formData.language,
         });
       } else {
@@ -126,6 +132,8 @@ const EvidenceSeekerSettings: React.FC<EvidenceSeekerSettingsProps> = ({
         title: evidenceSeeker.title || "",
         description: evidenceSeeker.description || "",
         isPublic: evidenceSeeker.isPublic || false,
+        factCheckPublicationMode:
+          evidenceSeeker.factCheckPublicationMode || "AUTOPUBLISH",
         language:
           (evidenceSeeker.language as SupportedLanguageCode) ||
           DEFAULT_LANGUAGE,
@@ -307,6 +315,63 @@ const EvidenceSeekerSettings: React.FC<EvidenceSeekerSettingsProps> = ({
                 without an account.
               </p>
 
+              <div className="space-y-3 pt-4">
+                <p className="text-sm font-medium text-gray-700">
+                  Fact check publication
+                </p>
+                <p className="text-xs text-gray-500">
+                  Choose whether successful runs auto-publish or stay unlisted until featured.
+                </p>
+                <div className="space-y-2">
+                  <label className="flex items-start gap-2">
+                    <input
+                      type="radio"
+                      name="factCheckPublicationMode"
+                      value="AUTOPUBLISH"
+                      checked={formData.factCheckPublicationMode === "AUTOPUBLISH"}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          factCheckPublicationMode: e.target.value,
+                        }))
+                      }
+                      className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                    />
+                    <span>
+                      <span className="text-sm font-medium text-gray-900">
+                        Autopublish
+                      </span>
+                      <p className="text-xs text-gray-600">
+                        Successful runs immediately appear on public pages.
+                      </p>
+                    </span>
+                  </label>
+                  <label className="flex items-start gap-2">
+                    <input
+                      type="radio"
+                      name="factCheckPublicationMode"
+                      value="MANUAL"
+                      checked={formData.factCheckPublicationMode === "MANUAL"}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          factCheckPublicationMode: e.target.value,
+                        }))
+                      }
+                      className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                    />
+                    <span>
+                      <span className="text-sm font-medium text-gray-900">
+                        Manual (unlisted)
+                      </span>
+                      <p className="text-xs text-gray-600">
+                        Runs stay unlisted. Share links still work; admins feature chosen runs later.
+                      </p>
+                    </span>
+                  </label>
+                </div>
+              </div>
+
               <div className="flex justify-end space-x-3 pt-4">
                 <button
                   onClick={handleCancel}
@@ -358,6 +423,17 @@ const EvidenceSeekerSettings: React.FC<EvidenceSeekerSettingsProps> = ({
                   >
                     {evidenceSeeker.isPublic ? "Public" : "Private"}
                   </span>
+                </div>
+
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">
+                    Fact check publication
+                  </h4>
+                  <p className="text-gray-900">
+                    {evidenceSeeker.factCheckPublicationMode === "MANUAL"
+                      ? "Manual (unlisted until featured)"
+                      : "Autopublish"}
+                  </p>
                 </div>
 
                 <div>

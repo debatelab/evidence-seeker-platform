@@ -3,6 +3,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from app.models.evidence_seeker import FactCheckPublicationMode
+
 from .evidence_seeker_settings import (
     ConfigurationStateLiteral,
     SetupModeLiteral,
@@ -15,6 +17,10 @@ class EvidenceSeekerBase(BaseModel):
     title: str = Field(..., min_length=1, max_length=100)
     description: str | None = Field(None, max_length=500)
     is_public: bool = Field(default=False, alias="isPublic")
+    fact_check_publication_mode: FactCheckPublicationMode = Field(
+        default=FactCheckPublicationMode.AUTOPUBLISH,
+        alias="factCheckPublicationMode",
+    )
     language: str | None = Field(
         default=None,
         max_length=16,
@@ -53,6 +59,9 @@ class EvidenceSeekerUpdate(BaseModel):
     title: str | None = Field(None, min_length=1, max_length=100)
     description: str | None = Field(None, max_length=500)
     is_public: bool | None = Field(None, alias="isPublic")
+    fact_check_publication_mode: FactCheckPublicationMode | None = Field(
+        None, alias="factCheckPublicationMode"
+    )
     language: str | None = Field(
         default=None,
         max_length=16,
@@ -74,6 +83,10 @@ class EvidenceSeekerRead(EvidenceSeekerBase):
     updated_at: datetime = Field(alias="updatedAt")
     published_at: datetime | None = Field(alias="publishedAt", default=None)
     is_public: bool = Field(alias="isPublic", default=False)
+    fact_check_publication_mode: FactCheckPublicationMode = Field(
+        alias="factCheckPublicationMode",
+        default=FactCheckPublicationMode.AUTOPUBLISH,
+    )
     configuration_state: ConfigurationStateLiteral | None = Field(
         alias="configurationState", default=None
     )

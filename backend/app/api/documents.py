@@ -17,6 +17,7 @@ from fastapi import (
     status,
 )
 from fastapi.responses import FileResponse
+from pydantic import AnyHttpUrl, TypeAdapter, ValidationError
 from sqlalchemy.orm import Session
 
 from ..core.auth import User, get_current_user
@@ -35,7 +36,7 @@ from ..models.evidence_seeker import EvidenceSeeker
 from ..models.index_job import IndexJob
 from ..models.permission import UserRole
 from ..models.user import ensure_user_id
-from ..schemas.document import DocumentIngestionResponse, DocumentRead
+from ..schemas.document import DocumentIngestionResponse, DocumentRead, DocumentUpdate
 
 router = APIRouter()
 
@@ -111,12 +112,31 @@ def _process_index_delete(job_id: int, document_ids: list[int]) -> None:
     _run_async_task(_run())
 
 
+def _validate_source_url(raw_url: Any | None) -> str | None:
+    """Normalize and validate an optional source URL."""
+    if raw_url is None:
+        return None
+    # Accept AnyHttpUrl instances or raw strings
+    value = str(raw_url).strip()
+    if value == "":
+        return None
+    try:
+        validated = TypeAdapter(AnyHttpUrl).validate_python(value)
+        return str(validated)
+    except ValidationError as exc:  # pragma: no cover - validation path
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Invalid source_url; must be a valid http(s) URL.",
+        ) from exc
+
+
 @router.post("/upload", response_model=DocumentIngestionResponse)
 def upload_document(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     title: str = Form(...),
     description: str | None = Form(None),
+    source_url: str | None = Form(None, alias="sourceUrl"),
     evidence_seeker_uuid: str = Form(...),  # Use UUID for external API
     onboarding_token: str | None = Header(default=None, alias="X-Onboarding-Token"),
     db: Session = Depends(get_db),
@@ -213,6 +233,7 @@ def upload_document(
     db_document.mime_type = mime_type
     db_document.evidence_seeker_id = seeker_id
     db_document.evidence_seeker_uuid = uuid_obj
+    db_document.source_url = _validate_source_url(source_url)
     db.add(db_document)
     db.commit()
     db.refresh(db_document)
@@ -381,6 +402,70 @@ def require_document_admin(
         )
 
     return current_user
+
+
+@router.patch("/{document_uuid}", response_model=DocumentRead)
+def update_document(
+    document_uuid: str,
+    payload: DocumentUpdate,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_document_admin),
+) -> Document:
+    """Update document metadata; URL-only updates do not trigger reindex."""
+    try:
+        uuid_obj = UUID(document_uuid)
+        document = db.query(Document).filter(Document.uuid == uuid_obj).first()
+    except (ValueError, TypeError):
+        document = None
+
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    seeker = db.get(EvidenceSeeker, document.evidence_seeker_id)
+    if seeker is None:
+        raise HTTPException(status_code=404, detail="Evidence Seeker not found")
+
+    updated = False
+    reindex_required = False
+
+    fields_set = payload.model_fields_set
+
+    if "title" in fields_set and payload.title is not None:
+        if payload.title != document.title:
+            document.title = payload.title
+            updated = True
+            reindex_required = True
+
+    if "description" in fields_set:
+        if payload.description != document.description:
+            document.description = payload.description
+            updated = True
+            reindex_required = True
+
+    if "source_url" in fields_set:
+        new_url = _validate_source_url(payload.source_url)
+        if new_url != document.source_url:
+            document.source_url = new_url
+            updated = True
+
+    if not updated:
+        return document
+
+    db.add(document)
+    db.commit()
+    db.refresh(document)
+
+    if reindex_required:
+        job = evidence_seeker_index_service.queue_update(
+            db=db,
+            seeker=seeker,
+            user_id=ensure_user_id(current_user),
+            documents=[document],
+        )
+        background_tasks.add_task(_process_index_update, job.id, [int(document.id)])
+
+    return document
 
 
 @router.delete("/{document_uuid}")

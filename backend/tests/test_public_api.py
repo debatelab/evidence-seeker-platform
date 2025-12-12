@@ -10,6 +10,7 @@ from app.models.evidence_seeker import EvidenceSeeker, build_evidence_seeker
 from app.models.fact_check import (
     FactCheckRun,
     FactCheckRunStatus,
+    FactCheckRunVisibility,
     build_fact_check_run,
 )
 from app.models.user import User
@@ -41,6 +42,11 @@ def _stub_pipeline(monkeypatch: pytest.MonkeyPatch) -> None:
             statement=statement,
             status=FactCheckRunStatus.PENDING,
             is_public=public_run,
+            visibility=(
+                FactCheckRunVisibility.PUBLIC
+                if public_run
+                else FactCheckRunVisibility.PRIVATE
+            ),
         )
         db.add(run)
         db.commit()

@@ -628,6 +628,7 @@ class EvidenceSeekerConfigService:
             "embed_backend_type": backend_type,
             "embed_model_name": settings_row.default_model
             or settings.evse_default_model,
+            "embed_batch_size": settings.evse_embed_batch_size,
         }
 
         if settings_row.embed_base_url:
