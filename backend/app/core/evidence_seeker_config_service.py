@@ -29,22 +29,27 @@ from app.models.evidence_seeker_settings import (
 
 logger = logging.getLogger(__name__)
 
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    from evidence_seeker import RetrievalConfig as RetrievalConfigType
+    from evidence_seeker.retrieval.config import (
+        EmbedBackendType as EmbedBackendTypeType,
+    )
+else:
+    RetrievalConfigType = Any
+    EmbedBackendTypeType = Any
+
+_RuntimeRetrievalConfig: type[RetrievalConfigType] | None
+_RuntimeEmbedBackendType: type[EmbedBackendTypeType] | None
+
 if settings.disable_embeddings:
     _RuntimeRetrievalConfig = None
+    _RuntimeEmbedBackendType = None
 else:
     try:  # pragma: no cover - optional dependency during tests
         from evidence_seeker import RetrievalConfig as _RuntimeRetrievalConfig
     except ImportError:  # pragma: no cover
         _RuntimeRetrievalConfig = None
 
-if TYPE_CHECKING:  # pragma: no cover - typing only
-    from evidence_seeker import RetrievalConfig as RetrievalConfigType
-else:
-    RetrievalConfigType = Any
-
-if settings.disable_embeddings:
-    _RuntimeEmbedBackendType = None
-else:
     try:  # pragma: no cover - optional dependency during tests
         from evidence_seeker.retrieval.config import (
             EmbedBackendType as _RuntimeEmbedBackendType,

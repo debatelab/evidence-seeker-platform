@@ -31,7 +31,9 @@ if settings.disable_embeddings:
     IndexBuilder = None
 else:
     try:  # pragma: no cover - optional dependency during tests
-        from evidence_seeker.retrieval.index_builder import IndexBuilder as _IndexBuilder
+        from evidence_seeker.retrieval.index_builder import (
+            IndexBuilder as _IndexBuilder,
+        )
     except ImportError:  # pragma: no cover
         IndexBuilder = None
     else:
