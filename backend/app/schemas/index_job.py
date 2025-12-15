@@ -29,10 +29,19 @@ class IndexJobRead(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def _fill_document_uuids(cls, values: dict[str, Any]) -> dict[str, Any]:
-        if values.get("document_uuids") is not None:
-            return values
-        payload = values.get("payload")
+    def _fill_document_uuids(cls, values: Any) -> dict[str, Any]:
+        # When validating from ORM objects pydantic passes the instance itself
+        # (not a dict), so normalise to a mapping before accessing keys.
+        if isinstance(values, dict):
+            typed_values: dict[str, Any] = dict(values)
+        else:
+            typed_values = {
+                name: getattr(values, name, None) for name in cls.model_fields
+            }
+
+        if typed_values.get("document_uuids") is not None:
+            return typed_values
+        payload = typed_values.get("payload")
         if isinstance(payload, dict) and "document_uuids" in payload:
-            values["document_uuids"] = payload.get("document_uuids")
-        return values
+            typed_values["document_uuids"] = payload.get("document_uuids")
+        return typed_values

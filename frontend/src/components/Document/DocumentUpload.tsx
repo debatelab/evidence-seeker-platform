@@ -4,12 +4,11 @@ import { Document, DocumentCreate } from "../../types/document";
 import { useDocuments } from "../../hooks/useDocument";
 import UploadForm from "./UploadForm";
 import UploadProgress from "./UploadProgress";
-import UploadSuccess from "./UploadSuccess";
 import UploadError from "./UploadError";
 import { useConfigurationStatus } from "../../hooks/useConfigurationStatus";
 import { ConfigurationBlockedNotice } from "../Configuration/ConfigurationBlockedNotice";
 
-type UploadState = "form-input" | "uploading" | "success" | "error";
+type UploadState = "form-input" | "uploading" | "error";
 
 interface DocumentUploadProps {
   evidenceSeekerUuid: string;
@@ -39,9 +38,6 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({
   const [currentDescription, setCurrentDescription] = useState<string>("");
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [uploadError, setUploadError] = useState<string>("");
-  const [_uploadedDocument, setUploadedDocument] = useState<Document | null>(
-    null
-  ); // underscored to satisfy no-unused-vars rule
   const progressIntervalRef = useRef<number | null>(null);
   const [currentSourceUrl, setCurrentSourceUrl] = useState<string>("");
 
@@ -90,9 +86,10 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({
       setUploadProgress(100);
 
       if (result) {
-        setUploadedDocument(result.document);
-        setUploadState("success");
         onUploadSuccess?.(result.document);
+        navigate(
+          `/app/evidence-seekers/${evidenceSeekerUuid}/manage/documents`
+        );
       } else {
         setUploadError("Upload failed. Please try again.");
         setUploadState("error");
@@ -115,17 +112,6 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({
     setCurrentTitle("");
     setCurrentDescription("");
     setCurrentSourceUrl("");
-  };
-
-  const handleUploadAnother = () => {
-    setUploadState("form-input");
-    setUploadProgress(0);
-    setUploadError("");
-    setCurrentFile(null);
-    setCurrentTitle("");
-    setCurrentDescription("");
-    setCurrentSourceUrl("");
-    setUploadedDocument(null);
   };
 
   const handleRetry = () => {
@@ -199,18 +185,6 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({
           title={currentTitle}
           onCancel={handleCancel}
           progress={uploadProgress}
-        />
-      ) : (
-        <UploadForm onStartUpload={handleStartUpload} />
-      );
-
-    case "success":
-      return currentFile ? (
-        <UploadSuccess
-          file={currentFile}
-          title={currentTitle}
-          onUploadAnother={handleUploadAnother}
-          evidenceSeekerUuid={evidenceSeekerUuid}
         />
       ) : (
         <UploadForm onStartUpload={handleStartUpload} />

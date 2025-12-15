@@ -34,7 +34,7 @@ from ..core.permissions import check_evidence_seeker_permission
 from ..core.progress_tracker import progress_tracker
 from ..models.document import Document
 from ..models.evidence_seeker import EvidenceSeeker
-from ..models.index_job import IndexJob
+from ..models.index_job import IndexJob, IndexJobStatus
 from ..models.permission import UserRole
 from ..models.user import ensure_user_id
 from ..schemas.document import DocumentIngestionResponse, DocumentRead, DocumentUpdate
@@ -76,8 +76,29 @@ def _process_index_update(job_id: int, document_ids: list[int]) -> None:
                 return
 
             await evidence_seeker_index_service.run_update(db, job, seeker, documents)
-        except Exception:  # pragma: no cover - defensive logging
+        except Exception as exc:  # pragma: no cover - defensive logging
             logger.exception("Index update job %s failed", job_id)
+            try:
+                db.rollback()
+            except Exception:  # pragma: no cover
+                logger.exception("Rollback failed after job %s error", job_id)
+            job = db.get(IndexJob, job_id)
+            seeker = None
+            if job is not None:
+                seeker = db.get(EvidenceSeeker, job.evidence_seeker_id)
+            if job is not None and seeker is not None:
+                try:
+                    evidence_seeker_index_service._update_job_status(
+                        db,
+                        job,
+                        IndexJobStatus.FAILED,
+                        message="Index update failed",
+                        error=str(exc),
+                    )
+                except Exception:  # pragma: no cover - best-effort failure reporting
+                    logger.exception(
+                        "Failed to record failure for index update job %s", job_id
+                    )
         finally:
             db.close()
 
@@ -105,8 +126,29 @@ def _process_index_delete(job_id: int, document_ids: list[int]) -> None:
                 delete_file(document.file_path)
                 db.delete(document)
             db.commit()
-        except Exception:  # pragma: no cover - defensive logging
+        except Exception as exc:  # pragma: no cover - defensive logging
             logger.exception("Index delete job %s failed", job_id)
+            try:
+                db.rollback()
+            except Exception:  # pragma: no cover
+                logger.exception("Rollback failed after job %s delete error", job_id)
+            job = db.get(IndexJob, job_id)
+            seeker = None
+            if job is not None:
+                seeker = db.get(EvidenceSeeker, job.evidence_seeker_id)
+            if job is not None and seeker is not None:
+                try:
+                    evidence_seeker_index_service._update_job_status(
+                        db,
+                        job,
+                        IndexJobStatus.FAILED,
+                        message="Index delete failed",
+                        error=str(exc),
+                    )
+                except Exception:  # pragma: no cover - best-effort failure reporting
+                    logger.exception(
+                        "Failed to record failure for index delete job %s", job_id
+                    )
         finally:
             db.close()
 
@@ -184,7 +226,18 @@ def upload_document(
     try:
         evidence_seeker_config_service.require_ready(db, seeker)
     except ConfigurationNotReadyError as exc:
-        if not allow_onboarding_upload:
+        missing_requirements = set(exc.status.missing_requirements)
+        # Allow first-time uploads even when the seeker is missing documents,
+        # but still block when credentials or other requirements are missing.
+        documents_only_missing = missing_requirements == {"DOCUMENTS"}
+        if onboarding_token and not allow_onboarding_upload:
+            detail = _config_guard_detail(exc)
+            detail["message"] = "Invalid onboarding token"
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=detail,
+            ) from exc
+        if not documents_only_missing and not allow_onboarding_upload:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=_config_guard_detail(exc),

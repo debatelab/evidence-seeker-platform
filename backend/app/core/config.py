@@ -111,7 +111,7 @@ class Settings(BaseSettings):
     evse_require_bill_to: bool = False
     # Embedding/indexing safeguards
     evse_embed_batch_size: int = (
-        4  # keep batches very small to avoid HF router timeouts
+        1  # keep batches very small to avoid HF router timeouts
     )
     evse_index_max_concurrency: int = (
         1  # strictly serialize indexing jobs across seekers
