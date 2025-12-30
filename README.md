@@ -2,17 +2,16 @@
 
 Evidence Seeker Platform empowers researchers, students, and debaters to build domain-specific AI fact-checkers without writing code. This project provides a user-friendly interface for the debatelab/evidence-seeker Python library, allowing non-technical users to set up, manage, and deploy domain-specific fact-checkers.
 
-Our primary goal is to deliver a robust **Minimal Viable Product (MVP)** with minimal complexity by the **end of September 2025**.
-
 ## **🎯 What is an EvidenceSeeker?**
 
 An Evidence Seeker is an AI-based fact-checker that determines if a statement is supported or contradicted by a specific body of text (a corpus). It uses a sophisticated pipeline to analyze statements, retrieve relevant evidence, and assess the level of confirmation.
 
-## **✨ Key Features (from Boilerplate)**
+## **✨ Key Features**
 
 * **Multiple AI Backends**: Supports various inference APIs and local models.  
 * **Vector Search**: Uses state-of-the-art embeddings for semantic search.  
 * **Flexible Configuration**: YAML-based setup for all pipeline components.
+* **Evidence-Seeker Integration**: End-to-end fact-checking pipeline wired to the Evidence Seeker library.
 
 ## **🚀 Minimal Viable Product (MVP) Scope**
 
@@ -38,7 +37,7 @@ This is the full feature set for the initial release.
 * **Embedding Generation**: Upon upload, document embeddings are automatically generated and stored.  
 * **Simple Configuration**: A user-friendly interface for essential settings, like selecting an inference provider and entering API tokens (which must be stored encrypted).  
 * **Language Defaults**: Each Evidence Seeker stores a primary language (e.g., DE or EN) that we forward to the preprocessing pipeline so outputs match the corpus language.  
-* **Expert Configuration**: A text area for advanced YAML configuration will be considered a **post-MVP feature** to ensure the deadline is met.
+* **Expert Configuration**: A text area for advanced YAML configuration is available for power users.
 
 #### Simplified Configuration Flow
 
@@ -66,11 +65,6 @@ This is the full feature set for the initial release.
 * **CORS Configuration**: Properly configured for frontend-backend communication
 * **Input Sanitization**: All YAML configuration validated and sanitized
 
-### **Feature Flags**
-
-* `ENABLE_SIMPLE_CONFIG` (default `true`) – when enabled, the onboarding wizard, configuration status badges, and guarded workflows are enforced across the platform. Set to `false` if you need to temporarily bypass the guardrails (e.g., for legacy data import).  
-* `EVSE_REQUIRE_BILL_TO` (default `false`) – require a billing reference (`bill_to`) during setup for organizations that need per-tenant tracking.
-
 ## **🛠️ Tech Stack**
 
 This stack is chosen for rapid development, type safety, and operational simplicity.
@@ -90,10 +84,6 @@ This stack is chosen for rapid development, type safety, and operational simplic
 | **Deployment** | **Docker Compose** | A multi-container setup: **1. Backend** (FastAPI), **2. Frontend** (Nginx), **3. Database** (Postgres), **4. Reverse Proxy** (Traefik/Nginx). This isolates services and mirrors production. |
 | **Development** | **Hybrid Approach** | Run **Postgres in Docker** for stability. Run the **FastAPI backend and React frontend locally** for fast hot-reloading. |
 | **Environment Management** | **.env files** | Secure configuration management with environment variables |
-
-## **🎨 Theme Color**
-
-The logo green (`#42BB83`) is defined once as the `--color-primary` CSS variable in `frontend/src/index.css`. Derived variables (hover, subtle background, border, and contrast text) use `color-mix` so they track the base color automatically. Tailwind maps those variables to the `primary` palette (`frontend/tailwind.config.js`), which powers utilities (`bg-primary`, `text-primary-strong`, `bg-primary-soft`, etc.) and reusable button classes (`btn-primary`, `btn-primary-outline`). Update `--color-primary` to recolor the entire UI.
 
 ## **� Runtime Requirements (Node & npm)**
 
@@ -116,13 +106,6 @@ npm install
 ```
 
 If using a workspace-aware install, the root `package-lock.json` will include the frontend workspace resolution.
-
-### CI Notes
-* GitHub Actions workflow pins Node 24.0.2 for the frontend job.
-* Optional dependency wildcard declared in `frontend/package.json` under `optionalDependencies` ensures Linux runners retrieve the correct Rollup native binary when needed.
-
-### Fallback (If Stuck on Node 20)
-You can keep the wildcard optional dependency and attempt a retry strategy, but sporadic install failures may occur due to npm’s older handling of platform-specific packages. Upgrading is strongly recommended.
 
 
 ## **�📊 Data Model Overview**
@@ -188,7 +171,7 @@ This iterative plan is designed to tackle risk early and deliver a functional pr
 
 ### **Iteration 5: Final Polish & Production Readiness (Week 5)**
 
-**Goal**: Polish the user experience and prepare for MVP launch.
+**Goal**: Polish the user experience and prepare for MVP launch (now complete).
 
 1. **UI/UX Polish**: Refine the user interface, add feedback messages (e.g., "Upload successful"), and conduct thorough testing.
 2. **Documentation**: Clean up and finalize the README.md.
@@ -602,11 +585,28 @@ evidence-seeker-platform/
 - Search interface and API endpoints ✅
 - Configuration management ✅
 - Progress tracking system ✅
-- **User roles and permissions system** ✅ (Complete)
-- **Evidence-seeker library integration** ⏳ (Next Priority)
+- **User roles and permissions system** ✅
+- **Evidence-seeker library integration** ✅
 
-*Current State: The AI infrastructure is fully prepared and functional. Documents can be uploaded, embeddings generated, and vector search performed. The comprehensive user role system with GDPR-compliant access control is now implemented, enabling secure collaboration features. Ready to integrate the core evidence-seeker library for fact-checking functionality.*
+**Iteration 4 - Testing Interface & Public View** ✅
 
-*Strategy: User roles foundation established - now integrating the evidence-seeker library for the core fact-checking MVP feature.*
+*Status: Testing and public access features complete*
+- Testing UI for statement evaluation ✅
+- Public/private publish controls ✅
+- Public discovery pages ✅
+- Result caching ✅
+- Export functionality ✅
+- Shareable links ✅
 
-*Last Updated: September 2025*
+**Iteration 5 - Final Polish & Production Readiness** ✅
+
+*Status: Production readiness and polish complete*
+- UI/UX polish ✅
+- Documentation finalized ✅
+- Monitoring and health checks ✅
+- Backup procedures ✅
+- Admin dashboard ✅
+- Performance optimization ✅
+- Production configuration ✅
+
+*Last Updated: December 2025*

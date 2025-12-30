@@ -60,7 +60,7 @@ const PublicHomePage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (!factChecks.length) {
+    if (!factChecks?.length) {
       setFactCheckSummaries({});
       setFactCheckSummariesLoading(false);
       return;
@@ -106,7 +106,10 @@ const PublicHomePage: React.FC = () => {
     : "/register";
 
   const getPublishedLabel = (run: PublicFactCheckRunSummary) =>
-    formatRelativeTime(run.publishedAt ?? run.completedAt, "Awaiting publication");
+    formatRelativeTime(
+      run.publishedAt ?? run.completedAt,
+      "Awaiting publication"
+    );
 
   return (
     <PublicLayout>
