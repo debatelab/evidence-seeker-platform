@@ -2,7 +2,7 @@
 
 ## Background & Mission
 
-- The Evidence Seeker Platform (see `README.md`) targets a September 2025 MVP that lets non-technical EVSE_ADMIN users stand up domain-specific fact-checkers without wrestling with the underlying EvidenceSeeker Python pipeline.
+- The Evidence Seeker Platform (see `PROJECT_SPEC.md`) targets a September 2025 MVP that lets non-technical EVSE_ADMIN users stand up domain-specific fact-checkers without wrestling with the underlying EvidenceSeeker Python pipeline.
 - Today configuration lives in `frontend/src/components/EvidenceSeeker/EvidenceSeekerConfig.tsx` and mirrors almost every key/value exposed by the backend (`backend/app/models/evidence_seeker_settings.py`). Users must understand embeddings, metadata filters, API keys, etc. before uploading documents or running fact checks.
 - Because this environment is still a prototype, we are free to wipe the database and rewrite existing migrations. There is no need to preserve legacy Evidence Seekers or support data shape upgrades.
 - We now want a default-first experience that:
