@@ -96,11 +96,13 @@ class Settings(BaseSettings):
     # EvidenceSeeker integration
     evse_run_timeout_seconds: int = 900
     evse_max_concurrent_runs: int = 5
-    evse_default_model: str = "BAAI/bge-m3"
+    evse_default_model: str = (
+        "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+    )
     evse_default_backend: str = "huggingface_inference_api"
     # Default Hugging Face Inference API base URL
     evse_default_embed_base_url: str | None = (
-        "https://router.huggingface.co/hf-inference/models/BAAI/bge-m3"
+        "https://router.huggingface.co/hf-inference/models/sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
     )
     evse_enable_warmup: bool = True
     evse_warmup_max: int | None = (
