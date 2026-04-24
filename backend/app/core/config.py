@@ -63,6 +63,7 @@ class Settings(BaseSettings):
     smtp_port: int = 587
     smtp_username: str = ""
     smtp_password: str = ""
+    smtp_timeout: int = 10
     email_from: str = "noreply@evidence-seeker.com"
     email_from_name: str = "Evidence Seeker Platform"
     frontend_base_url: str = Field(

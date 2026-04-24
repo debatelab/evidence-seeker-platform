@@ -26,6 +26,7 @@ class EmailService:
             MAIL_SSL_TLS=False,  # Added missing parameter
             MAIL_STARTTLS=True,
             USE_CREDENTIALS=True,
+            TIMEOUT=settings.smtp_timeout,
             TEMPLATE_FOLDER=template_folder,
         )
         self.fast_mail = FastMail(self.config)
