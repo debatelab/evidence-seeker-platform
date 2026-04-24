@@ -19,11 +19,9 @@ const ForgotPassword: React.FC = () => {
       const response = await fetch("/api/v1/auth/forgot-password", {
         method: "POST",
         headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
+          "Content-Type": "application/json",
         },
-        body: new URLSearchParams({
-          username: email, // FastAPI Users expects 'username' field for forgot password
-        }),
+        body: JSON.stringify({ email }),
       });
 
       if (response.ok) {

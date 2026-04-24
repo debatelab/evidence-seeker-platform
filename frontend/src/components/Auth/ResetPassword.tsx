@@ -58,9 +58,9 @@ const ResetPassword: React.FC = () => {
       const response = await fetch("/api/v1/auth/reset-password", {
         method: "POST",
         headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
+          "Content-Type": "application/json",
         },
-        body: new URLSearchParams({
+        body: JSON.stringify({
           token: token!,
           password: password,
         }),
