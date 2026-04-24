@@ -130,17 +130,24 @@ jobs:
           echo "Disk usage before Trivy:" && df -h
           docker system df || true
 
+      - name: Install Trivy
+        uses: aquasecurity/setup-trivy@3fb12ec12f41e471780db15c232d5dd185dcb514 # v0.2.6
+        with:
+          version: v0.69.3
+          cache: true
+
       - name: Run Trivy vulnerability scanner (main branches only, only if Advanced Security enabled)
         if: github.ref == 'refs/heads/main' && env.ADV_SECURITY_ENABLED == 'true'
-        uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # 0.33.1
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
         with:
           scan-type: 'fs'
           scan-ref: '.'
           format: 'sarif'
           output: 'trivy-results.sarif'
+          skip-setup-trivy: true
 
       - name: Run Trivy secret scan (always, lightweight)
-        uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # 0.33.1
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
         with:
           scanners: 'secret'
           scan-type: 'fs'
@@ -148,6 +155,7 @@ jobs:
           exit-code: '0'
           format: 'table'
           ignore-unfixed: true
+          skip-setup-trivy: true
 
       - name: Upload Trivy scan results to GitHub Security tab
         if: github.ref == 'refs/heads/main' && env.ADV_SECURITY_ENABLED == 'true'
