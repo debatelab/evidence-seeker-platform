@@ -82,7 +82,7 @@ const EmailVerification: React.FC<EmailVerificationProps> = ({
       const response = await fetch("/api/v1/auth/resend-verification", {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
         },
       });
 
