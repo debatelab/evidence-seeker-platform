@@ -7,47 +7,58 @@
       body {
         font-family: Arial, sans-serif;
         line-height: 1.6;
-        color: #333;
+        color: #1f2937;
+        background-color: #f3f4f6;
+        margin: 0;
+        padding: 0;
       }
       .container {
         max-width: 600px;
         margin: 0 auto;
-        padding: 20px;
+        background-color: #ffffff;
       }
       .header {
-        background-color: #2563eb;
-        color: white;
-        padding: 20px;
+        background-color: #1d4ed8;
+        color: #ffffff;
+        padding: 28px 20px;
         text-align: center;
       }
       .content {
-        padding: 30px 20px;
-        background-color: #f8fafc;
+        padding: 32px 28px;
+        background-color: #ffffff;
       }
       .button {
         display: inline-block;
-        background-color: #2563eb;
-        color: white;
+        background-color: #1d4ed8;
+        color: #ffffff;
         padding: 12px 24px;
         text-decoration: none;
         border-radius: 5px;
         margin: 20px 0;
+        font-weight: bold;
       }
       .footer {
         text-align: center;
         padding: 20px;
-        color: #666;
+        color: #4b5563;
         font-size: 12px;
+        background-color: #f9fafb;
+      }
+      .url {
+        color: #1d4ed8;
+        word-break: break-all;
       }
     </style>
   </head>
   <body>
     <div class="container">
       <div class="header">
-        <h1>Evidence Seeker Platform</h1>
+        <h1 style="margin: 0; color: #ffffff">Evidence Seeker Platform</h1>
       </div>
       <div class="content">
-        <h2>Welcome to Evidence Seeker Platform!</h2>
+        <h2 style="color: #111827; margin-top: 0">
+          Welcome to Evidence Seeker Platform!
+        </h2>
         <p>
           Thank you for registering. To complete your account setup and start
           using our platform, please verify your email address.
@@ -55,14 +66,34 @@
 
         <p>Click the button below to verify your email:</p>
 
-        <a href="{{ verification_url }}" class="button">Verify Email Address</a>
+        <p>
+          <a
+            href="{{ verification_url }}"
+            class="button"
+            style="
+              display: inline-block;
+              background-color: #1d4ed8;
+              color: #ffffff !important;
+              padding: 12px 24px;
+              text-decoration: none;
+              border-radius: 5px;
+              font-weight: bold;
+            "
+            >Verify Email Address</a
+          >
+        </p>
 
         <p>
           If the button doesn't work, you can also copy and paste this link into
           your browser:
         </p>
         <p>
-          <a href="{{ verification_url }}">{{ verification_url }}</a>
+          <a
+            href="{{ verification_url }}"
+            class="url"
+            style="color: #1d4ed8; word-break: break-all"
+            >{{ verification_url }}</a
+          >
         </p>
 
         <p><strong>This verification link will expire in 24 hours.</strong></p>

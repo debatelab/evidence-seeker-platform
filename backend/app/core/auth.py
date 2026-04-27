@@ -22,6 +22,7 @@ class UserManager(IntegerIDMixin, BaseUserManager[FastAPIUser, int]):
 
     reset_password_token_secret = settings.secret_key
     verification_token_secret = settings.secret_key
+    verification_token_lifetime_seconds = 24 * 60 * 60
 
     def __init__(
         self, user_db: SQLAlchemyUserDatabase, email_service: EmailService | None = None

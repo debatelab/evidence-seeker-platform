@@ -41,17 +41,15 @@ const EmailVerification: React.FC<EmailVerificationProps> = ({
         const response = await fetch("/api/v1/auth/verify", {
           method: "POST",
           headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
+            "Content-Type": "application/json",
           },
-          body: new URLSearchParams({
-            token: verificationToken,
-          }),
+          body: JSON.stringify({ token: verificationToken }),
         });
 
         if (response.ok) {
           setIsVerified(true);
           setTimeout(() => {
-            navigate("/dashboard");
+            navigate("/app/evidence-seekers");
           }, 2000);
         } else {
           const errorData = await response.json();
@@ -117,7 +115,7 @@ const EmailVerification: React.FC<EmailVerificationProps> = ({
               features of the platform.
             </p>
             <p className="mt-4 text-sm text-gray-500">
-              Redirecting to dashboard...
+              Redirecting to Evidence Seekers...
             </p>
           </div>
         </div>
