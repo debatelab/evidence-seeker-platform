@@ -6,7 +6,12 @@ import {
   useCallback,
   ReactNode,
 } from "react";
-import { AuthState, LoginRequest, RegisterRequest } from "../types/auth";
+import {
+  AuthState,
+  LoginRequest,
+  RegisterError,
+  RegisterRequest,
+} from "../types/auth";
 import { authAPI, permissionsAPI, apiUtils } from "../utils/api";
 import { authEvents } from "../utils/authEvents";
 
@@ -30,6 +35,49 @@ const formatLoginErrorMessage = (error: any): string => {
   }
 
   return "Login failed. Please try again.";
+};
+
+const formatRegistrationError = (error: any): RegisterError => {
+  const detail = error?.response?.data?.detail;
+
+  if (detail === "REGISTER_USER_ALREADY_EXISTS") {
+    return {
+      field: "email",
+      message:
+        "An account with this email address already exists. Please sign in or reset your password.",
+    };
+  }
+
+  if (detail === "Username already taken") {
+    return {
+      field: "username",
+      message: "This username is already taken. Please choose another one.",
+    };
+  }
+
+  if (detail?.code === "REGISTER_INVALID_PASSWORD") {
+    return {
+      field: "password",
+      message: detail.reason || "Please choose a stronger password.",
+    };
+  }
+
+  if (typeof detail === "string") {
+    return { field: "form", message: detail };
+  }
+
+  if (error?.code === "ERR_NETWORK") {
+    return {
+      field: "form",
+      message:
+        "Unable to reach the server. Please check your connection and try again.",
+    };
+  }
+
+  return {
+    field: "form",
+    message: "Registration failed. Please try again.",
+  };
 };
 
 const normalizePermissions = (permissions?: any[] | null): string[] => {
@@ -75,7 +123,7 @@ interface AuthContextProps extends AuthState {
   ) => Promise<{ success: boolean; data?: any; error?: string }>;
   register: (
     userData: RegisterRequest
-  ) => Promise<{ success: boolean; data?: any; error?: string }>;
+  ) => Promise<{ success: boolean; data?: any; error?: RegisterError }>;
   logout: () => Promise<{ success: boolean }>;
   clearError: () => void;
   checkAuthStatus: () => Promise<boolean>;
@@ -186,15 +234,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       return { success: true, data: response };
     } catch (error: any) {
-      const errorMessage =
-        error.response?.data?.detail ||
-        "Registration failed. Please try again.";
+      const registrationError = formatRegistrationError(error);
       setAuthState((prev) => ({
         ...prev,
         isLoading: false,
-        error: errorMessage,
+        error:
+          registrationError.field === "form"
+            ? registrationError.message
+            : null,
       }));
-      return { success: false, error: errorMessage };
+      return { success: false, error: registrationError };
     }
   }, []);
 

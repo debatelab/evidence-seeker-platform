@@ -41,6 +41,13 @@ export interface RegisterRequest {
   password: string;
 }
 
+export type RegisterErrorField = "email" | "username" | "password" | "form";
+
+export interface RegisterError {
+  field: RegisterErrorField;
+  message: string;
+}
+
 export interface AuthResponse {
   user: User;
   access_token: string;

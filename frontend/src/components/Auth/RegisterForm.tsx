@@ -124,11 +124,13 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
         state: { email: formData.email, registrationSuccess: true },
       });
     } else {
-      // Handle any registration error
-      setValidationErrors((prev) => ({
-        ...prev,
-        username: result.error || "Registration failed",
-      }));
+      const registrationError = result.error;
+      if (registrationError && registrationError.field !== "form") {
+        setValidationErrors((prev) => ({
+          ...prev,
+          [registrationError.field]: registrationError.message,
+        }));
+      }
     }
   };
 
